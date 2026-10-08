@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Neutral APP_NAME (BIG-PROMPT §0.2). Becomes configurable in a later task. -->
     <title>Application Platform</title>
+    <!--
+      Anti-flash: apply the stored theme before the bundle loads, so a reload
+      never paints the wrong theme first. This duplicates the small decision in
+      src/components/providers/theme-provider.tsx (THEME_STORAGE_KEY and
+      resolveTheme) because it must run before any module; keep the two in step.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('app.theme');
+          var mode = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var dark = mode === 'dark' || (mode === 'system' && prefersDark);
+          document.documentElement.classList.toggle('dark', dark);
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (error) {
+          /* storage blocked — fall through to the light default */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,11 +1,14 @@
 import { createBrowserRouter } from 'react-router'
 
+import { ThemeToggle } from '@/components/common/theme-toggle'
+
 /**
  * Router skeleton — data-router mode (ARCHITECTURE §5).
  *
- * F006 proved the routing mode end to end; F009 added the theme tokens, so this
- * page now renders from them and changes with the theme. The real registry
- * arrives with F016 and the route states with F017. Nothing here renders data.
+ * F006 proved the routing mode end to end; F009 added the theme tokens and F010
+ * the persisted theme preference, so this page renders from them and survives a
+ * reload. The real registry arrives with F016 and the route states with F017.
+ * Nothing here renders data.
  */
 function FoundationStatus() {
   return (
@@ -17,14 +20,15 @@ function FoundationStatus() {
             Foundation bootstrapped: Vite, React, TypeScript, React Router and theme tokens. No
             application pages exist yet.
           </p>
+          <ThemeToggle />
         </header>
 
         <section className="rounded-lg border border-border bg-card p-5 text-card-foreground">
           <h2 className="text-sm font-medium">Theme tokens</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Temporary surface for F009: every swatch below is painted from a semantic token, so the
-            whole block repaints when the theme changes. It is replaced when the real routes land in
-            F017.
+            Temporary surface for F009/F010: every swatch below is painted from a semantic token, so
+            the whole block repaints when the theme changes, and the choice persists across reloads.
+            It is replaced when the real routes land in F017.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">

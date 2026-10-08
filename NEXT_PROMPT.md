@@ -52,12 +52,14 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F009 — theme token system** (Tailwind 4 + full OKLCH token set, light and dark).
-- **Next task: F010 — theme preference provider.** Light/dark/system with first-paint persistence; acceptance is
-  that the theme survives a reload. F009 built the `.dark` class mechanism; F010 owns the decision logic, the
-  no-flash inline script and the toggle UI.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F009 sits on top of
-  `b97bee4` (F008).
+- Last completed: **F010 — theme preference provider** (light/dark/system, survives reload without flash).
+- **Next task: F011 — basic UI primitives A.** Button, Badge, Input, InputGroup, Label, Textarea, Checkbox,
+  Switch; acceptance is **component tests for variants**. This is the first task needing a test runner, so it must
+  also stand up Vitest + Testing Library + jsdom 29.1.1 (pinned) and likely `@base-ui/react` + the `shadcn` CLI for
+  the base-nova style — and it is where `shadcn/tailwind.css` can finally be imported (F009 deliberately left it
+  out). G-1 from F002 is why `InputGroup` is named here.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F010 sits on top of
+  `9807cf8` (F009).
 - Last human verification: **NOT RUN** — no gate suite has been run by the operator yet.
 
 ## 4. Environment facts
@@ -112,35 +114,27 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
-- **F009 — theme token system.** `frontend/src/styles/globals.css` defines the full token set copied
-  value-for-value from the reference stylesheet (which F001 had verified): **31 light / 30 dark** tokens across
-  background/foreground/card/popover/primary/secondary/muted/accent/destructive/border/input/ring, `chart-1..5`,
-  `sidebar-*` and the derived `radius-*` scale — plus `@custom-variant dark` and the `@theme inline` mapping that
-  exposes them as utilities (`bg-background`, `text-muted-foreground`, `rounded-lg`, …). Tailwind 4.3.3 and
-  `@tailwindcss/vite` are installed and wired into `vite.config.ts`; `main.tsx` imports the stylesheet; the
-  placeholder route now paints from tokens so both themes are visibly different. **Two deliberate deviations from
-  the reference:** the hard-coded *dark* scrollbar thumb became `var(--border)` (§1.2 warns against forcing dark
-  scrollbars on a light UI), and `shadcn/tailwind.css` is not imported because that package arrives with the
-  primitives in F011. A `prefers-reduced-motion` baseline was added. Checks run: typecheck exit 0; build exit 0
-  emitting 12.5 kB of CSS; **every token value verified present in the built CSS** (normalising the minifier's
-  `13%` / `.243` forms); utilities confirmed to resolve to `var(--…)`; dev server served the stylesheet with both
-  `--background: oklch(0.995 0 0)` and the `.dark` override, and compiled the token classes.
-- **F008 — PostgreSQL dev services.** Root `docker-compose.yml` runs `postgres:18.6-alpine` as project `resors`
-  with a healthcheck, a named volume and a configurable host port; credentials come from `.env` and have **no
-  defaults in the compose file**, so Compose fails loudly rather than baking in a password (§0.7). `.env.example`
-  documents every key with placeholders; `.env` is git-ignored and holds a generated local password. **One real
-  incompatibility found and fixed:** PostgreSQL 18+ images moved the data directory and expect the mount at
-  `/var/lib/postgresql`, not the old `/var/lib/postgresql/data` — the container refused to start until corrected
-  (docker-library/postgres#1259). Checks run: `docker compose up -d --wait` → **Healthy**; `asyncpg 0.32.0`
-  connected to **server_version 18.6** and `sqlalchemy 2.1.4` ran `select 1` → 1 as user `app`, closing the PG 18
-  compatibility item F003 deferred. No Redis anywhere.
-- **F007 — backend bootstrap** — FastAPI + uv on Python 3.14; `/api/v1/health` returns 200, unknown paths 404;
-  `uv sync` locked 64 packages. No `/ready` yet — nothing real to check, assigned to F023. No JWT (C12).
-  _`git show 25e8b0d`_
-- **F006 — frontend bootstrap** — Vite 8 + React 19.3 + TypeScript 6.0.3 strict + react-router 8.4 in
-  data-router mode; `pnpm-lock.yaml` committed; `packageManager: pnpm@12.9.1`. _`git show 580a3b3`_
-- **Older:** F005 repository structure · F004 architecture decisions + reference parity · F003 stack verification
-  · F002 requirement traceability · F001 repository audit. _`git log`_
+- **F010 — theme preference provider.** `src/components/providers/theme-provider.tsx` holds light/dark/system as
+  React context with `resolveTheme` (pure), a `prefers-color-scheme` listener while in `system`, cross-tab sync via
+  the `storage` event, and `color-scheme` on `<html>` so native controls follow. `index.html` carries an inline
+  anti-flash script that applies the stored theme *before* the bundle loads — that is what makes it survive a
+  reload without painting the wrong theme first. `src/components/common/theme-toggle.tsx` is a plain three-way
+  control (restyled in F015, when the primitives and the navbar exist). **Decision:** `next-themes` is *not* used;
+  §2.1 permits it only if verified in a Vite SPA and otherwise requires an equally small framework-agnostic
+  provider plus a documented exception — recorded in `ARCHITECTURE.md` §5 and `STACK_VERSIONS.md`. Storage split:
+  `localStorage` is the first-paint source; §7.6's server-side `user_preferences` theme entry is reconciled by
+  **F048**. Checks run: typecheck exit 0; build exit 0 (1.48 kB html incl. the script); **the shipped inline script
+  extracted from `dist/index.html` and executed against stubbed browser globals — all 8 cases correct** (no stored
+  value ×OS light/dark, stored light/dark against the opposite OS setting, `system` in both, a garbage value, and
+  a throwing `localStorage`); storage key and all three mode literals confirmed present in both the HTML and the
+  bundle, so the two copies cannot silently diverge on the key.
+- **F009 — theme token system** — Tailwind 4.3.3 + `@tailwindcss/vite`; `globals.css` carries 31 light / 30 dark
+  tokens copied from the reference and verified present in the built CSS; scrollbar and `prefers-reduced-motion`
+  improvements noted in the commit. _`git show 9807cf8`_
+- **F008 — PostgreSQL dev services** — `postgres:18.6-alpine` Healthy on 5432; asyncpg 0.32.0 and SQLAlchemy
+  2.1.4 proven against PG 18.6. Found the PG 18 `/var/lib/postgresql` volume-mount change. _`git show b97bee4`_
+- **Older:** F007 backend bootstrap · F006 frontend bootstrap · F005 repository structure · F004 architecture
+  decisions · F003 stack verification · F002 traceability · F001 audit. _`git log`_
 
 ## 8. Commands — what you can run
 
@@ -180,7 +174,9 @@ and prints the real URL; uvicorn fails with a clear error.
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
-| **Theme tokens render (F009)** | with the app open, in the browser console: `document.documentElement.classList.add('dark')` — then `.remove('dark')` | page repaints to dark, then back to light; a black scrollbar would mean the token theme is broken |
+| **Theme persists (F010)** | open the app, click **Light / Dark / System**, then press **F5** | the chosen theme is still applied after reload, with **no flash** of the other theme first |
+| Inspect the stored theme (F010) | browser console: `localStorage.getItem('app.theme')` | `"light"`, `"dark"` or `"system"` |
+| Force a theme by hand (F009) | browser console: `document.documentElement.classList.add('dark')` / `.remove('dark')` | page repaints; a dark scrollbar on a light page would mean the token theme is broken |
 | Dependencies current | `cd D:\resors\frontend; pnpm install` · `cd D:\resors\backend; uv sync` | pnpm: "Already up to date" · uv: "Audited 64 packages" |
 
 ### Repository

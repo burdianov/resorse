@@ -48,7 +48,7 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `@dnd-kit/sortable` | **10.0.0** | 2024-12-04 | |
 | `@dnd-kit/utilities` | **3.2.2** | 2023-11-06 | |
 | `react-pdf` | **11.0.0** | 2026-09-10 | peer `react ^19` |
-| `next-themes` | **0.4.6** | 2025-03-11 | **zero dependencies**, peer `react ^19` — see §6 |
+| ~~`next-themes`~~ | 0.4.6 | 2025-03-11 | **not used** — §2.1 permits it only if verified in a Vite SPA; F010 wrote an equivalent provider instead and documented the exception (`ARCHITECTURE.md` §5). It has zero dependencies, so this removes rather than adds a dependency. |
 | `tw-animate-css` | **1.4.0** | 2025-09-24 | |
 
 ## 3. Frontend — build, lint and test tooling

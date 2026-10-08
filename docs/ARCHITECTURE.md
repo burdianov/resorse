@@ -157,6 +157,22 @@ registry needs (`requiredPermissions`, `adminOnly`, lazy component, error elemen
 error boundary, and support `loader`/`action` later without a restructure. No framework/SSR mode: this is a
 client-only SPA.
 
+**Theme provider (decided, F010): our own, not `next-themes`.** §2.1 permits `next-themes` only if verified to
+work in a Vite SPA, otherwise requires "an equally small framework-agnostic theme provider" and a documented
+exception. This is that exception, recorded here and in `docs/STACK_VERSIONS.md`:
+
+- `next-themes` exists to bridge Next.js's server/client theme split. This is a client-only SPA with no SSR and
+  no hydration, so the problem reduces to reading a stored value, resolving `system` against
+  `prefers-color-scheme`, and toggling `.dark` on `<html>`.
+- The provider is ~60 lines with no dependency, and it keeps the anti-flash script in our own control —
+  a party we must reason about for the first-paint guarantee anyway.
+- **Storage split:** the *local* `localStorage` value is the first-paint source (it must be available before any
+  network call). §7.6 also lists the theme choice as a server-side `user_preferences` entry; reconciling the two
+  is **F048's** job, at which point the local value stays authoritative for first paint and the server value syncs
+  after sign-in.
+- The anti-flash script in `index.html` duplicates the key and the resolution rule deliberately — it must run
+  before any module loads. Both copies carry a comment pointing at each other.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
