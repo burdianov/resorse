@@ -2,14 +2,17 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-08 — after task F007.
+> Last updated: 2026-10-09 — after task F014.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
 - **The operator runs all whole-suite and gate checks** (C14). Every handoff must give exact, copy-pasteable
   commands with expected outcomes. Never run or report a suite result you did not observe yourself.
-- **Update this file at the end of each completed task.** Keep it short and true: keep "Completed work" to the
-  last two tasks in detail and collapse older ones to one-liners — `git log` holds the rest.
+- **Update this file at the end of every completed task — all six places, not the interesting ones.** On 2026-10-09
+  the paste block and the header were found still naming F008 after five further tasks, because only §3/§4/§7/§8 had
+  been refreshed. The full refresh list: the **header date and task**, **§1's two task IDs**, **§3 current
+  position**, **§4 environment facts**, **§7 completed work**, and **§8 commands**. A stale §1 is the worst of them:
+  it is the text the operator actually pastes.
 - **Every completed task must add its runnable commands to §8** (start it, check it, test it), with the task ID
   that made them available. Remove or correct any command a later task invalidates. §8 is what the operator
   actually runs; it must never list a command that does not work yet.
@@ -23,13 +26,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F008 in
-claude_code_pack/TASKS.md. Implement F008 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F015 in
+claude_code_pack/TASKS.md. Implement F015 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F008` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F015` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -120,6 +123,10 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   arrives in **F057** and fix or dismiss it there.
 - **`pnpm run fix:ui` after every `shadcn add`** — it restores components the generator reverted, remaps `cn`,
   strips `"use client"` and drops the `cn` package. **Commit before generating**: it restores from `HEAD`.
+- **Read `docs/ARCHITECTURE.md` §12 (Implementation notes) before debugging anything in the frontend.** It records
+  the traps that cost the most time in F011–F014: minifiers rewriting values and quotes so that hand-written checks
+  produce false failures, most failing component tests being wrong expectations rather than defects (dump the DOM
+  before changing code), overlay test-state leaking between tests, and the jsdom gaps that need shims.
 - Handoff convention: this file is the single source of truth; `STATE.md` is a state-free pointer (a practical
   rather than literal reading of `CLAUDE_MASTER.md` item 7).
 

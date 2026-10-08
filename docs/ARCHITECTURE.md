@@ -310,7 +310,61 @@ Two entries are affected. Neither is blocked; both change meaning:
   refresh-token rotation). Its title still reads "Auth refresh logout"; the operator may want to amend that line,
   the same way C11 amended the package manager.
 
-## 12. Non-goals and deferred choices
+## 12. Implementation notes
+
+Practices learned during F011–F014. They live here rather than in commit messages because each one cost real
+time to rediscover, and every one of them will recur.
+
+### Verify against the artefact, not against your expectation of it
+
+Checking output with a hand-written matcher produced **more false failures than real ones** in F009–F014. Three
+separate times the code was correct and the check was wrong:
+
+- the minifier rewrites `oklch(0.13 0 0)` as `oklch(13% 0 0)` and strips leading zeros (`0.243` → `.243`);
+- it normalises every string literal to **backticks**, so `js.includes('"light"')` is false while `` js.includes(`light`) `` is true;
+- an attribute asserted as `data-orientation` was actually `orientation`, and a label asserted as `Breadcrumb` was
+  actually `breadcrumb`.
+
+Normalise before comparing, and prefer `includes` on the raw substring over assuming a quoting or format
+convention.
+
+### When a check fails, inspect the real output before changing code
+
+The second recurring lesson. In F011–F014 most failing tests were **wrong expectations, not defects**: `onSelect`
+(Radix) where Base UI uses `onClick`; Tabs using manual activation, where arrows move focus and Enter selects;
+`aria-hidden` applied to a container rather than the control; `DropdownMenuLabel` requiring a `DropdownMenuGroup`
+ancestor; cmdk highlighting the first match immediately. Each time, dumping the actual DOM settled it in one step
+after several steps of guessing. Dump first.
+
+### Test isolation for overlays
+
+Base UI modals apply document-level state while open — focus trap, `aria-hidden` on siblings, a nested-dialog
+counter. `cleanup()` unmounts the React tree without running the close path, so that state leaks into the next test
+and the following modal never receives focus: a test that passes alone and fails in sequence. `src/testing/setup.ts`
+presses Escape before `cleanup()` for this reason.
+
+### jsdom gaps
+
+jsdom has no layout, so these are absent and must be shimmed (`src/testing/setup.ts`): `matchMedia`,
+`ResizeObserver`, `scrollIntoView` (cmdk calls it on highlight — without it every Command test fails on mount), and
+the pointer-capture methods Base UI's overlays use. A surprising number of "component bugs" are one of these.
+
+### `exactOptionalPropertyTypes` and third-party props
+
+The flag (on since F006) rejects an explicit `undefined` for an optional property, which third-party component
+props routinely produce. Spread conditionally rather than relaxing the flag:
+
+```tsx
+<CalendarDayButton {...props} {...(locale ? { locale } : {})} />
+```
+
+### Generating UI components
+
+See §5. The rule that matters most: **commit before running the generator**, then `pnpm run fix:ui`. The generator
+reverts components it considers dependencies, and `HEAD` is what `fix:ui` restores from — F013 and F014 each lost
+work to this.
+
+## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
   offline-first.
