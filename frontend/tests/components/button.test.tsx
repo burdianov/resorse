@@ -72,7 +72,17 @@ describe('Button', () => {
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('aria-busy', 'true')
     expect(button).toHaveAttribute('data-loading', 'true')
-    expect(button.querySelector('[data-slot="button-spinner"]')).not.toBeNull()
+    // The shared Spinner primitive (F012), not a local one-off.
+    expect(button.querySelector('[data-slot="spinner"]')).not.toBeNull()
+  })
+
+  it('scales the spinner with the button size', () => {
+    const small = render(<Button size="xs" loading>x</Button>)
+    expect(small.container.querySelector('[data-slot="spinner"]')).toHaveClass('size-3')
+    small.unmount()
+
+    const regular = render(<Button loading>x</Button>)
+    expect(regular.container.querySelector('[data-slot="spinner"]')).toHaveClass('size-4')
   })
 
   it('reports a non-busy state when not loading', () => {
@@ -81,7 +91,7 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Idle' })
     expect(button).toHaveAttribute('aria-busy', 'false')
     expect(button).toHaveAttribute('data-loading', 'false')
-    expect(button.querySelector('[data-slot="button-spinner"]')).toBeNull()
+    expect(button.querySelector('[data-slot="spinner"]')).toBeNull()
   })
 
   it('lets a caller className win over the variant defaults', () => {

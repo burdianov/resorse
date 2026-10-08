@@ -53,12 +53,12 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
 - Last completed: **F010 — theme preference provider** (light/dark/system, survives reload without flash).
-- **Next task: F012 — basic UI primitives B.** Card, Separator, Skeleton, Spinner, Progress, Avatar,
-  Breadcrumb; same pattern as F011. **Spinner arriving means Button's temporary local spinner should be replaced
-  by it** (the file carries a comment saying so). Generate with the shadcn CLI and apply the three corrections
-  documented in `ARCHITECTURE.md` §5.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F011 sits on top of
-  `eea0608` (F010).
+- **Next task: F013 — overlay primitives.** Dialog, Dropdown, Popover, Tooltip, Sheet, Scroll Area; acceptance is
+  **focus and escape tests** — the overlay behaviours that are easy to get wrong. Same CLI workflow and corrections
+  as F011/F012 (`ARCHITECTURE.md` §5). Dialog likely needs `matchMedia`/`ResizeObserver`, already stubbed in
+  `src/testing/setup.ts`.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F012 sits on top of
+  `0b2e32f` (F011).
 - Last human verification: **NOT RUN** — no gate suite has been run by the operator yet.
 
 ## 4. Environment facts
@@ -70,9 +70,9 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **Styling is live:** `frontend/src/styles/globals.css` holds the theme tokens (31 light / 30 dark, values
   verified against the reference). Tailwind 4 goes through `@tailwindcss/vite`; dark mode is the `.dark` class
   on `<html>`, not a media query — F010 supplies the provider that sets it.
-- **UI primitives and tests are live:** 8 primitives in `frontend/src/components/ui/` (F011) with colocated
-  workflow notes in `ARCHITECTURE.md` §5 for generating more. Component tests live in `frontend/tests/components/`;
-  Vitest config sits in `vite.config.ts` (jsdom + `src/testing/setup.ts`).
+- **UI primitives and tests are live:** 15 components in `frontend/src/components/ui/` (F011–F012), with the
+  generation-and-correction workflow in `ARCHITECTURE.md` §5. Component tests live in
+  `frontend/tests/components/`; Vitest config sits in `vite.config.ts` (jsdom + `src/testing/setup.ts`).
 - **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
   `app`. Credentials are in the git-ignored `.env`. Verified working end to end: asyncpg 0.32.0 and SQLAlchemy
   2.1.4 both connect to **PostgreSQL 18.6** (this closed the compatibility check F003 had to defer).
@@ -116,24 +116,22 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
-- **F011 — basic UI primitives A.** Eight primitives generated from the shadcn `base-nova` registry and corrected:
-  `Button`, `Badge`, `Input`, `InputGroup`, `Label`, `Textarea`, `Checkbox`, `Switch`. Corrections applied to the
-  generated output — `cn` remapped to our own `@/lib/utils` (the registry imports it from the `cn` package, which
-  §2.1 does not name), the Next.js `"use client"` directive stripped (§0.5), and **`loading` added to Button**,
-  which §5.2 requires and the registry does not ship. Three corrections are now documented as a repeatable workflow
-  in `ARCHITECTURE.md` §5, since F012–F014 generate more. Also stood up the test stack (Vitest 5.0.3, jsdom
-  29.1.1, Testing Library, user-event, jest-dom) with `src/testing/setup.ts` stubbing `matchMedia` and
-  `ResizeObserver` for jsdom, and added `test`/`test:run`/`coverage` scripts. **A prediction in F009 turned out
-  wrong:** `shadcn/tailwind.css` is *not* needed — the generated components render correctly without it and the
-  `shadcn` CLI stays out of the dependency set (run via `pnpm dlx`). Checks run: **73 tests across 8 files, all
-  passing**, 100% statements/branches/functions/lines over the exercised files; typecheck exit 0; build exit 0.
+- **F012 — basic UI primitives B.** Seven more generated and corrected: `Card` (7 parts), `Separator`, `Skeleton`,
+  `Spinner`, `Progress` (5 parts), `Avatar` (6 parts), `Breadcrumb` (7 parts) — 15 components in `components/ui/`
+  total. **Button's temporary local spinner is gone**, replaced by the shared `Spinner`; because Spinner always
+  carries a `size-*` class, Button's size variants could not reach it, so an explicit `SPINNER_SIZE` map mirrors
+  the same scale and is tested. The CLI re-added the `cn` package, which was removed again — the correction
+  workflow in `ARCHITECTURE.md` §5 earned its keep. Checks run: **108 tests across 15 files, all passing**;
+  typecheck exit 0; build exit 0. Three test failures were mine, not the components' — `aria-label="breadcrumb"`
+  is lowercase, `Separator` sets `aria-orientation` explicitly, and `BreadcrumbPage` is deliberately
+  `role="link" aria-disabled="true" aria-current="page"`; the tests now assert the real contract.
+- **F011 — basic UI primitives A** — Button, Badge, Input, InputGroup, Label, Textarea, Checkbox, Switch; test
+  stack stood up (Vitest 5.0.3, jsdom 29.1.1, Testing Library); `cn` remapped to `@/lib/utils` and `"use client"`
+  stripped. _`git show 0b2e32f`_
 - **F010 — theme preference provider** — light/dark/system in `localStorage` with an inline anti-flash script;
-  `next-themes` deliberately not used (`ARCHITECTURE.md` §5). The shipped script was extracted and run against
-  stubbed globals: all 8 resolution cases correct. _`git show eea0608`_
-- **F009 — theme token system** — Tailwind 4.3.3 + `@tailwindcss/vite`; 31 light / 30 dark tokens copied from
-  the reference and verified present in the built CSS. _`git show 9807cf8`_
-- **Older:** F008 PostgreSQL dev services · F007 backend bootstrap · F006 frontend bootstrap · F005 repository
-  structure · F004 architecture decisions · F003 stack verification · F002 traceability · F001 audit. _`git log`_
+  `next-themes` deliberately not used. _`git show eea0608`_
+- **Older:** F009 theme tokens · F008 PostgreSQL dev services · F007 backend bootstrap · F006 frontend bootstrap ·
+  F005 repository structure · F004 architecture · F003 stack · F002 traceability · F001 audit. _`git log`_
 
 ## 8. Commands — what you can run
 
@@ -172,9 +170,9 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011)** | `cd D:\resors\frontend; pnpm run test:run` | **73 passing** across 8 files, ~1.2s |
-| Frontend tests, watch mode (F011) | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
-| Frontend coverage (F011) | `cd D:\resors\frontend; pnpm run coverage` | 100% over the exercised files |
+| **Frontend tests (F011–F012)** | `cd D:\resors\frontend; pnpm run test:run` | **108 passing** across 15 files, ~1.4s |
+| Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | 100% over the exercised files |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Theme persists (F010)** | open the app, click **Light / Dark / System**, then press **F5** | the chosen theme is still applied after reload, with **no flash** of the other theme first |
 | Inspect the stored theme (F010) | browser console: `localStorage.getItem('app.theme')` | `"light"`, `"dark"` or `"system"` |
