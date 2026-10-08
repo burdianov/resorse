@@ -1,0 +1,50 @@
+# Line-ending and text policy.
+#
+# This project deploys to Linux (Docker Compose, Caddy, GitHub Actions), so LF is
+# canonical in the repository AND in the working tree. This machine has
+# core.autocrlf=true from the Git for Windows system config, which would check files
+# out as CRLF and print "LF will be replaced by CRLF" on every add; attributes set
+# here take precedence over that setting.
+
+# Default: detect text automatically, normalise to LF, check out as LF.
+* text=auto eol=lf
+
+# Files that break outright on Linux if a CR reaches them. Listed explicitly as
+# documentation of intent even though the default above already covers them.
+*.sh        text eol=lf
+*.bash      text eol=lf
+Dockerfile  text eol=lf
+Dockerfile.*  text eol=lf
+*.dockerfile  text eol=lf
+Caddyfile   text eol=lf
+*.py        text eol=lf
+*.mako      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.ini       text eol=lf
+*.cfg       text eol=lf
+.env*       text eol=lf
+
+# Windows-only tooling keeps CRLF so PowerShell and cmd stay happy.
+*.ps1       text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Images and fonts are binary: never convert, never attempt a text diff.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+
+# Documents and archives produced by the app or its reports.
+*.pdf   binary
+*.zip   binary
+*.xlsx  binary
+*.docx  binary
