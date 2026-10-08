@@ -23,7 +23,9 @@ The original QTC360 ZIP is a **reference only**. Inspect it if actually present 
 3. Before edits, give a plan of at most five concise bullets, with expected files and risks. Then implement.
 4. Use existing patterns, migrations, typed schemas and tests; avoid sweeping refactors, unrelated formatting, new dependencies without justification, and regenerating whole modules.
 5. Run **only focused, cheap checks** relevant to the task (e.g. a single pytest file, Vitest file, TypeScript on touched code if fast). Do not run full E2E, Docker rebuild, whole-repository audits or broad dependency upgrades unless the task specifically requires them.
-6. **Commit at the end of each completed task** (operator override 2026-10-08, `DECISIONS.md` C13): stage the task's own changes and `git commit` them before handing off, with a message of the form `feat(F005): <summary>`. Do **not** run `git push`, deploy, or make irreversible data changes. The human operator still performs broad test runs, deployment and final acceptance. Never claim full verification if it was delegated.
+6. **Commit at the end of each completed task** (operator override 2026-10-08, `DECISIONS.md` C13): stage the task's own changes and `git commit` them before handing off, with a message of the form `feat(F005): <summary>`. Do **not** run `git push`, deploy, or make irreversible data changes.
+
+   **The operator runs all whole-suite and gate checks** (`DECISIONS.md` C14). Every handoff must therefore list exact, copy-pasteable commands with expected outcomes — never a summary of what "should" pass. Never report a suite result you did not observe yourself, and never describe an operator-run check as verified. The runbook lives in `OPERATOR_GUIDE.md`.
 7. Update `STATE.md` with task ID, changed files, migrations, checks actually run/results, checks for operator, blockers, and next task. Keep `STATE.md` concise (prefer <=200 lines; archive old entries to `docs/IMPLEMENTATION_LOG.md`).
 8. End with this exact concise structure:
    - `TASK: <ID> — <name>`
