@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-08 — after task F006.
+> Last updated: 2026-10-08 — after task F007.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -17,13 +17,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F007 in
-claude_code_pack/TASKS.md. Implement F007 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F008 in
+claude_code_pack/TASKS.md. Implement F008 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F007` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F008` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -33,8 +33,8 @@ re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/R
 | Project root (repo) | `D:\resors` |
 | Instruction pack | `claude_code_pack\` — `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md`, `TASKS.md`, `DECISIONS.md`, `OPERATOR_GUIDE.md` (operator runbook incl. the test-command table), `STATE.md` (pointer only) |
 | Task artifacts | `docs\` — `REPOSITORY_AUDIT.md` (F001), `REQUIREMENT_TRACEABILITY.md` (F002), `STACK_VERSIONS.md` (F003), `ARCHITECTURE.md` + `REFERENCE_PARITY.md` (F004) |
-| Frontend (F006) | `frontend\` — `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src\{main.tsx,vite-env.d.ts,app\router.tsx}` + the empty skeleton dirs |
-| Backend (empty until F007) | `backend\` — `app\{api/v1,core,models,schemas,services}`, `migrations/versions`, `tests\*` |
+| Frontend (F006) | `frontend\` — `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src\{main.tsx,vite-env.d.ts,app\router.tsx}` |
+| Backend (F007) | `backend\` — `pyproject.toml`, `uv.lock`, `.python-version`, `app\{main.py,core\config.py,api\v1\{router,health}.py}`; `models\`, `schemas\`, `services\`, `migrations\versions\`, `tests\` still empty |
 | Reference material (**outside the project folder**) | `D:\RESORS_REFERENCE\qtc360-main.zip`, `D:\RESORS_REFERENCE\BIG-PROMPT.txt` |
 | Unrelated — do not touch | `D:\QTC360\` (a separate QTC360 working area) |
 
@@ -46,20 +46,21 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F006 — frontend bootstrap** (Vite + React 19.3 + TS 6.0.3 strict + Router 8.4 in data-router mode).
-- **Next task: F007 — backend bootstrap.** FastAPI + uv config + a health endpoint; acceptance is that the API
-  starts and health responds. Pin the exact versions from `docs/STACK_VERSIONS.md` (Python 3.14, FastAPI 0.143.0,
-  SQLAlchemy 2.1.4, alembic 1.20.0, uvicorn 0.54.0 …) and generate `uv.lock`. The backend skeleton dirs exist but
-  are empty.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F006 sits on top of
-  `4221f38` (backlog reconciliation).
+- Last completed: **F007 — backend bootstrap** (FastAPI + uv, health endpoint live).
+- **Next task: F008 — PostgreSQL dev services.** Compose Postgres and an env example, no Redis; acceptance is a
+  healthy DB and safe placeholders. Use `postgres:18.6-alpine` from `docs/STACK_VERSIONS.md`; the container is
+  the first thing that will prove SQLAlchemy/asyncpg against PG 18 (deferred from F003).
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F007 sits on top of
+  `bac5e04` (C14 policy).
 - Last human verification: **NOT RUN** — no gate suite has been run by the operator yet.
 
 ## 4. Environment facts
 
 - Windows 11; PowerShell-first, Bash (Git Bash/MSYS2) also available. Node **v24.14.0**, pnpm **12.9.1**
   (pinned in `package.json`, honoured — no corepack switch), `uv`, git 2.49, Python 3.14. Docker not yet verified.
-- Frontend dependencies **are installed** (`frontend/node_modules`, 28 packages); backend has none yet.
+- Both sides are installed: `frontend/node_modules` (28 packages, pnpm) and `backend/.venv` (`uv sync`, 64
+  packages locked). Neither dev server is running by default.
+- **No JWT anywhere** — C12 chose opaque session cookies, so `pyjwt`/`python-jose` are not dependencies.
 - Mandated stack: React + Vite + TS strict SPA, Tailwind 4, FastAPI + async SQLAlchemy 2, PostgreSQL, uv,
   Alembic, Docker Compose, Caddy. **No Next.js, no Redis**, no public signup, one entity, AED only.
 - Everything runs **same-origin**: relative `/api/v1`, Vite proxy in dev → `localhost:8000`, Caddy in prod.
@@ -99,6 +100,16 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F007 — backend bootstrap.** `backend/pyproject.toml` pins the exact `STACK_VERSIONS.md` versions on Python
+  3.14 (`requires-python >=3.14`, `.python-version` = 3.14); `uv sync` locked **64 packages** and created
+  `uv.lock` + `.venv`. `app/main.py` is an app factory with a lifespan hook, `app/core/config.py` is Pydantic
+  Settings (neutral `APP_NAME`), and `app/api/v1/{router,health}.py` expose `/api/v1/health`. **No `/ready` yet**
+  — there is nothing real to check, and a readiness endpoint that reports health it cannot verify would be a
+  fake. It is assigned to **F023**, when PostgreSQL exists. Checks run: `uv sync` exit 0 (all pinned versions
+  resolved); server started (`Application startup complete`) and `GET /api/v1/health` returned
+  `{"status":"ok","name":"Application Platform","version":"0.1.0","environment":"development"}` with **HTTP
+  200**; `GET /api/v1/nope` returned **404**. No JWT dependency — C12 makes one unnecessary
+  (`STACK_VERSIONS.md` and `REFERENCE_PARITY.md` were corrected accordingly).
 - **F006 — frontend bootstrap.** `frontend/package.json` pins the exact `STACK_VERSIONS.md` versions with
   `packageManager: pnpm@12.9.1` and `engines.node >=24`; scripts are `dev`/`build`/`preview`/`typecheck` only
   (ESLint belongs to F055 — no non-functional scripts were added). `vite.config.ts` wires the React plugin, the
@@ -108,9 +119,8 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   from `src/main.tsx`. Checks run: `pnpm install` (28 packages, exact versions) → `pnpm run typecheck` exit 0 →
   `pnpm run build` exit 0 (91 modules, 312 kB JS, 227 ms) → dev server started and served `index.html` plus a
   correctly transformed `main.tsx` (React, react-dom/client, react-router and the `@/` alias all resolving).
-- **F005 — repository structure.** 39 skeleton directories (frontend 24, backend 15) per `ARCHITECTURE.md`
-  §4/§5, no placeholder files (§8.1 forbids unused files), plus the root `.gitignore`. Ignore rules verified in
-  both directions: 13 paths that must be ignored are, 8 that must stay tracked are (both lock files included).
+- **F005 — repository structure** — 39 skeleton directories plus the root `.gitignore`, verified in both
+  directions (13 paths that must be ignored are; both lock files stay tracked).
 - **F004 — architecture decisions** — same-origin topology, opaque cookie sessions (C12), authorization model,
   foundation data model, Alembic strategy, extension interfaces; `REFERENCE_PARITY.md` classifies 70 reference
   areas (KEEP 11 / ADAPT 23 / REWRITE 15 / EXCLUDE 21).
@@ -132,8 +142,11 @@ git -C D:\resors status --short         # clean
 cd /d/resors/frontend
 pnpm run typecheck                      # expect exit 0, no output
 pnpm run build                          # expect dist/ written, exit 0
-pnpm run dev                            # expect http://localhost:5173 to serve the app
+pnpm run dev                            # expect http://localhost:5173 to serve
+
+cd /d/resors/backend
+uv run uvicorn app.main:app --reload --port 8000   # then GET /api/v1/health -> 200
 ```
 
-Broader suites (backend, lint, unit, E2E) do not exist yet — the live/not-available table is in
+Broader suites (lint, unit, integration, E2E) do not exist yet — the live/not-available table is in
 `claude_code_pack/OPERATOR_GUIDE.md`, and each handoff names the exact subset to run.

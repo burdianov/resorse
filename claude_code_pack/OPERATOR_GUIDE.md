@@ -31,6 +31,7 @@ until its owning task lands — the agent must say so rather than hand you a com
 | Frontend types | `cd frontend && pnpm run typecheck` | **live (F006)** |
 | Frontend build | `cd frontend && pnpm run build` | **live (F006)** |
 | Frontend dev server | `cd frontend && pnpm run dev` → http://localhost:5173 | **live (F006)** |
+| Backend API dev server | `cd backend && uv run uvicorn app.main:app --reload --port 8000` → http://localhost:8000/api/v1/health | **live (F007)** |
 | Frontend lint / format | `cd frontend && pnpm run lint` / `pnpm run format:check` | F055 |
 | Frontend unit + component (Vitest) | `cd frontend && pnpm test -- --run` | first tests F011; suite F055 |
 | Frontend coverage | `cd frontend && pnpm run coverage` | F055 |

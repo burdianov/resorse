@@ -1,0 +1,50 @@
+[project]
+name = "resors-backend"
+version = "0.1.0"
+description = "Domain-neutral enterprise foundation — API"
+requires-python = ">=3.14"
+dependencies = [
+    # Core
+    "fastapi==0.143.0",
+    "uvicorn[standard]==0.54.0",
+    "pydantic==2.14.0",
+    "pydantic-settings==2.15.0",
+    # Persistence (used from F023 onward)
+    "sqlalchemy[asyncio]==2.1.4",
+    "asyncpg==0.32.0",
+    "alembic==1.20.0",
+    # Auth and request handling (no JWT: sessions are opaque cookies — DECISIONS C12)
+    "python-multipart==0.0.32",
+    "email-validator==2.3.0",
+    "argon2-cffi==25.1.0",
+    # Generic document, report and export infrastructure (F049–F053)
+    "reportlab==5.0.1",
+    "pypdf==6.19.0",
+    "pymupdf==1.28.2",
+    "docxtpl==0.20.2",
+    "pillow==12.3.0",
+    "openpyxl==3.1.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "pytest-cov==7.1.0",
+    "httpx==0.28.1",
+    "ruff==0.16.10",
+    "mypy==2.4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+addopts = ["-ra", "--strict-markers"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
