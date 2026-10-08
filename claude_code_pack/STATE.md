@@ -1,84 +1,70 @@
 # CURRENT IMPLEMENTATION STATE
 
 Current stage: A — domain-neutral foundation
-Last completed task: F001 (repository audit and availability) — revised after operator added BIG-PROMPT.txt
-Next recommended task: F002
+Last completed task: F002 (requirement traceability)
+Next recommended task: F003
 Last human verification: NOT RUN
 
-Supplied inputs — both present, verified, and now OUTSIDE the project folder in
-`D:\RESORS_REFERENCE\` (moved by operator instruction 2026-10-08; hashes unchanged by
-the move, `unzip -t` clean at the new path):
+Supplied inputs — both present, verified, and OUTSIDE the project folder in `D:\RESORS_REFERENCE\`
+(moved by operator instruction 2026-10-08; hashes unchanged by the move, `unzip -t` clean at
+the new path). Read them by absolute path; they are not in the project tree and cannot be committed.
 - `D:\RESORS_REFERENCE\qtc360-main.zip`, 1,525,087 B, 517 entries,
   SHA-256 `f888e940506fc270cfd69d299cd2444eab64c089389e17e88ae6facbe36bfa05`
-- `D:\RESORS_REFERENCE\BIG-PROMPT.txt`, 82,056 B, 622 lines,
+- `D:\RESORS_REFERENCE\BIG-PROMPT.txt`, 82,056 B, 622 lines, §0–§14,
   SHA-256 `7c97b4eb649317e7e23766de6e1a354101fcb05270427d5ea54afedefd91a2f2`
-Read them by absolute path; they are not in the project tree and cannot be committed.
-BIG-PROMPT §1 source map cross-checked against the archive: every checkable claim matches
-(root folder + 2026-06-17 date, 29 UI primitives with the exact listed names, 7 DataTable
-files, navigation.ts, api.ts, hooks, backend auth/admin/models/services paths, login-bg SVGs,
-all quoted oklch/radius tokens, postgres:16-alpine, and Gotenberg :8 in compose vs :7 in
-ci.yml). Archive == the snapshot the prompt describes.
+BIG-PROMPT §1 source map verified against the archive: every checkable claim matches.
 
 ## Active blockers
-See `DECISIONS.md`; only block the specific dependent tasks. None for F002.
-Not a blocker, operator action pending: the repository was initialised on branch `main`
-2026-10-08 and 9 files are staged, but **nothing is committed yet** — the first commit is
-still the operator's to make.
+See `DECISIONS.md`; only block the specific dependent tasks. **None for F003**, and no Stage A
+task is blocked by an open decision (O01–O18 are Stage B concerns).
+Git: branch `main`; baseline commit `51aca2e "prepare the prompts"` (pack, F001 audit, `.gitattributes`,
+`NEXT_PROMPT.md`). **F002's output is uncommitted** — `docs/REQUIREMENT_TRACEABILITY.md` untracked,
+`NEXT_PROMPT.md` and this file modified. Root `.gitattributes` sets `* text=auto eol=lf` to override
+the machine-wide `core.autocrlf=true`; **F005 must extend it, not replace it.**
 
-Line endings: the machine sets `core.autocrlf=true` system-wide, which broke `git add` with
-"LF will be replaced by CRLF". Fixed with a root `.gitattributes` (`* text=auto eol=lf`, plus
-explicit LF rules for scripts/Dockerfile/Caddyfile, CRLF for `*.ps1`/`*.bat`/`*.cmd`, and
-`binary` for images/fonts/office files); the index was renormalised. `git ls-files --eol` shows
-every file `i/lf w/lf` and a repeat `git add .` is warning-free. **F005 extends this file, does
-not replace it.**
+## Completed tasks
+- **F001 — repository audit and availability.** `docs/REPOSITORY_AUDIT.md`: evidence inventory,
+  presence matrix, prompt↔archive cross-verification, do-not-transplant list, toolchain probes.
+  Read-only; no code written.
+- **F002 — requirement traceability.** `docs/REQUIREMENT_TRACEABILITY.md` (31 KB): 15 requirement
+  groups traced from BIG-PROMPT §0–§14 and PRODUCT_SPEC §2 to Stage A tasks, the required-document
+  map, a per-task reverse index, and 7 gaps. No domain module appears in it.
 
-## Latest task handoff
-**TASK F001 — Repository audit and availability — DONE**
-Changed files:
-- `docs/REPOSITORY_AUDIT.md` (new; revised — evidence inventory, presence matrix,
-  missing-reference note, prompt↔archive cross-verification, QTC360 structure/stack/domain,
-  do-not-transplant list, required-docs list for F002, reproducible commands)
-- `claude_code_pack/STATE.md` (this file)
+## Latest task handoff — F002
+Changed files (all uncommitted against `51aca2e`): `docs/REQUIREMENT_TRACEABILITY.md` (new),
+`claude_code_pack/STATE.md`, `NEXT_PROMPT.md`.
 
-Checks actually run (read-only):
-- `unzip -t` on the archive → exit 0, "No errors detected" (verified in the project folder
-  and re-verified at `D:\RESORS_REFERENCE\` after the move)
-- `sha256sum` on both inputs before and after the move → identical hashes, i.e. byte-exact
-  rename; values above
-- `unzip -Z1 | wc -l` → 517 entries (420 files / 97 dirs); ui count 29; data-table count 7
-- `unzip -p` streaming (no extraction): README, backend `pyproject.toml`, frontend
-  `package.json`, `globals.css` tokens, `docker-compose*.yml`, `ci.yml`, `db_dump/users.csv`
-  header only, `.env.example` keys, 17 §1 source-map path existence checks
-- `git rev-parse --is-inside-work-tree` → not a git repository
-- `py -0`, `node --version`, tool presence probes (git, uv, npm, unzip)
-No extraction to disk, no execution of archive code, no installs, no network, no tests
-(nothing to test — no application source exists yet).
+Checks actually run:
+- Reverse index vs `TASKS.md`: 63 Stage A task IDs in `TASKS.md`, 63 in the reverse index, exact
+  1:1 match in both directions (`comm` diff empty).
+- Every `F0xx` ID used anywhere in the document resolves to a real Stage A task (63 unique, none
+  outside F001–F063).
+- Domain-noun scan (`designation|employee|tender|discipline|department|manpower|assignment|
+  allocation|cost cent|rate history`): one hit, "role assignment" in an RBAC row — no domain
+  module. Only Stage B ID referenced is D084, inside gap G-6.
+- `wc -c`: 31,336 bytes.
 
 Blocker: none.
 
-## Operator checks
-See handoff message; expected: audit doc present, archive hash unchanged.
+## Open items for the operator (from F002 §14 — none blocks F003)
+- G-1 `input-group` primitive has no named owner (F011 or F019).
+- G-2 the 21 BP-5.2b enhanced generics are unmapped; propose folding into F017/F019/F020/F050/F053/F054.
+- G-3 `/` and `/admin` redirects — confirm F017 owns them.
+- G-4 `WorkspaceContext` + context-switcher slot — confirm F004 designs it, F015 hosts the slot.
+- G-5 `docs/TESTING.md` → F055/F056; `docs/REFERENCE_PARITY.md` → F004 (both required by §14).
+- G-6 OpenAPI typed-client drift check appears only in **D084 (Stage B)**; decide if it belongs to
+  F018/F061 in Stage A.
+- G-7 optional items (signature asset, delegation interface, S3 adapter, malware-scan hook).
 
 ## Notes carried into later tasks
-- QTC360 reference is Next.js (App Router) + FastAPI; mandated stack is Vite SPA + FastAPI
-  (BIG-PROMPT §0.5) and no Redis anywhere (§0.6). Frontend patterns non-portable.
-- Reference domain is QA/QC + commissioning — not this project's domain.
-- Archive contains `db_dump/*.csv` (users with `hashed_password`, 5 rows; employees; roles;
-  permissions) and 9 signature TTFs: do not transplant; BIG-PROMPT line 621 says the same.
-- Archive + BIG-PROMPT.txt are no longer in the project tree, so F005's ignore rules do not
-  need to cover them (ordinary build artefacts still do).
-- F002 input: BIG-PROMPT §11.7/§14 require README + 11 docs files (ARCHITECTURE,
-  ROUTES_NAVIGATION, STACK_VERSIONS, SECURITY, DEPLOYMENT, BACKUP_RESTORE, ADDING_A_MODULE,
-  TESTING, REFERENCE_PARITY, OPENAPI_CLIENT, IMPLEMENTATION_LOG). TASKS.md names only
-  STACK_VERSIONS and IMPLEMENTATION_LOG — traceability should map every required doc.
-- `D:\QTC360` (separate QTC360 working area) exists outside the project folder; not
-  inspected, left untouched, not needed — the relocated archive verified complete against §1.
+- Reference is Next.js (App Router) + FastAPI; target is Vite SPA + FastAPI, no Redis anywhere.
+- Reference domain is QA/QC + commissioning — different vertical; do not transplant branding,
+  `db_dump/*.csv` credentials, seed data, fonts or domain code.
+- `D:\QTC360` is a separate QTC360 working area; untouched and not needed.
+- Line endings: everything is LF via `.gitattributes`; `*.ps1`/`*.bat`/`*.cmd` stay CRLF.
 
 ## Operator convention
-After each task: review `git diff`, run operator checks, commit manually, then request the
-next ID. At a gate, run broader test suite before continuing.
-
-Cold-start handoff: `D:\resors\NEXT_PROMPT.md` — paste-ready next instruction plus where the
-project stands. **Operator requirement: update it at the end of every step or task**, together
-with this file. If the two disagree, `NEXT_PROMPT.md` is the one a new session reads first, so
-fix both rather than leaving the discrepancy.
+After each task: review `git diff`, run operator checks, commit manually, then request the next ID.
+At a gate, run the broader suite first. Record gate evidence in `docs/IMPLEMENTATION_LOG.md`.
+Cold-start handoff: `D:\resors\NEXT_PROMPT.md` — paste-ready next instruction; update it and this
+file at task completion (not after every command).
