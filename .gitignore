@@ -49,6 +49,10 @@ backend/htmlcov/
 *.pem
 *.key
 
+# Local record of development accounts. NEXT_PROMPT.md lists WHICH accounts
+# exist and points here; the passwords themselves must never be committed.
+LOCAL_CREDENTIALS.md
+
 # --- Runtime data (never commit uploaded or generated files) ---------------
 /uploads/
 /data/

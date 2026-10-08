@@ -13,6 +13,9 @@
 - **Every completed task must add its runnable commands to §8** (start it, check it, test it), with the task ID
   that made them available. Remove or correct any command a later task invalidates. §8 is what the operator
   actually runs; it must never list a command that does not work yet.
+- **Every account a task creates gets a row in §9** — email, role, purpose and which task made it. **Never put a
+  password in this file**: it is committed. Password values go in the git-ignored `LOCAL_CREDENTIALS.md`, and §9
+  only points there. Record a password at the moment it is generated; most are shown once.
 
 ---
 
@@ -49,12 +52,12 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F007 — backend bootstrap** (FastAPI + uv, health endpoint live).
-- **Next task: F008 — PostgreSQL dev services.** Compose Postgres and an env example, no Redis; acceptance is a
-  healthy DB and safe placeholders. Use `postgres:18.6-alpine` from `docs/STACK_VERSIONS.md`; the container is
-  the first thing that will prove SQLAlchemy/asyncpg against PG 18 (deferred from F003).
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F007 sits on top of
-  `bac5e04` (C14 policy).
+- Last completed: **F008 — PostgreSQL dev services** (compose + env example, verified healthy).
+- **Next task: F009 — theme token system.** Tailwind CSS 4 with the OKLCH tokens and dark mode from
+  `BIG-PROMPT` §1.2 / `docs/ARCHITECTURE.md`; acceptance is that light/dark tokens render. Tailwind was
+  deliberately not installed in F006, so F009 installs it.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F008 sits on top of
+  `9eeec39` (NEXT_PROMPT §8 command reference).
 - Last human verification: **NOT RUN** — no gate suite has been run by the operator yet.
 
 ## 4. Environment facts
@@ -62,7 +65,10 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - Windows 11; PowerShell-first, Bash (Git Bash/MSYS2) also available. Node **v24.14.0**, pnpm **12.9.1**
   (pinned in `package.json`, honoured — no corepack switch), `uv`, git 2.49, Python 3.14. Docker not yet verified.
 - Both sides are installed: `frontend/node_modules` (28 packages, pnpm) and `backend/.venv` (`uv sync`, 64
-  packages locked). Neither dev server is running by default.
+  packages locked). Neither dev server is running by default; the database container is running now.
+- **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
+  `app`. Credentials are in the git-ignored `.env`. Verified working end to end: asyncpg 0.32.0 and SQLAlchemy
+  2.1.4 both connect to **PostgreSQL 18.6** (this closed the compatibility check F003 had to defer).
 - **No JWT anywhere** — C12 chose opaque session cookies, so `pyjwt`/`python-jose` are not dependencies.
 - Mandated stack: React + Vite + TS strict SPA, Tailwind 4, FastAPI + async SQLAlchemy 2, PostgreSQL, uv,
   Alembic, Docker Compose, Caddy. **No Next.js, no Redis**, no public signup, one entity, AED only.
@@ -103,6 +109,15 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F008 — PostgreSQL dev services.** Root `docker-compose.yml` runs `postgres:18.6-alpine` as project
+  `resors` with a healthcheck, a named volume and a configurable host port; credentials come from `.env` and
+  have **no defaults in the compose file**, so Compose fails loudly rather than baking in a password (§0.7).
+  `.env.example` documents every key with placeholders; `.env` is git-ignored and holds a generated local
+  password. **One real incompatibility found and fixed:** PostgreSQL 18+ images moved the data directory and
+  expect the mount at `/var/lib/postgresql`, not the old `/var/lib/postgresql/data` — the container refused to
+  start until corrected (docker-library/postgres#1259). Checks run: `docker compose up -d --wait` → **Healthy**;
+  `asyncpg 0.32.0` connected to **server_version 18.6** and `sqlalchemy 2.1.4` async engine ran `select 1` →
+  1 as user `app`. That closes the PG 18 compatibility item F003 deferred. No Redis anywhere.
 - **F007 — backend bootstrap.** `backend/pyproject.toml` pins the exact `STACK_VERSIONS.md` versions on Python
   3.14 (`requires-python >=3.14`, `.python-version` = 3.14); `uv sync` locked **64 packages** and created
   `uv.lock` + `.venv`. `app/main.py` is an app factory with a lifespan hook, `app/core/config.py` is Pydantic
@@ -139,16 +154,30 @@ Everything listed here works **today**. Each row names the task that made it ava
 *not yet* has no runner; it arrives with the task shown, and belongs to the owner of that task to add here.
 The fuller table (including future suites) lives in `claude_code_pack/OPERATOR_GUIDE.md`.
 
-### Start the apps
+### Start everything
 
 | What | Command | What you should see |
 |---|---|---|
+| **Database** (F008) | `cd D:\resors; docker compose up -d --wait` | `resors-postgres  ... Healthy`, published on **5432** |
 | **Frontend** (F006) | `cd D:\resors\frontend; pnpm run dev` | `VITE v8.3.4 ready` → open **http://localhost:5173** |
 | **Backend API** (F007) | `cd D:\resors\backend; uv run uvicorn app.main:app --reload --port 8000` | `Application startup complete` → open **http://localhost:8000/docs** |
 | **Frontend production build** (F006) | `cd D:\resors\frontend; pnpm run build; pnpm run preview` | serves the built app on **http://localhost:4173** |
 
-Both dev servers can run at once. Stop either with `Ctrl+C`. If a port is busy, Vite/uvicorn will say so —
-Vite auto-increments and prints the real URL.
+All three can run at once (open three terminals). Stop each with `Ctrl+C`. If a port is busy, Vite auto-increments
+and prints the real URL; uvicorn fails with a clear error.
+
+**Database control** (F008):
+
+| What | Command | Note |
+|---|---|---|
+| Stop, keep data | `cd D:\resors; docker compose down` | volume `resors_postgres_data` persists |
+| Wipe and start clean | `cd D:\resors; docker compose down -v; docker compose up -d --wait` | **deletes all local data** |
+| Logs | `cd D:\resors; docker compose logs -f postgres` | `Ctrl+C` to stop following |
+| Open a SQL shell | `docker exec -it resors-postgres psql -U app -d app_dev` | password is in `.env` |
+
+> **Port clash warning:** your other projects also want 5432 — `resourcelense-postgres-1` and `qtc360-db`
+> (both currently stopped) publish `5432`. Only one can run at a time. Change `POSTGRES_PORT` in `.env` to run
+> them side by side. Do not delete containers belonging to other projects.
 
 ### Check the work
 
@@ -172,7 +201,6 @@ Vite auto-increments and prints the real URL.
 
 | Suite | Arrives with |
 |---|---|
-| Postgres dev container, `docker compose up -d` | **F008 (next)** |
 | Migrations (`alembic upgrade head`) | F023 |
 | Backend unit tests (`uv run pytest`) | F026 (first tests) |
 | Frontend lint / format | F055 |
@@ -184,3 +212,16 @@ Vite auto-increments and prints the real URL.
 | Production Docker Compose | F059 |
 
 Nothing in this table works yet — do not run it. Each row moves up into the sections above as its task lands.
+
+## 9. Accounts and credentials
+
+**No application accounts exist yet** — authentication arrives with F027 (bootstrap admin) and F033 (admin-created
+users). This table is filled in from then on.
+
+| Account | Email | Role(s) | Created by | Purpose |
+|---|---|---|---|---|
+| _(none yet)_ | | | | |
+
+**Passwords are never written here** — this file is committed. The values live in the git-ignored
+`D:\resors\LOCAL_CREDENTIALS.md`, which also explains how each account is created. Local database credentials
+live in `.env` (also git-ignored).
