@@ -23,7 +23,7 @@ The original QTC360 ZIP is a **reference only**. Inspect it if actually present 
 3. Before edits, give a plan of at most five concise bullets, with expected files and risks. Then implement.
 4. Use existing patterns, migrations, typed schemas and tests; avoid sweeping refactors, unrelated formatting, new dependencies without justification, and regenerating whole modules.
 5. Run **only focused, cheap checks** relevant to the task (e.g. a single pytest file, Vitest file, TypeScript on touched code if fast). Do not run full E2E, Docker rebuild, whole-repository audits or broad dependency upgrades unless the task specifically requires them.
-6. Do **not** run `git commit`, `git push`, deploy, or make irreversible data changes. The human operator performs commits, broad test runs, deployment and final acceptance. Never claim full verification if it was delegated.
+6. **Commit at the end of each completed task** (operator override 2026-10-08, `DECISIONS.md` C13): stage the task's own changes and `git commit` them before handing off, with a message of the form `feat(F005): <summary>`. Do **not** run `git push`, deploy, or make irreversible data changes. The human operator still performs broad test runs, deployment and final acceptance. Never claim full verification if it was delegated.
 7. Update `STATE.md` with task ID, changed files, migrations, checks actually run/results, checks for operator, blockers, and next task. Keep `STATE.md` concise (prefer <=200 lines; archive old entries to `docs/IMPLEMENTATION_LOG.md`).
 8. End with this exact concise structure:
    - `TASK: <ID> — <name>`
@@ -41,7 +41,7 @@ A task is DONE only if its listed acceptance criteria are met, code is integrate
 ## Efficient operator workflow
 - Operator begins with `Read CLAUDE_MASTER.md, DECISIONS.md and STATE.md. Execute task F001 only. Stop after the task.`
 - For subsequent work: `Execute task F002 only, following CLAUDE_MASTER.md. Stop and give me the operator checks.`
-- Operator runs recommended tests, reviews `git diff`, commits, and sends next task ID. Recommended commit message: `feat(F002): <short summary>`.
+- The agent commits the task's changes itself (C13); the operator runs the recommended tests, reviews the commit and sends the next task ID. Commit message form: `feat(F002): <short summary>`.
 - At designated gates, operator runs the full check suite and fixes failures in **separate, narrowly scoped repair tasks**.
 - If context becomes large, start a new Claude Code session. `STATE.md` + Git history + this prompt pack are the durable handoff. Never rely on a long chat transcript as the sole state store.
 

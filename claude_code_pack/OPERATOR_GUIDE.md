@@ -17,7 +17,7 @@ Execute F002 only. Read only the relevant spec and source files.
 Do not commit, do not start F003, and give me focused operator checks.
 ```
 
-At every handoff: (1) inspect diff, (2) run commands Claude lists, (3) fix failures in a dedicated repair task, (4) commit yourself, (5) update decision statuses when needed, (6) request next task. Do not ask Claude to explain the whole system every time.
+At every handoff: (1) inspect the commit and its diff, (2) run the commands Claude lists, (3) fix failures in a dedicated repair task, (4) review the agent's commit for the task (the agent commits each task itself — C13), (5) update decision statuses when needed, (6) request the next task. Do not ask Claude to explain the whole system every time.
 
 ## Suggested local check commands (once created)
 ```bash
