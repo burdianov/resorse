@@ -233,9 +233,9 @@ and is deliberately absent here, as F002 requires. `BIG-PROMPT.txt` §3.1 is its
 | `docs/DEPLOYMENT.md` | F062 | implied |
 | `docs/BACKUP_RESTORE.md` | F062 | implied ("backup restore") |
 | `docs/ADDING_A_MODULE.md` | F063 | implied by "test extension registry" |
-| `docs/TESTING.md` | F055/F056 | not named — see G-5 |
-| `docs/REFERENCE_PARITY.md` | F004 | required by Phase 0; not named in `TASKS.md` — see G-5 |
-| `docs/OPENAPI_CLIENT.md` | F018 | not named — see G-6 |
+| `docs/TESTING.md` | F062 | assigned 2026-10-08 (formerly gap G-5); F062 owns the §14 document set |
+| `docs/REFERENCE_PARITY.md` | F004 | delivered by F004 — see §14 |
+| `docs/OPENAPI_CLIENT.md` | F018 | assigned 2026-10-08 (formerly gap G-6); drift check enforced at F061 |
 | `docs/IMPLEMENTATION_LOG.md` | operator gates | named in gate text |
 | `docs/REPOSITORY_AUDIT.md` | F001 | delivered |
 | `docs/REQUIREMENT_TRACEABILITY.md` | F002 | this document |
@@ -310,21 +310,21 @@ and is deliberately absent here, as F002 requires. `BIG-PROMPT.txt` §3.1 is its
 
 All 63 Stage A tasks appear. No Stage B task is referenced.
 
-## 14. Gaps — requirements with no explicit owning task
+## 14. Gaps — resolved 2026-10-08
 
-Every requirement above has an owner, but seven items are **not named verbatim** in `TASKS.md`. None blocks
-implementation; each needs a small operator decision or a note in the owning task. Recorded here rather than
-silently resolved, per the one-task protocol.
+Seven items were found not named verbatim in `TASKS.md`. All were assigned to owners on 2026-10-08 at the
+operator's request, so no gap remains open. `TASKS.md` carries the task-level wording; this table records the
+decision.
 
-| ID | Gap | Smallest fix |
+| ID | Item | Resolution |
 |---|---|---|
-| G-1 | Of the 29 primitives, `input-group`, `sidebar` and `table` are not named in F011–F014 (`sidebar` → F015, `table` → F020 are natural). `input-group` has no obvious owner. | Add `input-group` to F011's list, or confirm it lands in F019. |
-| G-2 | The 21 "enhanced generic" components of BP-5.2b are not named in any task. | Note them in F017/F019/F020/F050/F053/F054 rather than creating new tasks. |
-| G-3 | `/` and `/admin` redirect routes are not named in any task. | Confirm F017 owns both. |
-| G-4 | `WorkspaceContext` extension contract + `context-switcher-slot` (BP-3.2a) are not named in any task. | Confirm F004 designs it and F015 provides the slot, or defer explicitly. |
-| G-5 | `docs/TESTING.md` and `docs/REFERENCE_PARITY.md` are required by §14 but named in no task. | Assign TESTING.md to F055/F056 and REFERENCE_PARITY.md to F004. |
-| G-6 | OpenAPI typed-client generation + CI drift check (BP-9.4) appears only in **D084 (Stage B)**. `docs/OPENAPI_CLIENT.md` is required by §14. | Decide whether the drift check belongs to F018/F061 in Stage A. |
-| G-7 | Optional items with no owner: profile signature asset and delegation capability interface (BP-3.2d), S3 adapter interface (BP-7.9a), malware-scan hook (BP-6.4). | Keep explicitly optional; assign only if adopted. |
+| G-1 | Of the 29 primitives, `input-group` was unowned (`sidebar` → F015 and `table` → F020 were already natural) | **F011** — added to its implement list |
+| G-2 | The 21 "enhanced generic" components of BP-5.2b were unnamed | Distributed across existing tasks, no new task: **F012** EmptyState/LoadingState/StatusBadge; **F013** ConfirmDialog/ActionMenu; **F017** PageHeader/ErrorState; **F019** FormActions; **F020** PaginationBar/SearchField/FilterChip; **F016** PermissionGate/SecureLink; **F050** FileDropzone/FilePreview; **F053** PDFPreviewModal; **F054** ThemeAwareChart; **F011/F014** IconButton/KeyboardShortcut; **F009** RelativeTime/DateDisplay |
+| G-3 | `/` and `/admin` redirect routes unowned | **F017** — added to its implement list |
+| G-4 | `WorkspaceContext` contract + context-switcher slot unowned | Interface designed in **F004** (`ARCHITECTURE.md` §7); slot hosted by **F015** — added to its implement list |
+| G-5 | `docs/TESTING.md` and `docs/REFERENCE_PARITY.md` required by §14 but unowned | REFERENCE_PARITY delivered by **F004**. TESTING.md assigned to **F062**, which owns the §14 document set alongside README, DEPLOYMENT, BACKUP_RESTORE and ADDING_A_MODULE |
+| G-6 | OpenAPI typed-client generation + CI drift check appeared only in D084 (Stage B) | **F018** generates the typed DTOs and `docs/OPENAPI_CLIENT.md`; **F061** enforces the drift check in CI — both added to their implement lists |
+| G-7 | Optional items unowned | Resolved as decisions, not deferrals: the **S3 adapter interface** is owned by **F049** (interface only, no S3 dependency); the **malware-scan hook** is owned by **F060** as a pluggable no-op; the **delegation capability interface** is already in **F004** (`ScopePolicy`); the **profile signature asset** is **excluded** — its only consumer was the removed domain workflow (`REFERENCE_PARITY.md` §1) |
 
 ## 15. Confirmed constraints that bound every task
 

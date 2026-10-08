@@ -45,7 +45,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Theme survives reload. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F011 — Basic UI primitives A
-**Implement:** Button Badge Input Label Textarea Checkbox Switch.
+**Implement:** Button Badge Input InputGroup Label Textarea Checkbox Switch.
 **Accept:** Component tests for variants. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F012 — Basic UI primitives B
@@ -61,7 +61,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Keyboard/accessibility tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F015 — Layout shell
-**Implement:** 64px header 260/64px sidebar mobile drawer.
+**Implement:** 64px header, 260/64px sidebar, mobile drawer, and the disabled-by-default context-switcher slot (interface defined in ARCHITECTURE §7).
 **Accept:** Three responsive widths work. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F016 — Navigation registry
@@ -69,11 +69,11 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Shared route registry and navigation tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F017 — Error and route states
-**Implement:** 403 404 error boundary offline retry and protected placeholder.
+**Implement:** Root (`/`) and `/admin` redirects, 403, 404, error boundary, offline retry and protected placeholder.
 **Accept:** Distinct states demonstrated. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F018 — API client foundation
-**Implement:** Axios error normalization Query provider and typed DTO strategy.
+**Implement:** Axios error normalization, Query provider, and typed DTOs generated from the FastAPI OpenAPI schema with `docs/OPENAPI_CLIENT.md` (drift check wired in F061).
 **Accept:** MSW client tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F019 — Form framework
@@ -101,7 +101,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Unique and FK constraints tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F025 — Session data model
-**Implement:** Postgres-backed session or refresh token tables.
+**Implement:** Postgres-backed `sessions` table — hashed session ID, family, expiry, revocation, replacement (DECISIONS C12: no refresh tokens, no JWT).
 **Accept:** Migration and revocation model tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F026 — Password security
@@ -116,8 +116,8 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Implement:** Login endpoint and session issuance.
 **Accept:** Real DB integration tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
-### F029 — Auth refresh logout
-**Implement:** Rotation reuse detection logout CSRF policy.
+### F029 — Session rotation and logout
+**Implement:** Session rotation, superseded-session-ID replay detection (revoke the family), logout and logout-all, CSRF policy. No refresh endpoint exists (DECISIONS C12).
 **Accept:** Session security tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F030 — Password change lifecycle
@@ -129,7 +129,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** 403 and role union tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F032 — Auth frontend
-**Implement:** Login guard refresh forced-change and logout flows.
+**Implement:** Login guard, session-renewal handling, forced-change and logout flows.
 **Accept:** Browser auth flow test. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F033 — Admin user API
@@ -197,7 +197,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Cross-account reload tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F049 — Private storage core
-**Implement:** UUID keys MIME checks private volume metadata.
+**Implement:** UUID keys, MIME checks, private volume, metadata, plus a storage adapter interface so a future S3 backend can be added without adding S3 (BP-7.9a).
 **Accept:** Traversal and MIME tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F050 — Files API
@@ -241,7 +241,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Production compose boots. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F060 — Security hardening
-**Implement:** CSP CSRF rate limit secrets logging upload caps.
+**Implement:** CSP, CSRF, rate limit, secrets, logging, upload caps, and a pluggable malware-scan hook (no-op default, no new dependency).
 **Accept:** Threat-model checks. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F061 — CI workflows
@@ -249,7 +249,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Workflow jobs defined and checked. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F062 — Operations docs
-**Implement:** Bootstrap migrations deploy backup restore and recovery.
+**Implement:** Bootstrap, migrations, deploy, backup/restore and recovery, plus the README and the §14 document set including `docs/TESTING.md` and `docs/ADDING_A_MODULE.md`.
 **Accept:** Clean operator runbook. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F063 — Foundation handoff

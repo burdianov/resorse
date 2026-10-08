@@ -77,13 +77,17 @@ out-of-folder read may raise a permission prompt, which is expected. Expected ha
    `refresh_tokens`; **F029**'s "rotation reuse detection" now means detecting a *superseded session ID* being
    replayed. F029's title still reads "Auth refresh logout" — amend it the way C11 amended the package manager,
    or leave it and let the task body carry the reinterpretation.
-2. **Six remaining mapping gaps** from F002 (`docs/REQUIREMENT_TRACEABILITY.md` §14) — none blocks F006:
-   G-1 `input-group` primitive unowned (F011 or F019); G-2 the 21 "enhanced generic" components of BP-5.2b are
-   unnamed; G-3 `/` and `/admin` redirects unowned (F017?); G-4 `WorkspaceContext` + context-switcher slot
-   (F004 designed the interface; F015 must host the slot); G-6 the OpenAPI typed-client drift check appears
-   only in **D084 (Stage B)**; G-7 optional items (signature asset, delegation interface, S3 adapter,
-   malware-scan hook) have no owner. **G-5 is resolved** — `docs/REFERENCE_PARITY.md` delivered; only
-   `docs/TESTING.md` remains unassigned (proposed F055/F056).
+2. **All F002 gaps are closed** (resolved 2026-10-08; see `docs/REQUIREMENT_TRACEABILITY.md` §14). Every item
+   now has an owner written into `TASKS.md`: G-1 `input-group` → F011; G-2 the 21 enhanced generics →
+   distributed across F009/F011–F013/F016/F017/F019/F020/F050/F053/F054; G-3 redirects → F017;
+   G-4 context-switcher slot → F015; G-5 `docs/TESTING.md` → F062 (REFERENCE_PARITY delivered by F004);
+   G-6 OpenAPI drift check → F018 + F061; G-7 S3 adapter → F049, malware hook → F060, delegation interface →
+   already in F004, signature asset → excluded.
+2b. **Also decided and recorded** (no action needed): routing mode is **data-router** (`createBrowserRouter`)
+   — `docs/ARCHITECTURE.md` §5; the **pack stays in `claude_code_pack/`** (its own text assumes repo root, but
+   a subfolder keeps instruction docs out of the project tree); **Node stays at 24.14.0** with jsdom 29.1.1 —
+   upgrading to 24.21.0 LTS is optional and only unlocks jsdom 30; **pnpm is pinned to 12.9.1**, the installed
+   version, so commands work as-is.
 3. `DECISIONS.md` OPEN items O01–O18 block only specific **Stage B** tasks — D012, D014, D020, D022, D023,
    D025, D026, D029–D034, D037, D039, D040, D042, D043–D049, D051, D053, D056–D061, D066, D067, D074, D075,
    D086. **No Stage A task is blocked.** Never silently turn an OPEN item into a rule.
