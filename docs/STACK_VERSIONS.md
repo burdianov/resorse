@@ -96,7 +96,7 @@ Resolution proven, not assumed: `uv pip compile` resolved the full set below wit
 | `python-multipart` | **0.0.32** | 2026-06-04 | >=3.10 |
 | `email-validator` | **2.3.0** | 2025-08-26 | >=3.8 |
 | `argon2-cffi` | **25.1.0** | 2025-06-03 | >=3.8 |
-| `pyjwt` | **2.15.1** | 2026-09-28 | >=3.9 |
+| ~~`pyjwt`~~ | 2.15.1 | 2026-09-28 | >=3.9 — **not required**: `DECISIONS.md` C12 chose opaque session cookies, so there is no JWT anywhere. Listed only because the reference used one. |
 | `reportlab` | **5.0.1** | 2026-08-20 | >=3.9,<4 |
 | `openpyxl` | **3.1.5** | 2024-06-28 | >=3.8 |
 | `pypdf` | **6.19.0** | 2026-09-16 | >=3.9 |

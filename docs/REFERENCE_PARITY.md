@@ -85,7 +85,7 @@ inspected read-only in F001 and re-listed for this task. Status meanings:
 | `backend/db_dump/*.csv` (29 files) | — | EXCLUDE | Real credential/PII material — `users.csv` carries `hashed_password`. Explicitly forbidden (§0.7, line 621). |
 | `backend/app/fonts/*.ttf` (9) | — | EXCLUDE | Decorative signature fonts for a removed workflow. |
 | `backend/.venv_old/`, `_chk.py` residue | — | EXCLUDE | Environment residue. |
-| `pyproject.toml`, `uv.lock` | `pyproject.toml`, `uv.lock` | REWRITE | Python 3.14, versions from `docs/STACK_VERSIONS.md`; `passlib`/`python-jose` substituted (written reason in §7 of that file). |
+| `pyproject.toml`, `uv.lock` | `pyproject.toml`, `uv.lock` | REWRITE | Python 3.14, versions from `docs/STACK_VERSIONS.md`. Substitutions: `passlib` → `argon2-cffi` (passlib last shipped 2020); `python-jose` → **nothing** — C12's opaque sessions mean no JWT exists anywhere. |
 | `alembic.ini`, `migrations/env.py` | same | ADAPT | Async setup kept; **no** historical revision is imported (§8.1). |
 
 ## 5. Infrastructure, CI, tests, docs
