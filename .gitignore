@@ -1,0 +1,71 @@
+# What may enter the repository. Line endings are governed separately by
+# .gitattributes (LF everywhere) — this file only decides inclusion.
+#
+# Lock files are deliberately NOT ignored: pnpm-lock.yaml and uv.lock must be
+# committed for reproducible installs (BIG-PROMPT s2.4).
+
+# --- Node / frontend -------------------------------------------------------
+node_modules/
+.pnpm-store/
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Python / backend ------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+.venv_old/
+venv/
+.uv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+junit.xml
+
+# --- Test artefacts --------------------------------------------------------
+playwright-report/
+blob-report/
+test-results/
+backend/htmlcov/
+
+# --- Secrets and local configuration ---------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Runtime data (never commit uploaded or generated files) ---------------
+/uploads/
+/data/
+*.sqlite3
+
+# --- Editors and OS --------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Reference material (safety net only) ----------------------------------
+# These live OUTSIDE the repo by design (see docs/REPOSITORY_AUDIT.md s7).
+# They are untrusted reference inputs and must never be committed, even if a
+# copy is dropped back into the workspace.
+qtc360*.zip
+BIG-PROMPT.txt
