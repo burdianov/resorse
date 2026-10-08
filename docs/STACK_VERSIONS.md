@@ -43,7 +43,8 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `class-variance-authority` | **0.7.1** | 2024-11-26 | |
 | `clsx` | **2.1.1** | 2024-04-23 | |
 | `tailwind-merge` | **3.7.0** | 2026-09-12 | |
-| `@base-ui/react` | **1.8.0** | 2026-09-04 | peer `react ^19` — backs shadcn `base-nova` |
+| `@base-ui/react` | **1.8.0** | 2026-09-04 | peer `react ^19` — backs shadcn `base-nova`. In use from F011. |
+| ~~`cn`~~ | 0.4.0 | 2026-09-22 | **not used.** The `base-nova` registry items import `cn` from this package (an official shadcn class-merging helper, zero deps); §2.1 names `clsx` + `tailwind-merge` instead, and the reference carries `lib/utils.ts`, so F011 writes its own `cn` there and rewrites the generated imports. Every `shadcn add` therefore needs that one-line remap — see `ARCHITECTURE.md` §5. |
 | `@dnd-kit/core` | **6.3.1** | 2024-12-05 | peer `react >=16.8` |
 | `@dnd-kit/sortable` | **10.0.0** | 2024-12-04 | |
 | `@dnd-kit/utilities` | **3.2.2** | 2023-11-06 | |
@@ -60,7 +61,7 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `typescript` | **6.0.3** | 2026-04-16 | **pinned below latest — §5** |
 | `tailwindcss` | **4.3.3** | 2026-07-16 | |
 | `@tailwindcss/vite` | **4.3.3** | 2026-07-16 | peer `vite ^5.2 \|\| ^6 \|\| ^7 \|\| ^8` |
-| `shadcn` (CLI) | **4.21.4** | 2026-10-07 | engines `node >=20.18.1` |
+| `shadcn` (CLI) | **4.21.4** | 2026-10-07 | engines `node >=20.18.1`. Run with `pnpm dlx shadcn@4.21.4` — deliberately **not** a project dependency, so the CLI never ships in the bundle or the lockfile's runtime set. |
 | `eslint` | **10.12.0** | 2026-10-02 | engines `node ^20.19.0 \|\| ^22.13.0 \|\| >=24` |
 | `typescript-eslint` | **8.71.1** | 2026-10-05 | peer `eslint ^8.57 \|\| ^9 \|\| ^10`; **peer `typescript >=4.8.4 <6.1.0`** |
 | `eslint-plugin-react-hooks` | **7.1.1** | 2026-04-17 | |

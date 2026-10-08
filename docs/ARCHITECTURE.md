@@ -157,6 +157,32 @@ registry needs (`requiredPermissions`, `adminOnly`, lazy component, error elemen
 error boundary, and support `loader`/`action` later without a restructure. No framework/SSR mode: this is a
 client-only SPA.
 
+**Component library workflow (established in F011).** Primitives are generated with the registry rather than
+hand-written, then corrected:
+
+```bash
+cd frontend
+pnpm dlx shadcn@4.21.4 add <component> --yes --overwrite
+# then, for every file the generator touched:
+sed -i 's|from "cn"|from "@/lib/utils"|g' src/components/ui/*.tsx
+sed -i '/^"use client"$/d' src/components/ui/*.tsx
+pnpm remove cn   # if the generator added it back
+```
+
+Three deliberate corrections to the generated output, all required by the pack:
+
+1. **`cn` import remap.** `base-nova` items import a helper from the `cn` package. §2.1 names `clsx` +
+   `tailwind-merge`, and the reference carries `lib/utils.ts`, so `src/lib/utils.ts` exports our own `cn` and the
+   import is rewritten. Skipping this leaves an undeclared dependency.
+2. **`"use client"` removed.** A Next.js directive with no meaning in a Vite SPA (§0.5).
+3. **`shadcn/tailwind.css` is not imported**, and the `shadcn` CLI is not a project dependency. F009 predicted
+   the primitives would need it; F011 showed they do not — the generated components use only standard Tailwind
+   utilities plus our tokens, and render correctly without it. Add it only if a future component demonstrably
+   needs it.
+
+Anything else the generator emits that conflicts with the spec — a Next API, a hard-coded colour, a missing
+state — is fixed in place with a comment explaining why, as with Button's `loading` prop (§5.2 requires it).
+
 **Theme provider (decided, F010): our own, not `next-themes`.** §2.1 permits `next-themes` only if verified to
 work in a Vite SPA, otherwise requires "an equally small framework-agnostic theme provider" and a documented
 exception. This is that exception, recorded here and in `docs/STACK_VERSIONS.md`:
