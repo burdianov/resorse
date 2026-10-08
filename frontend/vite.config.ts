@@ -1,12 +1,13 @@
 import { fileURLToPath, URL } from 'node:url'
 
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 // Same-origin development: the SPA calls relative `/api/v1` and Vite proxies it
 // to the FastAPI dev server, so no CORS and first-party cookies (ARCHITECTURE §2).
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -52,20 +52,23 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F008 — PostgreSQL dev services** (compose + env example, verified healthy).
-- **Next task: F009 — theme token system.** Tailwind CSS 4 with the OKLCH tokens and dark mode from
-  `BIG-PROMPT` §1.2 / `docs/ARCHITECTURE.md`; acceptance is that light/dark tokens render. Tailwind was
-  deliberately not installed in F006, so F009 installs it.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F008 sits on top of
-  `9eeec39` (NEXT_PROMPT §8 command reference).
+- Last completed: **F009 — theme token system** (Tailwind 4 + full OKLCH token set, light and dark).
+- **Next task: F010 — theme preference provider.** Light/dark/system with first-paint persistence; acceptance is
+  that the theme survives a reload. F009 built the `.dark` class mechanism; F010 owns the decision logic, the
+  no-flash inline script and the toggle UI.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F009 sits on top of
+  `b97bee4` (F008).
 - Last human verification: **NOT RUN** — no gate suite has been run by the operator yet.
 
 ## 4. Environment facts
 
 - Windows 11; PowerShell-first, Bash (Git Bash/MSYS2) also available. Node **v24.14.0**, pnpm **12.9.1**
   (pinned in `package.json`, honoured — no corepack switch), `uv`, git 2.49, Python 3.14. Docker not yet verified.
-- Both sides are installed: `frontend/node_modules` (28 packages, pnpm) and `backend/.venv` (`uv sync`, 64
-  packages locked). Neither dev server is running by default; the database container is running now.
+- Both sides are installed: `frontend/node_modules` (pnpm) and `backend/.venv` (`uv sync`, 64 packages locked).
+  Neither dev server is running by default; the database container is running now.
+- **Styling is live:** `frontend/src/styles/globals.css` holds the theme tokens (31 light / 30 dark, values
+  verified against the reference). Tailwind 4 goes through `@tailwindcss/vite`; dark mode is the `.dark` class
+  on `<html>`, not a media query — F010 supplies the provider that sets it.
 - **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
   `app`. Credentials are in the git-ignored `.env`. Verified working end to end: asyncpg 0.32.0 and SQLAlchemy
   2.1.4 both connect to **PostgreSQL 18.6** (this closed the compatibility check F003 had to defer).
@@ -109,44 +112,35 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
-- **F008 — PostgreSQL dev services.** Root `docker-compose.yml` runs `postgres:18.6-alpine` as project
-  `resors` with a healthcheck, a named volume and a configurable host port; credentials come from `.env` and
-  have **no defaults in the compose file**, so Compose fails loudly rather than baking in a password (§0.7).
-  `.env.example` documents every key with placeholders; `.env` is git-ignored and holds a generated local
-  password. **One real incompatibility found and fixed:** PostgreSQL 18+ images moved the data directory and
-  expect the mount at `/var/lib/postgresql`, not the old `/var/lib/postgresql/data` — the container refused to
-  start until corrected (docker-library/postgres#1259). Checks run: `docker compose up -d --wait` → **Healthy**;
-  `asyncpg 0.32.0` connected to **server_version 18.6** and `sqlalchemy 2.1.4` async engine ran `select 1` →
-  1 as user `app`. That closes the PG 18 compatibility item F003 deferred. No Redis anywhere.
-- **F007 — backend bootstrap.** `backend/pyproject.toml` pins the exact `STACK_VERSIONS.md` versions on Python
-  3.14 (`requires-python >=3.14`, `.python-version` = 3.14); `uv sync` locked **64 packages** and created
-  `uv.lock` + `.venv`. `app/main.py` is an app factory with a lifespan hook, `app/core/config.py` is Pydantic
-  Settings (neutral `APP_NAME`), and `app/api/v1/{router,health}.py` expose `/api/v1/health`. **No `/ready` yet**
-  — there is nothing real to check, and a readiness endpoint that reports health it cannot verify would be a
-  fake. It is assigned to **F023**, when PostgreSQL exists. Checks run: `uv sync` exit 0 (all pinned versions
-  resolved); server started (`Application startup complete`) and `GET /api/v1/health` returned
-  `{"status":"ok","name":"Application Platform","version":"0.1.0","environment":"development"}` with **HTTP
-  200**; `GET /api/v1/nope` returned **404**. No JWT dependency — C12 makes one unnecessary
-  (`STACK_VERSIONS.md` and `REFERENCE_PARITY.md` were corrected accordingly).
-- **F006 — frontend bootstrap.** `frontend/package.json` pins the exact `STACK_VERSIONS.md` versions with
-  `packageManager: pnpm@12.9.1` and `engines.node >=24`; scripts are `dev`/`build`/`preview`/`typecheck` only
-  (ESLint belongs to F055 — no non-functional scripts were added). `vite.config.ts` wires the React plugin, the
-  `@/*` alias and a `/api` dev proxy to `localhost:8000`. `tsconfig.json` is strict plus `noUnusedLocals`,
-  `noUnusedParameters`, `noFallthroughCasesInSwitch`, `noImplicitOverride`, `exactOptionalPropertyTypes`.
-  `src/app/router.tsx` establishes **data-router mode** with one honest placeholder route (no data), mounted
-  from `src/main.tsx`. Checks run: `pnpm install` (28 packages, exact versions) → `pnpm run typecheck` exit 0 →
-  `pnpm run build` exit 0 (91 modules, 312 kB JS, 227 ms) → dev server started and served `index.html` plus a
-  correctly transformed `main.tsx` (React, react-dom/client, react-router and the `@/` alias all resolving).
-- **F005 — repository structure** — 39 skeleton directories plus the root `.gitignore`, verified in both
-  directions (13 paths that must be ignored are; both lock files stay tracked).
-- **F004 — architecture decisions** — same-origin topology, opaque cookie sessions (C12), authorization model,
-  foundation data model, Alembic strategy, extension interfaces; `REFERENCE_PARITY.md` classifies 70 reference
-  areas (KEEP 11 / ADAPT 23 / REWRITE 15 / EXCLUDE 21).
-- **F003 — stack verification** — 49 npm + 23 PyPI pins + 3 container tags queried live; `uv pip compile`
-  resolved the backend set on Python 3.14 (169 packages).
-- **F002 — requirement traceability** — 15 requirement groups, reverse index verified 1:1 (63/63).
-- **F001 — repository audit** — verified the QTC360 archive and `BIG-PROMPT.txt`; moved both to
-  `D:\RESORS_REFERENCE\`.
+- **F009 — theme token system.** `frontend/src/styles/globals.css` defines the full token set copied
+  value-for-value from the reference stylesheet (which F001 had verified): **31 light / 30 dark** tokens across
+  background/foreground/card/popover/primary/secondary/muted/accent/destructive/border/input/ring, `chart-1..5`,
+  `sidebar-*` and the derived `radius-*` scale — plus `@custom-variant dark` and the `@theme inline` mapping that
+  exposes them as utilities (`bg-background`, `text-muted-foreground`, `rounded-lg`, …). Tailwind 4.3.3 and
+  `@tailwindcss/vite` are installed and wired into `vite.config.ts`; `main.tsx` imports the stylesheet; the
+  placeholder route now paints from tokens so both themes are visibly different. **Two deliberate deviations from
+  the reference:** the hard-coded *dark* scrollbar thumb became `var(--border)` (§1.2 warns against forcing dark
+  scrollbars on a light UI), and `shadcn/tailwind.css` is not imported because that package arrives with the
+  primitives in F011. A `prefers-reduced-motion` baseline was added. Checks run: typecheck exit 0; build exit 0
+  emitting 12.5 kB of CSS; **every token value verified present in the built CSS** (normalising the minifier's
+  `13%` / `.243` forms); utilities confirmed to resolve to `var(--…)`; dev server served the stylesheet with both
+  `--background: oklch(0.995 0 0)` and the `.dark` override, and compiled the token classes.
+- **F008 — PostgreSQL dev services.** Root `docker-compose.yml` runs `postgres:18.6-alpine` as project `resors`
+  with a healthcheck, a named volume and a configurable host port; credentials come from `.env` and have **no
+  defaults in the compose file**, so Compose fails loudly rather than baking in a password (§0.7). `.env.example`
+  documents every key with placeholders; `.env` is git-ignored and holds a generated local password. **One real
+  incompatibility found and fixed:** PostgreSQL 18+ images moved the data directory and expect the mount at
+  `/var/lib/postgresql`, not the old `/var/lib/postgresql/data` — the container refused to start until corrected
+  (docker-library/postgres#1259). Checks run: `docker compose up -d --wait` → **Healthy**; `asyncpg 0.32.0`
+  connected to **server_version 18.6** and `sqlalchemy 2.1.4` ran `select 1` → 1 as user `app`, closing the PG 18
+  compatibility item F003 deferred. No Redis anywhere.
+- **F007 — backend bootstrap** — FastAPI + uv on Python 3.14; `/api/v1/health` returns 200, unknown paths 404;
+  `uv sync` locked 64 packages. No `/ready` yet — nothing real to check, assigned to F023. No JWT (C12).
+  _`git show 25e8b0d`_
+- **F006 — frontend bootstrap** — Vite 8 + React 19.3 + TypeScript 6.0.3 strict + react-router 8.4 in
+  data-router mode; `pnpm-lock.yaml` committed; `packageManager: pnpm@12.9.1`. _`git show 580a3b3`_
+- **Older:** F005 repository structure · F004 architecture decisions + reference parity · F003 stack verification
+  · F002 requirement traceability · F001 repository audit. _`git log`_
 
 ## 8. Commands — what you can run
 
@@ -186,6 +180,7 @@ and prints the real URL; uvicorn fails with a clear error.
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
+| **Theme tokens render (F009)** | with the app open, in the browser console: `document.documentElement.classList.add('dark')` — then `.remove('dark')` | page repaints to dark, then back to light; a black scrollbar would mean the token theme is broken |
 | Dependencies current | `cd D:\resors\frontend; pnpm install` · `cd D:\resors\backend; uv sync` | pnpm: "Already up to date" · uv: "Audited 64 packages" |
 
 ### Repository
