@@ -10,6 +10,9 @@
   commands with expected outcomes. Never run or report a suite result you did not observe yourself.
 - **Update this file at the end of each completed task.** Keep it short and true: keep "Completed work" to the
   last two tasks in detail and collapse older ones to one-liners — `git log` holds the rest.
+- **Every completed task must add its runnable commands to §8** (start it, check it, test it), with the task ID
+  that made them available. Remove or correct any command a later task invalidates. §8 is what the operator
+  actually runs; it must never list a command that does not work yet.
 
 ---
 
@@ -130,23 +133,54 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **F001 — repository audit** — verified the QTC360 archive and `BIG-PROMPT.txt`; moved both to
   `D:\RESORS_REFERENCE\`.
 
-## 8. Verification commands
+## 8. Commands — what you can run
 
-```powershell
-Get-Content D:\resors\NEXT_PROMPT.md -TotalCount 20
-git -C D:\resors log --oneline          # one commit per completed task
-git -C D:\resors status --short         # clean
-```
+Everything listed here works **today**. Each row names the task that made it available. Anything marked
+*not yet* has no runner; it arrives with the task shown, and belongs to the owner of that task to add here.
+The fuller table (including future suites) lives in `claude_code_pack/OPERATOR_GUIDE.md`.
 
-```bash
-cd /d/resors/frontend
-pnpm run typecheck                      # expect exit 0, no output
-pnpm run build                          # expect dist/ written, exit 0
-pnpm run dev                            # expect http://localhost:5173 to serve
+### Start the apps
 
-cd /d/resors/backend
-uv run uvicorn app.main:app --reload --port 8000   # then GET /api/v1/health -> 200
-```
+| What | Command | What you should see |
+|---|---|---|
+| **Frontend** (F006) | `cd D:\resors\frontend; pnpm run dev` | `VITE v8.3.4 ready` → open **http://localhost:5173** |
+| **Backend API** (F007) | `cd D:\resors\backend; uv run uvicorn app.main:app --reload --port 8000` | `Application startup complete` → open **http://localhost:8000/docs** |
+| **Frontend production build** (F006) | `cd D:\resors\frontend; pnpm run build; pnpm run preview` | serves the built app on **http://localhost:4173** |
 
-Broader suites (lint, unit, integration, E2E) do not exist yet — the live/not-available table is in
-`claude_code_pack/OPERATOR_GUIDE.md`, and each handoff names the exact subset to run.
+Both dev servers can run at once. Stop either with `Ctrl+C`. If a port is busy, Vite/uvicorn will say so —
+Vite auto-increments and prints the real URL.
+
+### Check the work
+
+| What | Command | Expected |
+|---|---|---|
+| Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
+| Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
+| API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
+| Dependencies current | `cd D:\resors\frontend; pnpm install` · `cd D:\resors\backend; uv sync` | pnpm: "Already up to date" · uv: "Audited 64 packages" |
+
+### Repository
+
+| What | Command | Expected |
+|---|---|---|
+| History | `git -C D:\resors log --oneline` | one commit per completed task |
+| Working tree | `git -C D:\resors status --short` | empty |
+| Line endings | `git -C D:\resors ls-files --eol` | every file `i/lf  w/lf` |
+| Review a task | `git -C D:\resors show --stat <sha>` | that task's files only |
+
+### Not available yet
+
+| Suite | Arrives with |
+|---|---|
+| Postgres dev container, `docker compose up -d` | **F008 (next)** |
+| Migrations (`alembic upgrade head`) | F023 |
+| Backend unit tests (`uv run pytest`) | F026 (first tests) |
+| Frontend lint / format | F055 |
+| Frontend unit tests (`pnpm test -- --run`) | F011 (first tests), suite F055 |
+| Backend lint / types (Ruff, mypy) | F056 |
+| Postgres integration tests | F008 + F056 |
+| End-to-end (Playwright) | F057 |
+| Accessibility (axe) | F058 |
+| Production Docker Compose | F059 |
+
+Nothing in this table works yet — do not run it. Each row moves up into the sections above as its task lands.
