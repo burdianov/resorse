@@ -310,11 +310,12 @@ and is deliberately absent here, as F002 requires. `BIG-PROMPT.txt` §3.1 is its
 
 All 63 Stage A tasks appear. No Stage B task is referenced.
 
-## 14. Gaps — resolved 2026-10-08
+## 14. Gaps and tracked limitations
 
-Seven items were found not named verbatim in `TASKS.md`. All were assigned to owners on 2026-10-08 at the
-operator's request, so no gap remains open. `TASKS.md` carries the task-level wording; this table records the
-decision.
+Seven items were found not named verbatim in `TASKS.md`; all were assigned owners on 2026-10-08 at the operator's
+request, so no mapping gap remains open. `TASKS.md` carries the task-level wording; this table records the
+decision. G-8 is a later, different kind of entry — a limitation discovered while implementing a task, recorded
+so it is not lost. Only G-8 is open.
 
 | ID | Item | Resolution |
 |---|---|---|
@@ -325,6 +326,7 @@ decision.
 | G-5 | `docs/TESTING.md` and `docs/REFERENCE_PARITY.md` required by §14 but unowned | REFERENCE_PARITY delivered by **F004**. TESTING.md assigned to **F062**, which owns the §14 document set alongside README, DEPLOYMENT, BACKUP_RESTORE and ADDING_A_MODULE |
 | G-6 | OpenAPI typed-client generation + CI drift check appeared only in D084 (Stage B) | **F018** generates the typed DTOs and `docs/OPENAPI_CLIENT.md`; **F061** enforces the drift check in CI — both added to their implement lists |
 | G-7 | Optional items unowned | Resolved as decisions, not deferrals: the **S3 adapter interface** is owned by **F049** (interface only, no S3 dependency); the **malware-scan hook** is owned by **F060** as a pluggable no-op; the **delegation capability interface** is already in **F004** (`ScopePolicy`); the **profile signature asset** is **excluded** — its only consumer was the removed domain workflow (`REFERENCE_PARITY.md` §1) |
+| **G-8** | **Open — accessibility limitation found in F013.** Base UI's Tooltip assigns no `id` to its popup and sets no `aria-describedby` on the trigger, so a screen-reader user focuses the trigger and hears nothing. Found by inspecting the rendered DOM, not assumed. F013 added the missing `role="tooltip"` on the popup (one line, done) but did **not** wire the trigger linkage: doing so means reimplementing the Root's open-state plumbing, and a naive `aria-describedby` would point at an element that is unmounted while the tooltip is closed — a worse error than the omission. | **Needs an owner.** Smallest real fix: wrap `Tooltip`/`TooltipTrigger`/`TooltipContent` with a shared `useId` context, set the id on `TooltipContent`'s popup and `aria-describedby` on the trigger while open (Base UI exposes open state on the Root). Candidate: **F014** (adjacent keyboard/a11y work) or **F058** (accessibility sweep). Not silently dropped. |
 
 ## 15. Confirmed constraints that bound every task
 

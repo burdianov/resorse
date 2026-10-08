@@ -1,8 +1,29 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, vi } from 'vitest'
 
-afterEach(() => {
+/**
+ * Tear down between tests.
+ *
+ * Overlays (Dialog, Sheet, DropdownMenu, Popover) apply **document-level** side
+ * effects while they are open — focus trap, `aria-hidden` on sibling nodes, a
+ * nested-dialog counter. React Testing Library's `cleanup()` unmounts the React
+ * tree without running the component's close path, so that global state
+ * survives into the next test and the following modal never receives focus.
+ *
+ * That failure is easy to misread as a broken component: it passes when the
+ * test runs alone and fails when the file runs in sequence. Pressing Escape
+ * first takes the normal close path. Both steps live in this one hook so the
+ * ordering is explicit rather than relying on hook LIFO.
+ */
+afterEach(async () => {
+  const openOverlay = document.querySelector(
+    '[role="dialog"][data-open], [role="menu"][data-open], [role="listbox"][data-open]',
+  )
+  if (openOverlay) {
+    await userEvent.keyboard('{Escape}')
+  }
   cleanup()
 })
 

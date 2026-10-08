@@ -53,12 +53,13 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
 - Last completed: **F010 — theme preference provider** (light/dark/system, survives reload without flash).
-- **Next task: F013 — overlay primitives.** Dialog, Dropdown, Popover, Tooltip, Sheet, Scroll Area; acceptance is
-  **focus and escape tests** — the overlay behaviours that are easy to get wrong. Same CLI workflow and corrections
-  as F011/F012 (`ARCHITECTURE.md` §5). Dialog likely needs `matchMedia`/`ResizeObserver`, already stubbed in
-  `src/testing/setup.ts`.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F012 sits on top of
-  `0b2e32f` (F011).
+- **Next task: F014 — picker and command primitives.** Select, Date Picker, Time Picker, Tabs, Collapsible,
+  Command; acceptance is **keyboard/accessibility tests**. Same CLI workflow and corrections as F011–F013
+  (`ARCHITECTURE.md` §5) — including checking `git status` afterwards, because the generator reverts components
+  it considers dependencies. **Consider taking G-8** (the Tooltip `aria-describedby` gap) here, since this task
+  is already about keyboard and accessibility.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F013 sits on top of
+  `def322e` (F012).
 - Last human verification: **NOT RUN** — no gate suite has been run by the operator yet.
 
 ## 4. Environment facts
@@ -70,8 +71,9 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **Styling is live:** `frontend/src/styles/globals.css` holds the theme tokens (31 light / 30 dark, values
   verified against the reference). Tailwind 4 goes through `@tailwindcss/vite`; dark mode is the `.dark` class
   on `<html>`, not a media query — F010 supplies the provider that sets it.
-- **UI primitives and tests are live:** 15 components in `frontend/src/components/ui/` (F011–F012), with the
-  generation-and-correction workflow in `ARCHITECTURE.md` §5. Component tests live in
+- **UI primitives and tests are live:** 21 components in `frontend/src/components/ui/` (F011–F013), with the
+  generation-and-correction workflow in `ARCHITECTURE.md` §5 — **always check `git status` after generating**,
+  because the CLI reverts components it treats as dependencies. Component tests live in
   `frontend/tests/components/`; Vitest config sits in `vite.config.ts` (jsdom + `src/testing/setup.ts`).
 - **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
   `app`. Credentials are in the git-ignored `.env`. Verified working end to end: asyncpg 0.32.0 and SQLAlchemy
@@ -111,27 +113,33 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **Tailwind is not installed yet** — F009 owns the theme tokens; do not add it early.
 - `docs/ARCHITECTURE.md` §7 defines the extension boundaries (`AppModule`, `ScopePolicy`,
   `ContextSwitcherAdapter`); F063 proves them with a test-only module.
+- **One open item: G-8** (`REQUIREMENT_TRACEABILITY.md` §14) — Base UI's Tooltip sets no `aria-describedby` on
+  its trigger, so screen-reader users are not told the tooltip exists. F013 added the missing `role="tooltip"`;
+  the trigger linkage needs a `useId` context and is unassigned. Candidate owners: F014 or F058.
 - Handoff convention: this file is the single source of truth; `STATE.md` is a state-free pointer (a practical
   rather than literal reading of `CLAUDE_MASTER.md` item 7).
 
 ## 7. Completed work (newest first)
 
-- **F012 — basic UI primitives B.** Seven more generated and corrected: `Card` (7 parts), `Separator`, `Skeleton`,
-  `Spinner`, `Progress` (5 parts), `Avatar` (6 parts), `Breadcrumb` (7 parts) — 15 components in `components/ui/`
-  total. **Button's temporary local spinner is gone**, replaced by the shared `Spinner`; because Spinner always
-  carries a `size-*` class, Button's size variants could not reach it, so an explicit `SPINNER_SIZE` map mirrors
-  the same scale and is tested. The CLI re-added the `cn` package, which was removed again — the correction
-  workflow in `ARCHITECTURE.md` §5 earned its keep. Checks run: **108 tests across 15 files, all passing**;
-  typecheck exit 0; build exit 0. Three test failures were mine, not the components' — `aria-label="breadcrumb"`
-  is lowercase, `Separator` sets `aria-orientation` explicitly, and `BreadcrumbPage` is deliberately
-  `role="link" aria-disabled="true" aria-current="page"`; the tests now assert the real contract.
+- **F013 — overlay primitives.** Six generated and corrected: `Dialog` (10 parts), `DropdownMenu` (~15 parts),
+  `Popover`, `Tooltip`, `Sheet` (10 parts), `ScrollArea` — 21 components in `components/ui/` now. Focus and escape
+  behaviour is tested rather than assumed: focus moves into a popup on open, returns to the trigger on close,
+  Escape closes, and background content is unreachable by Tab while a modal is open. **Three genuine findings,
+  not test noise:** (1) the generator **reverted `button.tsx`** — registry items declare dependencies on other
+  components and `--overwrite` regenerates them, silently undoing local changes; the correction workflow now says
+  to check `git status` after every generation. (2) The registry's `TooltipContent` set **no `role="tooltip"`** on
+  the popup, so the tooltip was invisible to assistive technology; fixed in one line. (3) Base UI's Tooltip wires
+  no `aria-describedby` on the trigger — recorded as **G-8**, the one open item, with the smallest real fix
+  identified. Also fixed: an unused `React` import the generator emitted (typecheck caught it), and the test
+  teardown now closes open overlays before unmount so their document-level state does not leak between tests.
+  Checks run: **144 tests across 21 files, all passing**; typecheck exit 0; build exit 0.
+- **F012 — basic UI primitives B** — Card, Separator, Skeleton, Spinner, Progress, Avatar, Breadcrumb; Button's
+  temporary spinner replaced by the shared `Spinner`. _`git show def322e`_
 - **F011 — basic UI primitives A** — Button, Badge, Input, InputGroup, Label, Textarea, Checkbox, Switch; test
-  stack stood up (Vitest 5.0.3, jsdom 29.1.1, Testing Library); `cn` remapped to `@/lib/utils` and `"use client"`
-  stripped. _`git show 0b2e32f`_
-- **F010 — theme preference provider** — light/dark/system in `localStorage` with an inline anti-flash script;
-  `next-themes` deliberately not used. _`git show eea0608`_
-- **Older:** F009 theme tokens · F008 PostgreSQL dev services · F007 backend bootstrap · F006 frontend bootstrap ·
-  F005 repository structure · F004 architecture · F003 stack · F002 traceability · F001 audit. _`git log`_
+  stack stood up. _`git show 0b2e32f`_
+- **Older:** F010 theme provider · F009 theme tokens · F008 PostgreSQL dev services · F007 backend bootstrap ·
+  F006 frontend bootstrap · F005 repository structure · F004 architecture · F003 stack · F002 traceability ·
+  F001 audit. _`git log`_
 
 ## 8. Commands — what you can run
 
@@ -170,7 +178,7 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F012)** | `cd D:\resors\frontend; pnpm run test:run` | **108 passing** across 15 files, ~1.4s |
+| **Frontend tests (F011–F013)** | `cd D:\resors\frontend; pnpm run test:run` | **144 passing** across 21 files, ~2.8s |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
 | Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | 100% over the exercised files |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |

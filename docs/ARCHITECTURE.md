@@ -180,6 +180,16 @@ Three deliberate corrections to the generated output, all required by the pack:
    utilities plus our tokens, and render correctly without it. Add it only if a future component demonstrably
    needs it.
 
+4. **Never run the generator without checking `git status` afterwards.** `--overwrite` does not only touch the
+   components being added: registry items declare dependencies on other components (`dropdown-menu`, `dialog` and
+   `sheet` all depend on `button`), so the CLI regenerates those too and **silently reverts local modifications**.
+   F013 hit exactly this — `button.tsx` lost its `loading` prop and `Spinner` usage. After every generation:
+
+   ```bash
+   git status --short frontend/src/components/ui/     # anything modified that you did not expect?
+   git checkout HEAD -- frontend/src/components/ui/<file>   # restore the committed version
+   ```
+
 Anything else the generator emits that conflicts with the spec — a Next API, a hard-coded colour, a missing
 state — is fixed in place with a comment explaining why, as with Button's `loading` prop (§5.2 requires it).
 
