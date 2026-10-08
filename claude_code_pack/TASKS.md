@@ -245,7 +245,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Threat-model checks. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F061 — CI workflows
-**Implement:** npm uv Postgres Playwright build security audits.
+**Implement:** pnpm uv Postgres Playwright build security audits.
 **Accept:** Workflow jobs defined and checked. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### F062 — Operations docs

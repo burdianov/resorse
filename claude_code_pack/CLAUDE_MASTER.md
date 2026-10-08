@@ -10,7 +10,7 @@ The project has two deliberately separated stages:
 The original QTC360 ZIP is a **reference only**. Inspect it if actually present in the workspace. If missing, document that fact and use the provided text-derived design description; do not pretend to have inspected its source. Never transplant its branding, business rules, seed credentials or domain data.
 
 ## Mandatory stack and non-negotiables
-- Frontend: React, Vite, TypeScript strict, React Router SPA, Tailwind CSS 4, shadcn/ui base-nova/Base UI where compatible, Lucide, TanStack Query/Table, React Hook Form + Zod, Axios, Recharts; accessible responsive light/dark/system theme.
+- Frontend: React, Vite, TypeScript strict, React Router SPA, Tailwind CSS 4, shadcn/ui base-nova/Base UI where compatible, Lucide, TanStack Query/Table, React Hook Form + Zod, Axios, Recharts; **pnpm** package manager with `pnpm-lock.yaml` (operator override 2026-10-08, see `DECISIONS.md` C11 — `BIG-PROMPT.txt` says npm); accessible responsive light/dark/system theme.
 - Backend: FastAPI, Python >=3.12, async SQLAlchemy 2, Alembic, Pydantic 2, PostgreSQL, uv, pytest.
 - Operations: Docker Compose, Caddy HTTPS/static SPA reverse proxy, GitHub Actions, Gotenberg for DOCX conversion, ReportLab for PDF, OpenPyXL for Excel, Hetzner-compatible Linux VPS documentation.
 - No Next.js. No Redis. No public signup. No seeded production passwords. One legal entity, AED only. Use current **verified compatible stable** versions; lock and record actual versions, not speculative version numbers.

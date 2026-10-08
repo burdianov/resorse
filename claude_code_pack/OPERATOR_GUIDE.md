@@ -23,7 +23,7 @@ At every handoff: (1) inspect diff, (2) run commands Claude lists, (3) fix failu
 ```bash
 git status --short
 git diff --check
-cd frontend && npm run typecheck && npm run lint && npm test -- --run
+cd frontend && pnpm run typecheck && pnpm run lint && pnpm test -- --run
 cd backend && uv run ruff check . && uv run pytest -q
 # Gate only: Docker Compose integration, Playwright E2E, migration smoke, PDF tests
 ```

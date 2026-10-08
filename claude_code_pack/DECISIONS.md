@@ -14,6 +14,7 @@ Statuses: `CONFIRMED` = supplied requirements; `PROPOSED` = design recommendatio
 | C08 | CONFIRMED | Paid leave first month | Cost stays with current assignment(s), split by their allocation. | — |
 | C09 | CONFIRMED | Project dates | Contractual and forecast completion dates are separate. | — |
 | C10 | CONFIRMED | Authentication | Admin-provisioned accounts, forced initial/reset password change, multiple roles. | — |
+| C11 | CONFIRMED | Frontend package manager | **pnpm**, overriding `BIG-PROMPT.txt` §2.1/§2.3 ("npm … not pnpm"). Operator decision 2026-10-08. Lockfile is `pnpm-lock.yaml`; all CI and operator commands use pnpm. Backend stays `uv`. | F006, F055, F061 |
 | O01 | OPEN | Working day calendar | For partial months, count Mon–Sat excluding Sundays, or a company calendar including UAE holidays? How cap 27-day months at 26? | D022, D023, D047 |
 | O02 | OPEN | Rate changes within month | Split 208-hour equivalent by daily effective rates, or select rate as of first/last day? | D014, D025, D051 |
 | O03 | OPEN | Percentage rules | Allowed range 0–100 per position-month? Can a forecast row exceed 100 to represent overtime, or must multiple positions be used? | D023, D026 |
