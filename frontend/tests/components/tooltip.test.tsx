@@ -33,12 +33,21 @@ describe('Tooltip', () => {
     expect(tooltip).toHaveAttribute('data-slot', 'tooltip-content')
   })
 
-  // NOT ASSERTED: `aria-describedby` on the trigger. Base UI's Tooltip assigns
-  // no id to the popup and wires no describedby, so a screen reader user hears
-  // nothing when the control is focused. The registry wrapper cannot fix this
-  // without reimplementing the Root's open-state plumbing; it is recorded as a
-  // known limitation (REQUIREMENT_TRACEABILITY.md §14, G-8) rather than faked
-  // with an id that points at an unmounted element while the tooltip is closed.
+  it('links the trigger to the tooltip so it is announced (G-8)', async () => {
+    render(<Harness />)
+    const trigger = screen.getByRole('button', { name: 'Refresh' })
+
+    // The describedby is present even while closed — the popup is unmounted
+    // then, which assistive technology ignores — and must resolve when open.
+    const describedBy = trigger.getAttribute('aria-describedby')
+    expect(describedBy).toBeTruthy()
+
+    await userEvent.hover(trigger)
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveAttribute('id', describedBy)
+    expect(trigger).toHaveAccessibleDescription('Reload the list')
+  })
 
   it('appears on keyboard focus, not only on hover', async () => {
     render(<Harness />)

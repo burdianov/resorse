@@ -52,3 +52,22 @@ if (!window.ResizeObserver) {
     disconnect(): void {}
   }
 }
+
+// jsdom implements no layout, so these exist only as no-ops. cmdk calls
+// scrollIntoView whenever it highlights an item; without this shim every
+// Command test fails on mount with "scrollIntoView is not a function".
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = vi.fn()
+}
+
+// Pointer capture is likewise absent; Base UI's overlays call these when
+// handling drag/dismiss interactions.
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = vi.fn(() => false)
+}
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = vi.fn()
+}
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = vi.fn()
+}

@@ -163,11 +163,13 @@ hand-written, then corrected:
 ```bash
 cd frontend
 pnpm dlx shadcn@4.21.4 add <component> --yes --overwrite
-# then, for every file the generator touched:
-sed -i 's|from "cn"|from "@/lib/utils"|g' src/components/ui/*.tsx
-sed -i '/^"use client"$/d' src/components/ui/*.tsx
-pnpm remove cn   # if the generator added it back
+pnpm run fix:ui            # scripts/fix-generated-ui.sh — see below
+pnpm run typecheck && pnpm run test:run
 ```
+
+`pnpm run fix:ui` performs the four corrections in one pass. It restores tracked components from `HEAD`, so
+**commit before generating** — uncommitted work in `src/components/ui` will otherwise be lost with the
+generator's own rewrite.
 
 Three deliberate corrections to the generated output, all required by the pack:
 
@@ -180,15 +182,11 @@ Three deliberate corrections to the generated output, all required by the pack:
    utilities plus our tokens, and render correctly without it. Add it only if a future component demonstrably
    needs it.
 
-4. **Never run the generator without checking `git status` afterwards.** `--overwrite` does not only touch the
-   components being added: registry items declare dependencies on other components (`dropdown-menu`, `dialog` and
-   `sheet` all depend on `button`), so the CLI regenerates those too and **silently reverts local modifications**.
-   F013 hit exactly this — `button.tsx` lost its `loading` prop and `Spinner` usage. After every generation:
-
-   ```bash
-   git status --short frontend/src/components/ui/     # anything modified that you did not expect?
-   git checkout HEAD -- frontend/src/components/ui/<file>   # restore the committed version
-   ```
+4. **`--overwrite` reverts other components.** Registry items declare dependencies on each other (`dropdown-menu`,
+   `dialog`, `sheet`, `select` and `calendar` all pull in `button`, `input`, `textarea` …), so adding one component
+   regenerates those and **silently undoes local changes to them**. F013 lost Button's `loading` prop this way, and
+   F014 lost five files at once. `pnpm run fix:ui` restores them from `HEAD`; commit before generating so `HEAD` is
+   the correct version.
 
 Anything else the generator emits that conflicts with the spec — a Next API, a hard-coded colour, a missing
 state — is fixed in place with a comment explaining why, as with Button's `loading` prop (§5.2 requires it).
