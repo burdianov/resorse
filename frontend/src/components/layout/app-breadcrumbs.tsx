@@ -14,17 +14,18 @@ import type { RouteDefinition } from '@/config/navigation'
 /**
  * Breadcrumbs for the current path, derived from the same registry as the
  * sidebar and the palette (BIG-PROMPT §4.7: "configure navigation once").
+ * Pages place it through `PageHeader`'s `breadcrumbs` slot (F017), rather than
+ * every route inheriting a bar from the shell.
  *
- * Not mounted in the shell yet, deliberately: §5.2b gives `PageHeader` a
- * `breadcrumbs` slot, and F017 builds that header — pages then compose the
- * trail where it belongs instead of every route inheriting a bar. The trail and
- * the rendering are finished and tested here so F017 only places them.
+ * It draws nothing for a single crumb: a trail of one repeats the page title
+ * directly beneath it. What it shows is *hierarchy* — the trail appears where
+ * there is a parent to navigate back to.
  */
 export function AppBreadcrumbs({ routes }: { routes?: readonly RouteDefinition[] }) {
   const { pathname } = useLocation()
   const crumbs = buildBreadcrumbs(pathname, routes)
 
-  if (crumbs.length === 0) {
+  if (crumbs.length < 2) {
     return null
   }
 

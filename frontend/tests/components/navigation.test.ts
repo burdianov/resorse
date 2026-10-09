@@ -7,6 +7,7 @@ import {
   allRoutes,
   buildBreadcrumbs,
   buildRouteObjects,
+  firstPermittedAdminPath,
   matchRoute,
   meetsAccess,
   visibleNavigation,
@@ -226,10 +227,25 @@ describe('buildBreadcrumbs', () => {
     expect(buildBreadcrumbs('/nothing/here', ROUTES)).toEqual([])
   })
 
-  it('treats the root route as a sibling, not an ancestor', () => {
+  it('returns no trail for the root path in the real registry', () => {
+    // F017 moved `/` out of the registry: the router redirects it instead.
     expect(buildBreadcrumbs('/', ROUTES)).toEqual([])
-    // …but it is a page of its own in the real registry.
-    expect(buildBreadcrumbs('/').map((crumb) => crumb.label)).toEqual(['Status'])
+    expect(buildBreadcrumbs('/')).toEqual([])
+    expect(buildBreadcrumbs('/dashboard').map((crumb) => crumb.label)).toEqual(['Dashboard'])
+  })
+})
+
+describe('firstPermittedAdminPath', () => {
+  it('picks the first permitted /admin route in registry order', () => {
+    expect(firstPermittedAdminPath(access({ isSuperuser: true }), ROUTES)).toBe('/admin/users')
+    expect(firstPermittedAdminPath(access({ permissions: ['audit.read'] }), ROUTES)).toBe('/admin/audit')
+  })
+
+  it('returns null when no administration route is permitted', () => {
+    // The caller has an administration permission but no matching route
+    // permission — and the anonymous caller has neither.
+    expect(firstPermittedAdminPath(access({ permissions: ['settings.manage'] }), ROUTES)).toBeNull()
+    expect(firstPermittedAdminPath(ANONYMOUS_ACCESS, ROUTES)).toBeNull()
   })
 })
 

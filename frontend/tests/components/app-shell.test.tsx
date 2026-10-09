@@ -27,7 +27,7 @@ function setViewportWidth(width: number): void {
   Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: width })
 }
 
-function renderShell(initialPath = '/') {
+function renderShell(initialPath = '/dashboard') {
   const router = createMemoryRouter(
     [
       {
@@ -74,7 +74,7 @@ describe('AppShell layout', () => {
 
     expect(pinnedSidebar(container)).toHaveAttribute('data-state', 'expanded')
     expect(container.querySelector('header')).toHaveClass('h-16')
-    expect(screen.getByRole('link', { name: 'Status' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
   })
 
   it('collapses to the rail on first load at tablet width', async () => {
@@ -119,7 +119,7 @@ describe('AppShell layout', () => {
   it('toggles the sidebar with Ctrl+B and persists it', async () => {
     setViewportWidth(1280)
     renderShell()
-    await screen.findByRole('link', { name: 'Status' })
+    await screen.findByRole('link', { name: 'Dashboard' })
 
     await userEvent.keyboard('{Control>}b{/Control}')
 
@@ -130,7 +130,7 @@ describe('AppShell layout', () => {
     setViewportWidth(1280)
     const { container } = renderShell()
 
-    const link = await screen.findByRole('link', { name: 'Status' })
+    const link = await screen.findByRole('link', { name: 'Dashboard' })
     expect(link).toHaveAttribute('aria-current', 'page')
     // The rail/tooltip/scroll logic keys off this attribute pair.
     expect(link).toHaveAttribute('data-sidebar', 'menu-button')
@@ -144,17 +144,17 @@ describe('AppShell layout', () => {
     setViewportWidth(900) // first load collapses to the rail
     renderShell()
 
-    const link = await screen.findByRole('link', { name: 'Status' })
+    const link = await screen.findByRole('link', { name: 'Dashboard' })
     await userEvent.hover(link)
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Status')
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Dashboard')
   })
 
   it('keeps the tooltip out of the accessibility tree while expanded', async () => {
     setViewportWidth(1280) // expanded
     renderShell()
 
-    const link = await screen.findByRole('link', { name: 'Status' })
+    const link = await screen.findByRole('link', { name: 'Dashboard' })
     await userEvent.hover(link)
 
     // Not asserted as "no popup element exists": the primitive renders it with
@@ -182,7 +182,7 @@ describe('AppShell layout', () => {
       </ThemeProvider>,
     )
 
-    expect(await screen.findByRole('status', { name: 'Loading' })).toBeInTheDocument()
+    expect(await screen.findByRole('status', { name: 'Loading page' })).toBeInTheDocument()
   })
 })
 
@@ -195,7 +195,7 @@ describe('AppShell command palette', () => {
     await userEvent.click(trigger)
 
     expect(await screen.findByRole('dialog', { name: 'Command palette' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Status' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Dashboard' })).toBeInTheDocument()
 
     await userEvent.keyboard('{Escape}')
     await waitFor(() => {
@@ -212,17 +212,17 @@ describe('AppShell command palette', () => {
     await userEvent.keyboard('{Control>}k{/Control}')
     await screen.findByRole('dialog', { name: 'Command palette' })
 
-    // The registry holds one real route (Status → /); an anonymous caller sees
-    // exactly that in both surfaces — none of the administration entries exist
-    // as pages yet, so none may be listed (§1.2: no dead links).
-    expect(screen.getByRole('option', { name: 'Status' })).toBeInTheDocument()
+    // The registry holds one real route (Dashboard → /dashboard); an anonymous
+    // caller sees exactly that in both surfaces — none of the administration
+    // entries exist as pages yet, so none may be listed (§1.2: no dead links).
+    expect(screen.getByRole('option', { name: 'Dashboard' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Users' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
 
     // cmdk highlights the first match immediately, so Enter activates it.
     await userEvent.keyboard('{Enter}')
 
-    expect(await screen.findByRole('heading', { name: 'Application Platform' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
   })
 })
 
@@ -233,12 +233,12 @@ describe('AppShell mobile drawer', () => {
 
     const hamburger = await screen.findByRole('button', { name: 'Open navigation' })
     // Closed: the pinned sidebar is not merely CSS-hidden, it is not rendered.
-    expect(screen.queryByRole('link', { name: 'Status' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull()
 
     await userEvent.click(hamburger)
 
     const drawer = await screen.findByRole('dialog', { name: 'Sidebar' })
-    expect(within(drawer).getByRole('link', { name: 'Status' })).toBeInTheDocument()
+    expect(within(drawer).getByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
 
     // Focus management: Escape closes and returns focus to the trigger.
     await userEvent.keyboard('{Escape}')

@@ -2,10 +2,11 @@ import { Suspense, useState } from 'react'
 import { Outlet } from 'react-router'
 
 import { AccessProvider } from '@/components/providers/access-provider'
+import { LoadingState } from '@/components/common/loading-state'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { Spinner } from '@/components/ui/spinner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ANONYMOUS_ACCESS, visibleNavigation } from '@/config/navigation'
+import type { NavigationAccess } from '@/config/navigation'
 
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
@@ -28,16 +29,16 @@ import { resolveInitialSidebarOpen, writeStoredSidebarOpen } from './sidebar-pre
  * survives reloads, and the first load falls back to the viewport — expanded on
  * desktop, collapsed on the source's tablet band.
  */
-export function AppShell() {
+export function AppShell({ access = ANONYMOUS_ACCESS }: { access?: NavigationAccess }) {
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     resolveInitialSidebarOpen(window.innerWidth),
   )
   const [paletteOpen, setPaletteOpen] = useState(false)
 
-  // There is no session until F032, so the caller here genuinely *is* anonymous,
-  // and the registry correctly shows such a caller only the routes that require
-  // nothing. Tests drive the other cases through `visibleNavigation` directly.
-  const access = ANONYMOUS_ACCESS
+  // The access default is anonymous because there is no session until F032 —
+  // which is the correct answer for an unauthenticated caller. F031 resolves
+  // the permission union and F032 passes it in here (and into the router's
+  // entry, so tests can drive granted-access flows end to end).
   const groups = visibleNavigation(access)
 
   return (
@@ -72,9 +73,5 @@ export function AppShell() {
 
 /** Shown while a registry page chunk loads (BP §4: Suspense/pending skeletons). */
 function RoutePending() {
-  return (
-    <div className="flex min-h-40 items-center justify-center">
-      <Spinner className="size-5" />
-    </div>
-  )
+  return <LoadingState label="Loading page" />
 }

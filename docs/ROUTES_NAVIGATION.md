@@ -34,11 +34,13 @@ Only routes whose page exists are registered — a registered route is a real li
 
 | Group | Route | Path | Requirements | Since |
 |---|---|---|---|---|
-| Overview | Status | `/` | none | F016 (page from F006–F015) |
+| Overview | Dashboard | `/dashboard` | none | F017 (protected placeholder; F047 replaces the page) |
 
 The groups themselves are also declarative: `Overview` and `Administration` exist from the start, and a group with
 no visible item **renders nothing** (§4.8: no fake empty groups) — which is why the Administration group is
 invisible today, before its pages exist.
+
+`/` is deliberately **not** a registry entry: the router redirects it (§4.1). F032 makes that redirect auth-aware.
 
 ## 3. Access model
 
@@ -60,22 +62,32 @@ the *correct* answer for an unauthenticated caller, not a placeholder: the calle
 `PermissionGate` and `SecureLink` (`components/common/`) evaluate the same `meetsAccess` rule for feature UI, and
 carry the same warning: they are UX, never the security boundary.
 
-## 4. Route states
+## 4. Route states (implemented in F017)
 
-| State | Status |
+| State | Behaviour |
 |---|---|
-| Root `/` | renders the Status page (F017 turns it into an auth-aware redirect) |
-| `/admin` redirect, `/403`, `/404`, `/*` | **F017** |
-| Error boundary, offline retry, protected placeholder | **F017** |
-| Anonymous → `/login` redirect, route-level 403 | **F017**, **F031/F032** |
+| Root `/` | redirects to `/dashboard` (F032 makes it auth-aware: `/login` when there is no session) |
+| `/admin` | redirects to the first `/admin/*` section the caller may open, else the 403 page. Today the registry holds no admin route, so everyone gets the 403 — the true answer, not a workaround |
+| `/403`, `/404` | direct-visible state pages; `*` renders the 404 for any unknown path |
+| A page that throws | the route error boundary replaces the *page*, never the frame: sidebar, header and navigation stay usable, and the error state offers **Retry** |
+| A gated route opened directly | `buildRouteObjects` wraps every route with `requiredPermissions`/`adminOnly` in `RouteGuard`, which renders the 403 — so a route cannot be registered without its denial state |
+| Offline / 5xx | `ErrorState variant="offline"` with Retry; the query layer wires its failures into it (F018/F019) |
+
+Two boundaries, on purpose: each registry route carries its own `errorElement` (a page crash keeps the frame),
+and the root route carries one that renders full-page (a shell crash has no frame left). None of them display the
+thrown error — §6.2f's "no data leak" applies to error UI.
+
+The 403 is **not** the login redirect. A caller with no session belongs at `/login` (F032's guard, §6.2f); a
+caller who is signed in but lacks the permission belongs on the 403 page (§4.6). Keeping the two apart is what
+stops a permission error from being misread as "log in again".
 
 ## 5. Not yet registered (planned pages)
 
-Listed here so the mapping is not lost; each joins the registry with its own task, not before.
+Listed here so the mapping is not lost; each joins the registry with its own task, not before. (Dashboard is
+already registered against F017's protected placeholder; F047 swaps the page component, not the entry.)
 
 | Group | Page | Path | Required permissions | Task |
 |---|---|---|---|---|
-| Overview | Dashboard | `/dashboard` | — | F047 |
 | Overview | Notifications | `/notifications` | `notifications.read` | F046 |
 | (avatar menu) | Profile / Security | `/profile`, `/profile/security` | own account | F042 |
 | Administration | Users | `/admin/users` | `users.read` | F034 |

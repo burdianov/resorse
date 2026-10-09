@@ -1,8 +1,11 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { Activity } from 'lucide-react'
+import { LayoutDashboard } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
+
+import { RouteError } from '@/components/layout/route-error'
+import { RouteGuard } from '@/components/layout/route-guard'
 
 import { APP_MODULES } from './modules'
 import type { AppModule } from './modules'
@@ -131,24 +134,26 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   { id: 'administration', label: 'Administration', order: 20, adminOnly: true },
 ]
 
-const FoundationStatus = lazy(async () => {
-  const module = await import('@/pages/foundation-status')
-  return { default: module.FoundationStatus }
+const DashboardPlaceholder = lazy(async () => {
+  const module = await import('@/pages/dashboard-placeholder')
+  return { default: module.DashboardPlaceholder }
 })
 
 /**
- * Built-in routes. Today this is the foundation status page at `/`; F017 adds
- * the root/`/admin` redirects and the route states, and each later screen adds
- * its own entry here as it is built.
+ * Built-in routes. `/dashboard` currently renders the protected placeholder
+ * (F017) — F047 replaces the component, not the entry, so the navigation, the
+ * palette and the route states never notice. The registry deliberately has no
+ * `/` entry: the router redirects the root (§4.1) and F032 makes that redirect
+ * auth-aware.
  */
 export const APP_ROUTES: readonly RouteDefinition[] = [
   {
-    id: 'status',
-    path: '/',
-    label: 'Status',
-    icon: Activity,
+    id: 'dashboard',
+    path: '/dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
     group: 'overview',
-    component: FoundationStatus,
+    component: DashboardPlaceholder,
   },
 ]
 
@@ -318,12 +323,51 @@ function findCurrent(
   return section ? { route: section, params: {} } : null
 }
 
-/** Router children for the registry. `/` becomes the layout route's index. */
+/**
+ * The first `/admin/*` **section** the caller may open, in registry order — the
+ * target of the `/admin` redirect (§4.4). Detail routes are skipped: a redirect
+ * cannot land on a page that needs an id. `null` means the caller has no
+ * administration page at all, which is an honest 403 rather than a redirect
+ * into a denial.
+ */
+export function firstPermittedAdminPath(
+  access: NavigationAccess,
+  routes: readonly RouteDefinition[] = allRoutes(),
+): string | null {
+  const permitted = routes.filter(
+    (route) =>
+      route.path.startsWith('/admin/') &&
+      route.showInNavigation !== false &&
+      meetsAccess(route, access),
+  )
+  return permitted[0]?.path ?? null
+}
+
+/**
+ * Router children for the registry. `/` becomes the layout route's index.
+ *
+ * Every route gets the route error boundary, and every route that declares
+ * `requiredPermissions`/`adminOnly` is wrapped in `RouteGuard` — so a page
+ * cannot be registered without its 403 and error states, and no screen has to
+ * remember to add them (BIG-PROMPT §4.6, §7.4c).
+ */
 export function buildRouteObjects(routes: readonly RouteDefinition[] = allRoutes()): RouteObject[] {
   return routes.map((route): RouteObject => {
-    const element = createElement(route.component)
+    const page = createElement(route.component)
+    const needsGuard = route.adminOnly === true || (route.requiredPermissions?.length ?? 0) > 0
+    const element = needsGuard
+      ? createElement(RouteGuard, {
+          ...(route.requiredPermissions !== undefined
+            ? { permissions: route.requiredPermissions }
+            : {}),
+          ...(route.adminOnly === true ? { adminOnly: true } : {}),
+          children: page,
+        })
+      : page
+    const errorElement = createElement(RouteError)
+
     return route.path === '/'
-      ? { index: true, element }
-      : { path: route.path.replace(/^\//, ''), element }
+      ? { index: true, element, errorElement }
+      : { path: route.path.replace(/^\//, ''), element, errorElement }
   })
 }
