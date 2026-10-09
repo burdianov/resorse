@@ -510,6 +510,30 @@ cannot be recreated through this screen even by accident.
   than of one endpoint.
 - **Unsaved edits block navigation** through F019's `UnsavedChangesGuard`.
 
+### The permission dictionary (F037)
+
+`app/api/v1/admin_permissions.py` over `app/services/permissions.py` completes the catalogues: the
+list F036's matrix reads, plus create/patch/delete under `permissions.manage` — the code the seeded
+`admin` deliberately lacks (C16). The guardrails (C26) are shaped by what a code *is*:
+
+- **A code in use is frozen in spelling.** Live grants mean "the code as it reads"; renaming one would
+  silently rewrite what every holder authorises, deleting one would silently strip authority. Both
+  answer 409 while any `role_permissions` row points at the code (F035's delete-while-assigned rule,
+  applied to the other end of the grant edge). Descriptions carry no authority and edit freely; an
+  *unused* code can be renamed (the typo caught before the first grant) or deleted.
+- **Codes neither collide nor normalise silently.** The shape is the model's own
+  `PERMISSION_CODE_PATTERN` — imported, one spelling — validated at the schema (a 422 on `code`), and
+  `Users.Read` is *refused*, never quietly lowercased: a code is a machine-stable identifier, and two
+  spellings must not mean the same authority. Duplicates are the unique index's verdict (409), the
+  F024/F035 pattern.
+- **No subset rule on the dictionary itself.** Creating a code confers nothing — it becomes grantable
+  only through the matrix save, which already enforces "grant only what you hold" (C22/C24). Requiring
+  a dictionary editor to already hold a code that does not exist yet would be a rule that cannot be
+  satisfied. The seeded codes protect themselves: `super_admin` holds all 17 (C16), so every seeded
+  code is in use, therefore frozen.
+- **The seed stays idempotent** across operator-defined codes — it creates what is missing and never
+  modifies existing rows, so F037's additions survive every seed run.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1081,7 +1105,11 @@ line that "only assigns". F035 met both halves of this: the grant-set reads in t
 SQL (`_current_codes` — the association table is the truth, the map's memory is not), and every role a
 service is about to mutate is fetched through a `populate_existing` getter (`get_role`) so its collection
 is loaded *before* anything assigns to it. The general rule is the F031/F033 one, sharpened: before
-writing a relationship, make sure reading it is free — or do the reading in SQL.
+writing a relationship, make sure reading it is free — or do the reading in SQL. One refinement,
+met again in F037: `populate_existing` re-applies the mapper's *default* strategy, and
+`Permission.roles` has no `selectin` default (unlike `Role.permissions`) — so a getter that means to
+load a collection must say `selectinload(...)` explicitly, or the load still happens inside the
+caller's delete.
 
 ### Dependency edges met while building the auth stack (F029–F036)
 
@@ -1133,5 +1161,7 @@ the field-error messages when they exist and falls back to the detail string
   DataTable, the row-actions kit component, the one-time password notice, the permission mirrors —
   C23, §5), **F035 the role API** (the CRUD with the two-way subset rule, the seed-owned
   `is_system` column, deletion refused while assigned, and the validate-everything-then-one-commit
-  matrix save — C24, §6), and **F036 the matrix screen** (the draft-not-a-form model, the save bar
-  as the single failure voice, the read-only protected column, one grant-write path — C25, §5).
+  matrix save — C24, §6), **F036 the matrix screen** (the draft-not-a-form model, the save bar
+  as the single failure voice, the read-only protected column, one grant-write path — C25, §5), and
+  **F037 the permission dictionary** (the in-use freeze, refused-not-normalised codes, no subset rule
+  by design — C26, §5).

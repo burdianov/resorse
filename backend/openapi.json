@@ -144,6 +144,33 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "CreatePermissionRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "CreatePermissionRequest",
+        "type": "object"
+      },
       "CreateRoleRequest": {
         "properties": {
           "description": {
@@ -456,7 +483,7 @@
         "type": "object"
       },
       "PermissionListResponse": {
-        "description": "The whole dictionary, sorted by code.\n\nUnpaginated on purpose: the vocabulary is bounded (§6: \"add granular\nvariants only as needed\"), the matrix renders every row by definition,\nand F037 will paginate the management table if and when the list earns\nit — not the matrix now.",
+        "description": "The whole dictionary, sorted by code.\n\nUnpaginated on purpose: the vocabulary is bounded (§6: \"add granular\nvariants only as needed\"), the matrix renders every row by definition,\nand F038's management table can filter client-side over the full list —\nif the dictionary ever grows past a screen, pagination arrives with the\ntask that needs it, not before.",
         "properties": {
           "items": {
             "items": {
@@ -582,6 +609,38 @@
           "roles"
         ],
         "title": "SaveMatrixRequest",
+        "type": "object"
+      },
+      "UpdatePermissionRequest": {
+        "description": "Partial edit with fields-set semantics.\n\nA **code rename** is only permitted while no role holds the code (F037's\nservice rule, C26): every existing grant means \"the code as it reads\" —\nchanging the spelling under live grants would silently rewrite what they\nauthorise. The description has no such weight and edits freely.",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "title": "UpdatePermissionRequest",
         "type": "object"
       },
       "UpdateRoleRequest": {
@@ -789,6 +848,205 @@
           }
         },
         "summary": "List the permission dictionary",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "A new code confers nothing until a role is granted it through the\nmatrix save, which enforces the escalation rule (C26) — this endpoint\nneeds none of its own.",
+        "operationId": "create_permission_api_v1_admin_permissions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePermissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing permissions.manage."
+          },
+          "409": {
+            "description": "A permission with this code already exists."
+          },
+          "422": {
+            "description": "The code is not lowercase `resource.action`."
+          }
+        },
+        "summary": "Add a permission code",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/permissions/{permission_id}": {
+      "delete": {
+        "operationId": "delete_permission_api_v1_admin_permissions__permission_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "permission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Permission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing permissions.manage."
+          },
+          "404": {
+            "description": "No such permission."
+          },
+          "409": {
+            "description": "The code is granted to roles and cannot be deleted."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete an unused permission code",
+        "tags": [
+          "admin"
+        ]
+      },
+      "get": {
+        "operationId": "get_permission_api_v1_admin_permissions__permission_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "permission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Permission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing permissions.read."
+          },
+          "404": {
+            "description": "No such permission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One permission code",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "update_permission_api_v1_admin_permissions__permission_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "permission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Permission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePermissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "An empty edit (no fields set)."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing permissions.manage."
+          },
+          "404": {
+            "description": "No such permission."
+          },
+          "409": {
+            "description": "The code is taken, or in use and therefore frozen."
+          },
+          "422": {
+            "description": "The new code is not lowercase `resource.action`."
+          }
+        },
+        "summary": "Rename or re-describe a permission code",
         "tags": [
           "admin"
         ]

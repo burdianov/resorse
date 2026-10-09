@@ -107,6 +107,20 @@ export type ChangePasswordRequest = {
 };
 
 /**
+ * CreatePermissionRequest
+ */
+export type CreatePermissionRequest = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+};
+
+/**
  * CreateRoleRequest
  */
 export type CreateRoleRequest = {
@@ -317,8 +331,9 @@ export type PermissionItem = {
  *
  * Unpaginated on purpose: the vocabulary is bounded (§6: "add granular
  * variants only as needed"), the matrix renders every row by definition,
- * and F037 will paginate the management table if and when the list earns
- * it — not the matrix now.
+ * and F038's management table can filter client-side over the full list —
+ * if the dictionary ever grows past a screen, pagination arrives with the
+ * task that needs it, not before.
  */
 export type PermissionListResponse = {
     /**
@@ -408,6 +423,27 @@ export type SaveMatrixRequest = {
      * Roles
      */
     roles: Array<MatrixRoleEntry>;
+};
+
+/**
+ * UpdatePermissionRequest
+ *
+ * Partial edit with fields-set semantics.
+ *
+ * A **code rename** is only permitted while no role holds the code (F037's
+ * service rule, C26): every existing grant means "the code as it reads" —
+ * changing the spelling under live grants would silently rewrite what they
+ * authorise. The description has no such weight and edits freely.
+ */
+export type UpdatePermissionRequest = {
+    /**
+     * Code
+     */
+    code?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
 };
 
 /**
@@ -536,6 +572,177 @@ export type ListPermissionsApiV1AdminPermissionsGetResponses = {
 };
 
 export type ListPermissionsApiV1AdminPermissionsGetResponse = ListPermissionsApiV1AdminPermissionsGetResponses[keyof ListPermissionsApiV1AdminPermissionsGetResponses];
+
+export type CreatePermissionApiV1AdminPermissionsPostData = {
+    body: CreatePermissionRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/permissions';
+};
+
+export type CreatePermissionApiV1AdminPermissionsPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing permissions.manage.
+     */
+    403: unknown;
+    /**
+     * A permission with this code already exists.
+     */
+    409: unknown;
+    /**
+     * The code is not lowercase `resource.action`.
+     */
+    422: unknown;
+};
+
+export type CreatePermissionApiV1AdminPermissionsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: PermissionItem;
+};
+
+export type CreatePermissionApiV1AdminPermissionsPostResponse = CreatePermissionApiV1AdminPermissionsPostResponses[keyof CreatePermissionApiV1AdminPermissionsPostResponses];
+
+export type DeletePermissionApiV1AdminPermissionsPermissionIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Permission Id
+         */
+        permission_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/permissions/{permission_id}';
+};
+
+export type DeletePermissionApiV1AdminPermissionsPermissionIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing permissions.manage.
+     */
+    403: unknown;
+    /**
+     * No such permission.
+     */
+    404: unknown;
+    /**
+     * The code is granted to roles and cannot be deleted.
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeletePermissionApiV1AdminPermissionsPermissionIdDeleteError = DeletePermissionApiV1AdminPermissionsPermissionIdDeleteErrors[keyof DeletePermissionApiV1AdminPermissionsPermissionIdDeleteErrors];
+
+export type DeletePermissionApiV1AdminPermissionsPermissionIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeletePermissionApiV1AdminPermissionsPermissionIdDeleteResponse = DeletePermissionApiV1AdminPermissionsPermissionIdDeleteResponses[keyof DeletePermissionApiV1AdminPermissionsPermissionIdDeleteResponses];
+
+export type GetPermissionApiV1AdminPermissionsPermissionIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Permission Id
+         */
+        permission_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/permissions/{permission_id}';
+};
+
+export type GetPermissionApiV1AdminPermissionsPermissionIdGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing permissions.read.
+     */
+    403: unknown;
+    /**
+     * No such permission.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetPermissionApiV1AdminPermissionsPermissionIdGetError = GetPermissionApiV1AdminPermissionsPermissionIdGetErrors[keyof GetPermissionApiV1AdminPermissionsPermissionIdGetErrors];
+
+export type GetPermissionApiV1AdminPermissionsPermissionIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PermissionItem;
+};
+
+export type GetPermissionApiV1AdminPermissionsPermissionIdGetResponse = GetPermissionApiV1AdminPermissionsPermissionIdGetResponses[keyof GetPermissionApiV1AdminPermissionsPermissionIdGetResponses];
+
+export type UpdatePermissionApiV1AdminPermissionsPermissionIdPatchData = {
+    body: UpdatePermissionRequest;
+    path: {
+        /**
+         * Permission Id
+         */
+        permission_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/permissions/{permission_id}';
+};
+
+export type UpdatePermissionApiV1AdminPermissionsPermissionIdPatchErrors = {
+    /**
+     * An empty edit (no fields set).
+     */
+    400: unknown;
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing permissions.manage.
+     */
+    403: unknown;
+    /**
+     * No such permission.
+     */
+    404: unknown;
+    /**
+     * The code is taken, or in use and therefore frozen.
+     */
+    409: unknown;
+    /**
+     * The new code is not lowercase `resource.action`.
+     */
+    422: unknown;
+};
+
+export type UpdatePermissionApiV1AdminPermissionsPermissionIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: PermissionItem;
+};
+
+export type UpdatePermissionApiV1AdminPermissionsPermissionIdPatchResponse = UpdatePermissionApiV1AdminPermissionsPermissionIdPatchResponses[keyof UpdatePermissionApiV1AdminPermissionsPermissionIdPatchResponses];
 
 export type ListRolesApiV1AdminRolesGetData = {
     body?: never;
