@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-09 — after task F020.
+> Last updated: 2026-10-09 — after task F021.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F021 in
-claude_code_pack/TASKS.md. Implement F021 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F022 in
+claude_code_pack/TASKS.md. Implement F022 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F021` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F022` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -58,16 +58,15 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F020 — DataTable core** (TanStack Table **v9** with sorting, search, facets, pagination in
-  client *and* server mode, `components/ui/table.tsx` — the 29th and last source primitive — plus `SearchField`
-  and `FilterChip` from G-2).
-- **Next task: F021 — DataTable preferences.** Column visibility and order, persisted per table key and per user
-  (BP-5.3b): the abstraction F020 deliberately left out. It picks up where F020 stopped: the table already
-  enables `columnVisibilityFeature` (rendering needs it), so F021 adds the view-options dropdown, the ordering
-  UI, and the storage boundary — local until F048 supplies `user_preferences` through the API (F041).
-  Acceptance is reload and isolation tests.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F020 sits on top of
-  `695f52e` (F019).
+- Last completed: **F021 — DataTable preferences** (the `TablePreferencesStore` + `useTablePreferences`
+  abstraction for column visibility and order, the `DataTableViewOptions` menu, and the reload/isolation tests —
+  local storage today, the F048 server store behind the same interface).
+- **Next task: F022 — DataTable import export.** Safe CSV template/export/import with formula-injection
+  protection (§5.3, §7.9d): it builds on the table kit as it stands — the export reads the *visible* columns and
+  their current order from the same state F021 now persists, and the import's row-level validation is the
+  F019 field kit applied per row. Acceptance is formula-injection tests.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F021 sits on top of
+  `cdc4367` (F020).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -167,6 +166,15 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   250 ms) but reports a clear immediately, and follows an external reset without echoing it. `components/ui/table.tsx`
   completes the source's 29 primitives (only `data-table-view-options` (F021), `data-table-row-actions` (first
   consumer F034) and CSV export (F022) remain of the seven source table files). New dep: @tanstack/react-table 9.2.6.
+- **Table preferences are live (F021):** `components/data-table/table-preferences.ts` (the store interface +
+  localStorage implementation, key `app.table.<scope>.<tableKey>`, hostile-storage tolerant) and
+  `hooks/use-table-preferences.ts` (the hook pages spread into `<DataTable>`: `columnVisibility`, `columnOrder`,
+  their change handlers and `reset`). `scope` is `anonymous` until F032 supplies a user id — the isolation test
+  exercises the boundary today. **F048 replaces the store** via `setTablePreferencesStore`; nothing else changes.
+  `data-table-view-options.tsx` is the sixth of the seven source table files: checkbox items for visibility,
+  labelled move items for order (buttons, not drag — why is in ARCHITECTURE §12), and "Reset columns", which
+  *removes* the stored entry rather than writing the defaults. `DataTable` gained `columnVisibility`/
+  `columnOrder` + handlers and the `columnOrderingFeature`.
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
 - **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
@@ -228,6 +236,9 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   the cache on identity change, and the key shape is the second line of defence.
 - **The toast rule is deliberate:** a cold query failure is rendered inline (F017's `ErrorState`), a background
   failure and a failed mutation toast. Do not "unify" them — see `docs/OPENAPI_CLIENT.md` §4.
+- **Column preferences go through `useTablePreferences`** (F021) — never read `localStorage` from a page. The
+  hook owns the `app.table.<scope>.<tableKey>` key, the hostile-storage handling and the reset semantics
+  (`clear`, not "write the defaults"). F048 swaps the store; pages must not assume where it points.
 - **Table code must follow the v9 shape** (F020): features and their row-model slots live in
   `dataTableFeatures` in `data-table.tsx`; do not add a feature without its slot (the stage is skipped in
   silence). Filters bind through `filterFn: 'facetIncludes'` for `DataTableFacetedFilter`, never
@@ -269,6 +280,20 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F021 — DataTable preferences.** The persistence F020 left out, as an *abstraction* rather than a feature of
+  the table: `table-preferences.ts` defines `load`/`save`/`clear` plus the localStorage implementation, and
+  `useTablePreferences(tableKey)` returns the slices the DataTable already accepts — so a page persists columns
+  by spreading one hook. Keys are `app.table.<scope>.<tableKey>`: the scope is the user, `anonymous` until F032
+  supplies a session, and the test proves two scopes do not share, which is the boundary F048's server store will
+  sit behind (`setTablePreferencesStore`). Storage is treated as hostile — corrupt entries, another version's
+  shape and private-mode throws all read as "no preference". `DataTableViewOptions` (the sixth of the source's
+  seven table files) toggles visibility, moves columns with labelled buttons rather than drag, and resets —
+  where "reset" *deletes* the entry, because "no preference" and "defaults" are the same thing and the smaller
+  record is the honest one. Base UI's menu rules cost a round to learn and are recorded in ARCHITECTURE §12
+  (labels need a group or they throw; items fire `onClick`, not Radix's `onSelect`; checkbox items keep the menu
+  open; the menu mounts asynchronously, so a synchronous query right after the trigger click finds nothing).
+  Checks run: **357 tests across 47 files, all passing** (+20 across two new files); typecheck exit 0; build
+  exit 0.
 - **F020 — DataTable core.** `components/data-table/` delivers the table on **TanStack Table v9** — a different
   API from the v8 the reference uses (declared features, row-model *slots*, registered filter/sort names,
   `ReactTable`), recorded in ARCHITECTURE §12 because it is invisible until something quietly stops working.
@@ -440,15 +465,16 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F020)** | `cd D:\resors\frontend; pnpm run test:run` | **337 passing** across 45 files |
+| **Frontend tests (F011–F021)** | `cd D:\resors\frontend; pnpm run test:run` | **357 passing** across 47 files |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
 | **API client tests (F018)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib` | **29 passing** in 3 files (MSW; no network) |
 | **Form kit tests (F019)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/form-fields.test.tsx tests/components/form-submission.test.tsx tests/components/confirm-dialog.test.tsx tests/components/unsaved-changes-guard.test.tsx` | **23 passing** in 4 files — validation, the `aria-describedby`/`aria-invalid` wiring, server 422 mapping with and without the toast opt-out, and the unsaved-changes prompt on a real data router |
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
+| **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"`, removes reinstated dependencies (run after every `shadcn add`) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **337 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **357 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
 | **Sidebar preference (F015)** | click the round chevron on the sidebar edge, then press **F5** | it stays collapsed after reload; console: `localStorage.getItem('app.sidebar')` → `"collapsed"` |

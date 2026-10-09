@@ -416,6 +416,26 @@ for exactly this reason. Put extra UI inside a route element.
   through the shared client is intercepted by `setupServer` as-is. The trap is elsewhere: unmatched requests must
   be configured to *fail* (`onUnhandledFrame: 'error'`), or a test that forgot its handler just hangs or warns.
 
+### Table preferences, and Base UI's menus (F021)
+
+- **The preference boundary is a store, not a component.** `table-preferences.ts` holds the interface
+  (`load`/`save`/`clear`) plus the localStorage implementation; `useTablePreferences(tableKey)` is the hook the
+  pages spread into `<DataTable>`. The key is `app.table.<scope>.<tableKey>`, where `scope` is the user — the
+  literal `anonymous` until F032 supplies a session, which is why two accounts on one machine would share
+  preferences today and will not tomorrow. **F048** swaps in the server-backed store through
+  `setTablePreferencesStore`; nothing else changes. Storage is treated as hostile (user-writable, another
+  version's shape, throwing in private mode): an unreadable entry reads as "no preference", never a crash.
+- **"No preference" is not the same record as "defaults".** `reset` *removes* the entry instead of writing the
+  defaults out; the defaults are also what a missing entry means, so the smaller record is the honest one.
+- **Ordering is buttons, not drag.** Drag is the reference's gesture, needs a pointer, is invisible to keyboard
+  users unless re-implemented, and is barely testable in jsdom. Two labelled move items write the same
+  `columnOrder` state; `@dnd-kit` (in the stack list) can layer on later if the operator wants the gesture.
+- **Base UI's menu items are not Radix's.** `DropdownMenuLabel` **throws** unless it has a `DropdownMenuGroup`
+  ancestor; items fire **`onClick`** (`onSelect` is the Radix API and is silently ignored); a checkbox item
+  **keeps the menu open** after toggling, so a "reset" item does not need the menu reopened; and the menu mounts
+  asynchronously — query it with `findByRole`, because a synchronous `getByRole` right after the trigger click
+  finds nothing and looks like a broken trigger.
+
 ### TanStack Table v9 is not v8 (F020)
 
 The reference uses v8; this project is on **v9**, and the API moved. None of it is discoverable from v8

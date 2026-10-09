@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import {
   columnFacetingFeature,
   columnFilteringFeature,
+  columnOrderingFeature,
   columnVisibilityFeature,
   createFacetedRowModel,
   createFacetedUniqueValues,
@@ -19,6 +20,8 @@ import {
 } from '@tanstack/react-table'
 import type {
   ColumnDef,
+  ColumnOrderState,
+  ColumnVisibilityState,
   OnChangeFn,
   PaginationState,
   ReactTable,
@@ -96,9 +99,11 @@ export const dataTableFeatures = tableFeatures({
   paginatedRowModel: createPaginatedRowModel(),
   columnFilteringFeature,
   filteredRowModel: createFilteredRowModel(),
-  // Visibility is a rendering concern (which cells exist), not a preference —
-  // the *persistence* of the choice is F021's.
+  // Visibility is a rendering concern (which cells exist) and ordering is what
+  // the header loop reads; the *persistence* of both is F021's, through
+  // `useTablePreferences`.
   columnVisibilityFeature,
+  columnOrderingFeature,
   globalFilteringFeature,
   columnFacetingFeature,
   facetedRowModel: createFacetedRowModel(),
@@ -138,6 +143,11 @@ interface DataTableProps<TData extends RowData> {
   onPaginationChange?: OnChangeFn<PaginationState>
   globalFilter?: string
   onGlobalFilterChange?: OnChangeFn<string>
+  /** Column visibility and order — F021's `useTablePreferences` supplies both. */
+  columnVisibility?: ColumnVisibilityState
+  onColumnVisibilityChange?: OnChangeFn<ColumnVisibilityState>
+  columnOrder?: ColumnOrderState
+  onColumnOrderChange?: OnChangeFn<ColumnOrderState>
   /** Server mode: the corresponding slice is not computed locally. */
   manualPagination?: boolean
   manualSorting?: boolean
@@ -166,6 +176,10 @@ export function DataTable<TData extends RowData>({
   onPaginationChange,
   globalFilter,
   onGlobalFilterChange,
+  columnVisibility,
+  onColumnVisibilityChange,
+  columnOrder,
+  onColumnOrderChange,
   manualPagination = false,
   manualSorting = false,
   manualFiltering = false,
@@ -184,10 +198,14 @@ export function DataTable<TData extends RowData>({
       ...(sorting !== undefined ? { sorting } : {}),
       ...(pagination !== undefined ? { pagination } : {}),
       ...(globalFilter !== undefined ? { globalFilter } : {}),
+      ...(columnVisibility !== undefined ? { columnVisibility } : {}),
+      ...(columnOrder !== undefined ? { columnOrder } : {}),
     },
     ...(onSortingChange ? { onSortingChange } : {}),
     ...(onPaginationChange ? { onPaginationChange } : {}),
     ...(onGlobalFilterChange ? { onGlobalFilterChange } : {}),
+    ...(onColumnVisibilityChange ? { onColumnVisibilityChange } : {}),
+    ...(onColumnOrderChange ? { onColumnOrderChange } : {}),
     globalFilterFn: 'includesString',
     manualPagination,
     manualSorting,
