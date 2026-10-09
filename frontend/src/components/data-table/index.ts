@@ -2,7 +2,8 @@
  * The DataTable toolkit (BIG-PROMPT §5.3, §1.1).
  *
  * Delivered by F020 (the table, toolbar, sortable headers, pagination, faceted
- * filter) and F021 (view options plus the preferences abstraction behind them).
+ * filter), F021 (view options plus the preferences abstraction behind them) and
+ * F022 (CSV export built on `lib/csv.ts`, which owns the injection guard).
  * Still to come, and owned elsewhere on purpose: `data-table-row-actions` with
  * its first consumer (**F034**'s user list) and CSV/Excel import-export in
  * **F022**. Nothing here is a stub — each file shipped is used by the tests and
@@ -17,6 +18,7 @@ export { DataTablePagination } from './data-table-pagination'
 export { DataTableFacetedFilter } from './data-table-faceted-filter'
 export type { FacetedFilterOption } from './data-table-faceted-filter'
 export { DataTableViewOptions } from './data-table-view-options'
+export { exportTableCsv, exportTableCsvTemplate, csvColumnsFromTable } from './data-table-export'
 export {
   ANONYMOUS_SCOPE,
   createLocalTablePreferencesStore,

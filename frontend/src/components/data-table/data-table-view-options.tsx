@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
+import { columnLabel } from './column-label'
 import { useDataTable } from './data-table-context'
 
 /**
@@ -80,7 +81,7 @@ export function DataTableViewOptions({ onReset }: DataTableViewOptionsProps) {
                 column.toggleVisibility(checked)
               }}
             >
-              {columnLabel(column.columnDef.meta, column.id)}
+              {columnLabel(column)}
             </DropdownMenuCheckboxItem>
           ))}
         </DropdownMenuGroup>
@@ -91,7 +92,7 @@ export function DataTableViewOptions({ onReset }: DataTableViewOptionsProps) {
             <DropdownMenuGroup>
               <DropdownMenuLabel>Column order</DropdownMenuLabel>
               {visible.flatMap((column) => {
-                const label = columnLabel(column.columnDef.meta, column.id)
+                const label = columnLabel(column)
                 const position = order.indexOf(column.id)
                 return [
                   <DropdownMenuItem
@@ -131,17 +132,4 @@ export function DataTableViewOptions({ onReset }: DataTableViewOptionsProps) {
       </DropdownMenuContent>
     </DropdownMenu>
   )
-}
-
-/**
- * A column's human name. Columns carry one in `meta` when their header is a
- * component (`DataTableColumnHeader` renders a button, not a string a menu can
- * print); the id is the fallback so an unlabelled column is still operable.
- */
-function columnLabel(meta: unknown, fallback: string): string {
-  if (typeof meta === 'object' && meta !== null && 'label' in meta) {
-    const label = (meta as { label?: unknown }).label
-    if (typeof label === 'string') return label
-  }
-  return fallback
 }

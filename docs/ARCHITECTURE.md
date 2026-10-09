@@ -416,6 +416,28 @@ for exactly this reason. Put extra UI inside a route element.
   through the shared client is intercepted by `setupServer` as-is. The trap is elsewhere: unmatched requests must
   be configured to *fail* (`onUnhandledFrame: 'error'`), or a test that forgot its handler just hangs or warns.
 
+### CSV, and the spreadsheet it lands in (F022)
+
+- **A CSV is an execution format as far as a spreadsheet is concerned.** A cell starting with `=`, `+`, `@`, a tab
+  or a carriage return is evaluated; `'` in front makes it text. `neutralizeFormula` (in `lib/csv.ts`) applies
+  that, and is deliberate about the one case that would otherwise corrupt data: **a leading `-` is only
+  neutralised when what follows is not a number**, so `-42` stays an amount while `-1+1` stops being a formula.
+  Headers are cells too.
+- **The BOM is added at download time, not by `toCsv`,** so the string a caller writes (and a test compares) is
+  free of an invisible character. Excel then reads the file as UTF-8 rather than the system code page.
+- **Testing a BOM is a trap in both directions.** `Blob.text()` and a default `TextDecoder` both *strip* a leading
+  BOM per the Encoding spec, so a text comparison passes whether or not the BOM is there: compare the first bytes
+  (`0xEF 0xBB 0xBF`) and decode with `{ ignoreBOM: true }` if the text matters too. jsdom also has no
+  `URL.createObjectURL`, so the download tests stub it — and capture what the anchor *clicked with*, because the
+  anchor is removed in the same turn.
+- **Export what the user sees.** `exportTableCsv` takes its columns from the table's visible leaf columns in
+  their current order, so F021's preferences decide the file. Rows default to the current page; a server-mode
+  screen that wants the whole result set fetches it and passes `rows`, because silently exporting a page while
+  claiming to export the dataset is the quiet kind of wrong.
+- **Import reports every bad row and cannot half-write.** `importCsvRows` returns `records` *and* `errors`, with
+  spreadsheet row numbers (header is 1); `ok` — not the length of `records` — is the only thing a caller may
+  branch a write on.
+
 ### Table preferences, and Base UI's menus (F021)
 
 - **The preference boundary is a store, not a component.** `table-preferences.ts` holds the interface
