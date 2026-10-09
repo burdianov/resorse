@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F030.
+> Last updated: 2026-10-10 — after task F031.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F031 in
-claude_code_pack/TASKS.md. Implement F031 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F032 in
+claude_code_pack/TASKS.md. Implement F032 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F031` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F032` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,30 +67,30 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F030 — Password change lifecycle** (`POST /auth/change-password` serves the forced
-  first-login change and Profile > Security: current password required (throttled in its own
-  `password:account:` bucket — the gate before the Argon2 work, failures committed, a verified password
-  forgives), refusals are field-addressable 422s without `input` (never a 401 — a typo must not sign the
-  user out), success is **one commit** — new hash, all *other* sessions revoked `password_change`, the
-  asking session rotated, `must_change_password` cleared, `password_reset_at` stamped; the **admin reset**
-  is the `reset_password` service — temporary via `generate_password`, forced change, **every** session
-  revoked `admin` — whose HTTP endpoint is F033's by design; new `app/services/passwords.py`,
-  `services/sessions.py` grew `rotate_within`/`revoke_user_sessions` (non-committing building blocks);
-  DECISIONS C19; 14 new tests, 152 total; no migration; `openapi.json` + frontend types regenerated).
-- **Next task: F031 — Permission guards.** "Multi-role union and server-side permission dependencies."
-  Accept: "403 and role union tests". Everything it needs is live: `current_session`
-  (`app/api/v1/dependencies.py`) hands over a `SessionContext` whose `user` is loaded **with roles and
-  permissions** (the model's `selectin` design note: "every authenticated request re-evaluates the
-  effective access set from the database"), and `app/core/permissions.py`'s `PermissionCode` is the one
-  vocabulary (17 codes, seeded by F027). F031 builds the `require_permission(...)`-style dependencies, the
-  **`must_change_password` gate** (BIG-PROMPT §6.1: "the API should enforce it for all regular
-  endpoints" — the change-password endpoint must stay reachable, per F030), and `/auth/me` serving the
-  permission union (F028's login response is identity-only until then). Remember:
-  `is_superuser` short-circuits nothing silently — decide and record how it interacts with the union.
-  F033's admin endpoints (incl. `POST /admin/users/{id}/reset-password` → `services/passwords.reset_password`,
-  guard `users.reset_password`) and F032's frontend build on F031.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F030 sits on top of
-  `f06bfa1` (the requirements-text relocation; F029 before it).
+- Last completed: **F031 — Permission guards** (`app/core/permissions.py::effective_permissions` — the
+  union across roles, folded per request, with **`is_superuser` expanding to every code at runtime**
+  (break-glass, never persisted as grants; the seeded `super_admin` role stays the visible dictionary);
+  `app/api/v1/dependencies.py` now layers `optional_session` → `authenticated_session` (raw: 401) →
+  **`current_session` (the default: 401, or 403 while `must_change_password` is set)** →
+  `require_permission(code)` (a `PermissionCode` member + the union check, one generic 403); the
+  forced-change exemption list is exactly the auth router — logout, logout-all, change-password,
+  `/auth/me`; **`GET /auth/me`** serves identity + sorted role names + the expanded sorted union;
+  BP-6.3c's `require_admin` deliberately not built (specific codes are the boundary); DECISIONS C20;
+  9 new tests, 161 total; no migration; `openapi.json` + frontend types regenerated).
+- **Next task: F032 — Auth frontend.** "Login guard, session-renewal handling, forced-change and logout
+  flows." Accept: "Browser auth flow test". Everything it needs is live: the full backend auth surface
+  (login, logout, logout-all, change-password, `/auth/me`), the cookie + CSRF contract (`__Host-session`
+  HttpOnly; readable `__Host-csrf` copied into **`X-CSRF-Token` on every unsafe request**), the status
+  semantics to branch on — **401** = no/expired session (clear state, go to login), **403 + detail "Your
+  password must be changed before continuing."** = forced-change backstop, **403 generic** = insufficient
+  permission (403 UI), **422 field arrays** = map onto forms via `fieldErrors`, **429** = retry-after
+  message — and `/auth/me`'s `must_change_password` + `permissions` for routing and UI affordances
+  (the frontend's registry mirrors the codes; it is never the boundary). `lib/api.ts` already sends
+  cookies same-origin (Vite proxy) and normalises errors; F032 adds the auth guard, the forced-change
+  route, the 401 handling (BIG-PROMPT §6.2e: redirect only after anonymous/expired resolution; network
+  failure gets Retry UI, not a logout), logout/logout-all calls, and identity-scoped cache resets.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F031 sits on top of
+  `b8b12f9` (F030).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -211,6 +211,24 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **Authorization is live (F031):** `app/core/permissions.py::effective_permissions(user)` — the one
+  definition of the union: the codes across the user's roles, folded per request from the graph F029's
+  resolution loads (no cache; a role change applies on the next request). **`is_superuser` is
+  break-glass**: expands to `ALL_PERMISSION_CODES` at runtime, never persisted as grants (deployment
+  order must not lock the un-lockable account out of a new code); the seeded `super_admin` role stays the
+  visible dictionary (F036's protected column). The dependencies (`app/api/v1/dependencies.py`) now
+  layer — and the *defaulting* is the security: **`current_session` is the one to reach for** (401, or
+  **403 "Your password must be changed before continuing."** while the forced-change flag is set), with
+  `authenticated_session` (raw 401) reserved for the auth router's deliberate exemption list (logout,
+  logout-all, change-password, `/auth/me` — the SPA reads the flag there to route), and
+  `require_permission(PermissionCode.X)` (a member, not a string — a typo is an import error) layering
+  `current_session` + the union check with one generic 403. **`GET /api/v1/auth/me`** serves identity +
+  sorted role names + the **expanded** sorted union — no `is_superuser` (redundant once expanded, the
+  frontend checks set membership), no `is_active` (a disabled account's session never resolves) —
+  reachable during a forced change; `PATCH /auth/me` + preferences are F041's. BP-6.3c's `require_admin`
+  deliberately not built (specific codes are the boundary; super-admin *business rules* are F033/F035's).
+  No migration; `openapi.json` + generated frontend types refreshed. **Tests:** 9 new, `uv run pytest`
+  is now **161 passed**.
 - **The password lifecycle is live (F030):** `POST /api/v1/auth/change-password`
   (`app/api/v1/auth.py` → NEW `app/services/passwords.py`) — one endpoint for the forced first-login change
   and Profile > Security, requiring the current password (BIG-PROMPT §6.1) and, on success, committing
@@ -230,8 +248,8 @@ the archive original — `sha256sum` both to check):
   `users.reset_password` guard). `services/sessions.py` grew two non-committing building blocks —
   `rotate_within` and `revoke_user_sessions` (`rotate_session`/`log_out_all` are now thin committing
   wrappers, behaviour unchanged) — and `core/rate_limit.py` gained `password_key`. No migration;
-  `openapi.json` + generated frontend types refreshed. **Tests:** 14 new, `uv run pytest` is now
-  **152 passed**.
+  `openapi.json` + generated frontend types refreshed. **Tests:** 14 new — 152 at that commit, 161 after
+  F031's 9.
 - **Sessions resolve and end (F029):** `app/services/sessions.py` — `resolve_session` (row by digest →
   replay check → expiry → user check → **idle slide capped at the absolute deadline, committed by the
   resolver itself**), `rotate_session` (successor in the same family, **absolute deadline inherited**,
@@ -270,7 +288,7 @@ the archive original — `sha256sum` both to check):
   `BOOTSTRAP_*` variables itself, never through `Settings`. `app_dev` is already seeded (17 permissions,
   3 roles, 41 grants, **0 users** — the operator runs the bootstrap once; the accounts table §9 records it).
   **Tests:** 31 new (11 seed + 17 bootstrap + 3 generator) — `uv run pytest` went to **103 passed** at this
-  commit (114 after F028's 11; 138 after F029's 24; 152 after F030's 14).
+  commit (114 after F028's 11; 138 after F029's 24; 152 after F030's 14; 161 after F031's 9).
 - **Password security and throttling are live (F026):** `app/core/security.py` — Argon2id with **reviewed
   constants** (`ARGON2_PARAMETERS`: 19 MiB, t=2, p=1, the OWASP profile — deliberately *not* settings, so no
   deployment can quietly weaken hashing), `hash_password`/`verify_password`/`password_needs_rehash` (an
@@ -360,6 +378,11 @@ the archive original — `sha256sum` both to check):
   `password:account:` bucket with a verified password clearing it; admin reset = policy-passing temporary,
   forced change, **all** sessions revoked `admin`, **no** current password — its endpoint is F033's,
   behind F031's `users.reset_password` guard), same date and same basis; rationale in ARCHITECTURE §3/§12.
+- **C20** — F031's permission guards (the union via `effective_permissions`; `is_superuser` expands to
+  every code at runtime as break-glass, never persisted; the dependency layering with **`current_session`
+  gated by default** and the auth router as the staged exemption list; `require_permission` takes a
+  `PermissionCode` member; `require_admin` deliberately not built; `/auth/me` = identity + expanded sorted
+  union, reachable during a forced change), same date and same basis; rationale in ARCHITECTURE §6/§12.
 - **C12's fallout is reconciled** — F025/F029/F032 were amended in `TASKS.md` to match.
 - **All seven F002 gaps are closed** (`docs/REQUIREMENT_TRACEABILITY.md` §14, now a resolution table):
   G-1 `input-group`→F011; G-2 the 21 enhanced generics distributed across F009/F011–F013/F016/F017/F019/F020/
@@ -432,6 +455,17 @@ the archive original — `sha256sum` both to check):
 - **F031's `must_change_password` gate** (BIG-PROMPT §6.1) must let `POST /auth/change-password` (and
   login/logout) through while the flag is set — the forced-change flow needs the session it is about to
   rotate. The flag is cleared by the change itself (F030); the gate is about *regular* endpoints only.
+- **Authorization defaults are load-bearing (F031, C20):** a new endpoint reaches for
+  **`current_session`** (gated) — never `authenticated_session` unless it is on the auth router's
+  exemption list, and never re-resolving the cookie. Privileged data goes through
+  `require_permission(PermissionCode.X)`: a member of the vocabulary, not a string; adding a permission
+  means adding it to `PermissionCode` + `PERMISSION_DESCRIPTIONS` + running the seed (the superuser is
+  never locked out thanks to the runtime expansion). The three 403 identities are contract: generic
+  permission denial, the forced-change detail, and CSRF's two details — F032 branches on them and on
+  `/auth/me`, never on guesses. Do not add a `require_admin`-style shortcut: the narrowest code is the
+  boundary; `is_superuser` is data for F033/F035's business rules (last-super-admin protection), not a
+  dependency. Guard tests mount a **scratch FastAPI app** in the test file over the real dependencies
+  and rollback session — never add placeholder routes to the real app (ARCHITECTURE §12).
 - **The throttling address is `request.client.host` on purpose (F028, C17).** Do not "fix" it by reading
   `X-Forwarded-For` outside F060's validated-proxy configuration — unvalidated, that header is client-controlled
   and trusting it would hand every attacker a fresh rate-limit bucket per request.
@@ -532,6 +566,34 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F031 — Permission guards.** The authorization boundary, built so the *default* is the safe answer.
+  `app/core/permissions.py::effective_permissions(user)` — the union across the user's roles, folded per
+  request from the graph F029's resolution already loaded (a role change applies on the next request,
+  BP-6.3f; no cache to invalidate). **`is_superuser` is break-glass**: it expands to every code at runtime
+  (`ALL_PERMISSION_CODES`), never persisted as grants — the seed re-asserts `super_admin`'s matrix only
+  when someone runs it (C16), and the account that exists to be un-lockable must not be locked out of a
+  new code by deployment order; the seeded role remains the visible dictionary (F036's protected column).
+  The dependencies (`app/api/v1/dependencies.py`) now layer `optional_session` (raw, `None` ok) →
+  `authenticated_session` (raw, 401) → **`current_session` (the default: 401, or 403
+  `PASSWORD_CHANGE_REQUIRED_DETAIL` while the forced-change flag is set — the flag check runs *before*
+  any permission check)** → `require_permission(PermissionCode.X)` (a member, not a string — a typo is an
+  import error; one generic 403, the endpoint body never runs). The forced-change exemption list is
+  exactly the auth router — logout, logout-all, change-password (it *is* the change) and `/auth/me` (the
+  SPA reads the flag there to route) — and every regular endpoint, present and future, picks up the gate
+  by choosing the natural-looking dependency. **`GET /api/v1/auth/me`**: identity + sorted role names +
+  the **expanded** sorted union (superusers see every code's name, never a wildcard — the frontend checks
+  set membership); no `is_superuser`/`is_active` (redundant and never-false respectively). BP-6.3c's
+  `require_admin` is deliberately **not** built: specific codes are the boundary; the super-admin
+  business rules (last-super-admin protection, escalation prevention) are F033/F035's, over `is_superuser`
+  as data (C20). Cheaper checks were dishonestly considered and rejected: a permission cache (staleness
+  vs one folded set of loaded rows) and a hardcoded guard list (drifts from the vocabulary). Checks run:
+  `uv run pytest` **161 passed** (9 new, incl. the union via two roles, dedupe, the superuser expansion,
+  same-cookie re-evaluation after `expunge_all`, fail-closed 401s, and the forced-change gate lifting
+  when the real change-password flow completes); `ruff check`/`format --check` clean; `mypy app
+  migrations` clean (33 files); **no migration** (`0004` remains head); `openapi.json` + generated
+  frontend types regenerated and committed. ARCHITECTURE §12 gained the scratch-app test pattern and the
+  three asyncio-ORM traps it flushed out (`no_autoflush` while building pending graphs, `expunge_all`
+  not `expire_all` to simulate a fresh request, ids captured before expunging).
 - **F030 — Password change lifecycle.** `POST /api/v1/auth/change-password` (`app/api/v1/auth.py` →
   `app/services/passwords.py`) — one endpoint for the forced first-login change and Profile > Security,
   because they are one act; the acceptance "old sessions invalid" is the design: **success is a single
@@ -946,12 +1008,13 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F030 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
-| **Backend tests (F023–F030)** | `cd D:\resors\backend; uv run pytest` | **152 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F031 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
+| **Backend tests (F023–F031)** | `cd D:\resors\backend; uv run pytest` | **161 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Login tests (F028)** | `cd D:\resors\backend; uv run pytest tests/test_auth_login.py` | **11 passed** — six credential-failure causes answered with the *same* 401 body, the unknown-email path proven to run a real Argon2 verification against the decoy (whose parameters are pinned current), both throttle buckets (per account and per address) incl. the identical 429 for a non-existent email, `hit_count == 5` persisted after five failures (commit-on-failure), the account-bucket reset on success, rehash-on-login, the exact cookie attributes, and 422 for malformed bodies |
 | **Session lifecycle tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_auth_sessions.py` | **13 passed** — resolution returns the user, the idle slide (committed by the resolver, capped at the absolute deadline, which never moves), expiry refused without a write, disabled users refused and left for the admin flow, rotation (same family, `rotated` + `replaced_by_id`, absolute deadline inherited), the replay killing exactly its own family as `theft_detected` while the presented row keeps `rotated`, logout (204, both cookies cleared, revoked `logout`, idempotent for junk/already-ended cookies), logout-all (401 without a session; every live row of *one* user revoked `logout_all`, others untouched), and a replay through logout still killing the family |
 | **CSRF tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_csrf_protection.py` | **11 passed** — the double-submit enforced whenever the session cookie is present (four refusal shapes, each changing nothing) and passing with no origin for scripted clients, the origin matrix refused even with a perfect double-submit (`https://evil.example`, `null`, scheme mismatch, lookalike host), the `Referer` fallback (and Origin winning when both are present), safe methods never checked, a latin-1 hostile header earning 403 not 500, login refusing a cross-site origin, and the carve-out: a dead session cookie does not lock the login form |
 | **Password-lifecycle tests (F030)** | `cd D:\resors\backend; uv run pytest tests/test_password_change.py` | **14 passed** — wrong current password refused with nothing changed; policy evaluated with the user's own email and never echoing the candidate; new-equals-current refused; the core: rotation of the asking session (absolute deadline inherited) + every other session `password_change` + hash/flags/reset-stamp in one commit; the forced-change flag cleared; the throttle (6th attempt denied before verification, `hit_count == 6` persisted, a verified password forgiving the failures *through* a policy refusal); the reset end-to-end (policy-passing temporary, all sessions `admin`, bystander untouched, temporary signs in with the flag surfaced); and over HTTP: 204 with a fresh cookie pair, the sibling session dead, 401 without a session, 403 without the CSRF header, the wrong-current-password **422 field error (not 401) with the session still alive**, multiple policy entries on `new_password`, and the 429 with `Retry-After: 900` |
+| **Authorization tests (F031)** | `cd D:\resors\backend; uv run pytest tests/test_authorization.py` | **9 passed** — `/auth/me` returns identity + sorted roles + the deduped sorted union, and stays reachable during a forced change; the superuser expansion lists every code by name with no roles; access granted by *either* of two roles against a scratch app, denied with the generic 403 (and the guarded body never runs); re-evaluation proven with `expunge_all` — the same cookie gets 403 after a DB-level revoke and 200 after re-granting, no re-login; no session → 401 everywhere; a deactivated user → 401 everywhere; and the forced-change gate: 403 with the flag detail (before the permission check), nothing executed, then the real change-password flow lifts it on the very next request |
 | **Session model tests (F025)** | `cd D:\resors\backend; uv run pytest tests/test_session_model.py tests/test_session_tokens.py` | **18 passed** — the token-hash shape and uniqueness, both deadlines and their ordering, all-or-nothing revocation over a closed vocabulary, user FK + cascade, the unique replacement chain and `SET NULL`, the family-revocation rehearsal, the `is_active` matrix, and the token/lifetime contract |
 | **Password & rate-limit tests (F026)** | `cd D:\resors\backend; uv run pytest tests/test_password_hashing.py tests/test_rate_limit.py` | **34 passed** — Argon2id parameters and the no-plaintext contract (hash content, the `User` repr, message echo), every policy rule and the confirmed defaults, the generated-password properties (F027), window alignment/`Retry-After` math, the DB counter (limit, rollover, per-key budgets, `peek` without counting, `clear`), and the twelve-connection concurrency race |
 | **Seed & bootstrap tests (F027)** | `cd D:\resors\backend; uv run pytest tests/test_seed.py tests/test_bootstrap_admin.py` | **28 passed** — the vocabulary's shape and descriptions, the three roles and exactly their documented grant sets, idempotent re-runs, operator edits and non-system roles surviving, the super-admin invariant being *restored* (including codes registered later), and every bootstrap refusal path — proven with a session factory that raises if it is reached, so "refused before the database" is structural |
@@ -959,6 +1022,7 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Create the super-admin (F027)** | `cd D:\resors\backend; uv run python -m app.bootstrap_admin --generate-password` | prompts for the email (`--email` or `BOOTSTRAP_ADMIN_EMAIL` skip the prompt), prints the generated password **exactly once** — record it in `LOCAL_CREDENTIALS.md` at that moment — and creates the account with a forced first-login change. With no password source: `There is no default password.` / `Nothing was created.`, exit 2. A second run refuses: `A super-admin already exists (…)` |
 | **Login smoke (F028)** | with the API running: `curl.exe -i -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"you@example.com","password":"wrong-guess"}'` | **401** + `{"detail":"Invalid email or password."}` — and the *identical* body for an email that does not exist (that is the point). With the real password (from `LOCAL_CREDENTIALS.md`): **200**, the user JSON (identity only), and two `Set-Cookie` headers — `__Host-session` (HttpOnly) and `__Host-csrf`. Every failed attempt counts: five in 15 minutes, then the next is **429** + `Retry-After` (`Too many login attempts. Try again later.`). So run the *correct* pair first if you plan to fumble; or use http://localhost:8000/docs → `POST /auth/login` → *Try it out* (the browser then keeps the cookies for `/docs` calls) |
 | **Session & CSRF smoke (F029)** | step 1, with the API running and the real password: `curl.exe -s -c $env:TEMP\resors-cookies.txt -o NUL -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"you@example.com","password":"<real password>"}'`; step 2, read the CSRF value: `Select-String __Host-csrf $env:TEMP\resors-cookies.txt` (last column); step 3, **`<csrf>` = that value**: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/auth/logout -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>"` | step 3: **204**, two `Set-Cookie` lines emptying `__Host-session` and `__Host-csrf`; run step 3 again → **204** again (logout is idempotent). Without `X-CSRF-Token` → **403** `CSRF token missing or invalid.`; with `Origin: https://evil.example` → **403** `This origin is not allowed to make this request.`; `POST /api/v1/auth/logout-all` with no cookie → **401** `Not authenticated.` (curl's jar resends the Secure cookies to localhost — verified). A **rotated** cookie being presented anywhere (after F030 rotates) answers 401 *and* kills that session family as `theft_detected` — the test suite is the place to watch that, not curl |
+| **`/auth/me` smoke (F031)** | with the jar from the F029 row freshly logged in: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/auth/me` | **200** with identity (`id`, `email`, `full_name`, `phone`, `must_change_password`), `roles` — for the bootstrap account `["super_admin"]` — and **`permissions`**: the bootstrap account is `is_superuser`, so the list is **all 17 codes** sorted (`audit.read` … `users.update`) — the runtime expansion, no wildcard. Without the cookie: **401** `{"detail":"Not authenticated."}`. Sign in as a role-limited account (create one with F033 when it lands) and the list becomes exactly that role's union |
 | **Password-change smoke (F030)** — the *safe* path: no state change | with the jar from the F029 row freshly logged in (steps 1–2), **`<csrf>` = the jar's `__Host-csrf`**: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/auth/change-password -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"current_password":"definitely-wrong","new_password":"a brand new passphrase"}'` | **422** with `detail: [{"type":"value_error","loc":["body","current_password"],"msg":"Current password is incorrect."}]` — field-addressable, no `input`, and the session survives (the next command still works). Drop `X-CSRF-Token` → **403**; a `new_password` of `password123` (with the *correct* current one — this one does verify) → **422** with two entries on `new_password` (too short + common list) and nothing changed. Five wrong current passwords → the sixth is **429** + `Retry-After`. A **real** change (correct current + policy-passing new) answers **204** + a fresh cookie pair and invalidates every other session — if you smoke that, pick the new password deliberately and immediately update `LOCAL_CREDENTIALS.md`, because login will demand it from then on |
 | Backend lint and types (F023) | `cd D:\resors\backend; uv run ruff check .; uv run ruff format --check .; uv run mypy app migrations` | clean. The CI gate that *enforces* this is F056's; these commands work today |
 | **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |

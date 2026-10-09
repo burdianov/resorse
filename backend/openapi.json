@@ -130,6 +130,64 @@
         "title": "LoginResponse",
         "type": "object"
       },
+      "MeResponse": {
+        "description": "``/auth/me`` — identity plus the effective access set (F031).\n\nExtends the login response rather than restating it: the identity fields\nare the same four, and one definition of \"who is this\" beats two that\nalmost match. ``roles`` are names (the UI displays them; ids belong to the\nadmin editor, F033), and ``permissions`` is the **expanded union** — a\nsuperuser sees every code's name, never a wildcard, so the frontend checks\nset membership and never special-cases a flag. Both lists are sorted, so\nresponses are deterministic and diffable.\n\n``is_active``/``is_deleted`` are deliberately absent: a session belonging\nto a disabled account does not resolve at all (F029), so fields that could\nonly ever read \"true\" would be decoration. ``is_superuser`` is absent for\nthe wildcard reason above — the union already says it.",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "must_change_password": {
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "must_change_password",
+          "phone",
+          "roles",
+          "permissions"
+        ],
+        "title": "MeResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -296,6 +354,31 @@
           }
         },
         "summary": "End every session of the signed-in user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "description": "Who the caller is, and what the database says they may do — right now.\n\nThe answer is computed from this request's resolution of the session,\nroles and permissions (F029 re-loads the graph every request), so a role\nchange made a second ago is already reflected and a revoked one is gone\n(BP-6.3f: no cache to invalidate). Deliberately reachable during a forced\npassword change — this is how the SPA learns the flag is set and where to\nroute — which is also why it does not ride the gated ``current_session``.\n\nThe permission list is the expanded union, superusers included (every\ncode, never a wildcard): the frontend checks set membership and never\nspecial-cases a flag (ARCHITECTURE §6 layer 3 — UX mirroring the server's\nreal answer).",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          }
+        },
+        "summary": "The signed-in user and their effective permissions",
         "tags": [
           "auth"
         ]

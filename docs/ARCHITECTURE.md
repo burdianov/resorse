@@ -403,6 +403,37 @@ exception. This is that exception, recorded here and in `docs/STACK_VERSIONS.md`
   3. `PermissionGate` / navigation visibility in the SPA — **UX only**, never load-bearing.
 - **Fail closed.** Missing/unknown permission, inactive user, deleted user, expired or superseded session → deny.
 
+### The guards, as built (F031)
+
+`app/core/permissions.py::effective_permissions` is the one definition of the union: the codes across the
+user's roles, folded per request from the graph F029's resolution already loaded (no cache — a role change
+applies on the next request, BP-6.3f). **`is_superuser` is break-glass**: it expands to every code at
+runtime, never persisted as grants, because the seed re-asserts `super_admin`'s matrix only when someone
+runs it, and the account that exists to be un-lockable must not be locked out of a new code by deployment
+order. The seeded role stays the visible dictionary of what that means (F036's protected column), never
+the mechanism.
+
+`app/api/v1/dependencies.py` implements the boundary with the *defaulting* doing the security work:
+
+| Dependency | Answers | Used by |
+|---|---|---|
+| `optional_session` | raw resolution, `None` allowed | logout (idempotent) |
+| `authenticated_session` | raw resolution, else 401 | the auth router's exemption list |
+| `current_session` | **the default**: 401, or 403 while `must_change_password` is set | every regular endpoint |
+| `require_permission(code)` | `current_session` + the union check (one generic 403) | everything that acts on privileged data |
+
+The forced-change exemption list is exactly the auth router — logout, logout-all, change-password (it *is*
+the change) and `GET /auth/me` (the SPA reads the flag there to route) — so a new regular endpoint is gated
+unless its author types an exemption on purpose. `require_permission` takes a `PermissionCode` member, not
+a string: a typo is an import error, and the vocabulary stays F027's one machine copy. `require_admin` from
+BP-6.3c is deliberately absent — specific codes are the boundary, and the super-admin *business rules*
+(last-super-admin protection, escalation prevention) are F033/F035's, built on `is_superuser` as data.
+
+`GET /auth/me` serves identity + sorted role names + the expanded sorted union. No `is_superuser` in the
+response (redundant once expanded — the frontend checks set membership, never a flag) and no `is_active`
+(a disabled account's session never resolves). It stays reachable during a forced change. `PATCH /auth/me`
+and the preferences live with F041.
+
 ## 7. Extension boundaries (the reason this is a foundation)
 
 Stage B adds construction modules against these interfaces; the foundation must not need rewriting. Interfaces
@@ -819,6 +850,31 @@ policy-violation — and the frontend loses nothing, because its field mapper re
 (`frontend/src/lib/errors.ts`). The rule behind the detail: when a refusal is about a credential, construct
 the body deliberately; do not let a framework's convenience shape decide what gets reflected.
 
+### Testing guards without placeholder endpoints — and three async-ORM traps (F031)
+
+`require_permission` and the forced-change gate needed endpoints to guard, and this project does not ship
+placeholder production routes. The answer is a **scratch FastAPI app built inside the test file**
+(`tests/test_authorization.py::build_scratch_app`): it mounts the *real* dependencies over the *real*
+rollback session, on throwaway routes whose only job is to be refused. The `get_session` override that
+`conftest.py` applies to the real app is applied to the scratch app the same way — the composition under
+test is the same object a future F033 endpoint composes.
+
+Building authorization state in tests surfaced three SQLAlchemy traps, all under asyncio:
+
+- **A collection on a persistent object is not free.** `role.permissions.append(...)` after the role is
+  flushed — or `user.roles.append(...)` after the user is — triggers a lazy load, and under asyncio that
+  is a `MissingGreenlet`, not a query. Build while pending (`with session.no_autoflush:`) or initialise
+  the collection at construction (`User(..., roles=[])`).
+- **Expiry is not a clean slate.** `expire_all()` leaves instances whose *next attribute access* loads —
+  IO in the middle of an assertion (and a `MissingGreenlet`). To prove "the next request re-reads the
+  database", **`expunge_all()`**: it empties the identity map, and the request's `session.get()` loads the
+  full graph through the normal selectin chain — exactly what a production request, with its fresh
+  session, does.
+- **Ids outlive the objects.** Capture `user.id` before expunging/expiring; afterwards, reading it is IO.
+
+The general lesson: in tests, touch ORM attributes only while the objects are loaded, and let the *request*
+be the thing that proves re-reads.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -834,6 +890,8 @@ the body deliberately; do not let a framework's convenience shape decide what ge
   behaviour that consumes them** (uniform 401/429, the decoy verification, commit-before-raise, the
   account-bucket reset — §3), **F029 the session lifecycle and CSRF enforcement** (rotation inherits
   the absolute deadline, a replayed ID kills its family, logout is idempotent, the origin + double-submit
-  rules — C18, §3), and **F030 the password-change lifecycle** (current-password proof incl. during the
+  rules — C18, §3), **F030 the password-change lifecycle** (current-password proof incl. during the
   forced change, the re-authentication throttle, the one-commit rotate-and-revoke, the admin-reset
-  semantics — C19, §3).
+  semantics — C19, §3), and **F031 the authorization guards** (the union via `effective_permissions`,
+  the `is_superuser` expansion as break-glass, the fail-closed dependency defaulting with the auth
+  router as the staged exemption list, `require_permission`, `/auth/me` — C20, §6).

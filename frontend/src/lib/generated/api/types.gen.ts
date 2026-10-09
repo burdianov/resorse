@@ -104,6 +104,55 @@ export type LoginResponse = {
 };
 
 /**
+ * MeResponse
+ *
+ * ``/auth/me`` — identity plus the effective access set (F031).
+ *
+ * Extends the login response rather than restating it: the identity fields
+ * are the same four, and one definition of "who is this" beats two that
+ * almost match. ``roles`` are names (the UI displays them; ids belong to the
+ * admin editor, F033), and ``permissions`` is the **expanded union** — a
+ * superuser sees every code's name, never a wildcard, so the frontend checks
+ * set membership and never special-cases a flag. Both lists are sorted, so
+ * responses are deterministic and diffable.
+ *
+ * ``is_active``/``is_deleted`` are deliberately absent: a session belonging
+ * to a disabled account does not resolve at all (F029), so fields that could
+ * only ever read "true" would be decoration. ``is_superuser`` is absent for
+ * the wildcard reason above — the union already says it.
+ */
+export type MeResponse = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Must Change Password
+     */
+    must_change_password: boolean;
+    /**
+     * Permissions
+     */
+    permissions: Array<string>;
+    /**
+     * Phone
+     */
+    phone: string | null;
+    /**
+     * Roles
+     */
+    roles: Array<string>;
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -248,6 +297,29 @@ export type LogoutAllApiV1AuthLogoutAllPostResponses = {
 };
 
 export type LogoutAllApiV1AuthLogoutAllPostResponse = LogoutAllApiV1AuthLogoutAllPostResponses[keyof LogoutAllApiV1AuthLogoutAllPostResponses];
+
+export type MeApiV1AuthMeGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/me';
+};
+
+export type MeApiV1AuthMeGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+};
+
+export type MeApiV1AuthMeGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeResponse;
+};
+
+export type MeApiV1AuthMeGetResponse = MeApiV1AuthMeGetResponses[keyof MeApiV1AuthMeGetResponses];
 
 export type HealthApiV1HealthGetData = {
     body?: never;

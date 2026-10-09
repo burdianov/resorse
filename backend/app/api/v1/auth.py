@@ -1,4 +1,5 @@
-"""Authentication endpoints (F028 login; F029 logout; F030 change-password).
+"""Authentication endpoints (F028 login; F029 logout; F030 change-password;
+F031 /auth/me).
 
 The endpoint layer is deliberately thin: the services
 (``app/services/auth.py``, ``app/services/sessions.py``,
@@ -32,14 +33,21 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.dependencies import current_session, optional_session
+# Every endpoint here uses ``authenticated_session``, never the gated
+# ``current_session``: this router *is* the exemption list (logout must always
+# be possible, the change-password endpoint is the forced change itself, and
+# ``/auth/me`` is how the SPA learns the flag is set). Regular endpoints get
+# the gate by default — see ``app/api/v1/dependencies.py``.
+from app.api.v1.dependencies import authenticated_session, optional_session
 from app.core.cookies import clear_session_cookies, set_session_cookies
 from app.core.database import get_session
+from app.core.permissions import effective_permissions
 from app.schemas.auth import (
     AuthenticatedUser,
     ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
+    MeResponse,
 )
 from app.services.auth import InvalidCredentials, LoginRateLimited, log_in
 from app.services.passwords import (
@@ -165,7 +173,7 @@ async def logout(
 )
 async def change_password(
     payload: ChangePasswordRequest,
-    context: Annotated[SessionContext, Depends(current_session)],
+    context: Annotated[SessionContext, Depends(authenticated_session)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Response:
     """Change the caller's own password — the forced first-login flow and
@@ -221,7 +229,7 @@ async def change_password(
     },
 )
 async def logout_all(
-    context: Annotated[SessionContext, Depends(current_session)],
+    context: Annotated[SessionContext, Depends(authenticated_session)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Response:
     """Revoke every live session of the caller's account, this one included.
@@ -236,3 +244,40 @@ async def logout_all(
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_session_cookies(response)
     return response
+
+
+@router.get(
+    "/me",
+    response_model=MeResponse,
+    summary="The signed-in user and their effective permissions",
+    responses={
+        401: {"description": "No usable session was presented."},
+    },
+)
+async def me(
+    context: Annotated[SessionContext, Depends(authenticated_session)],
+) -> MeResponse:
+    """Who the caller is, and what the database says they may do — right now.
+
+    The answer is computed from this request's resolution of the session,
+    roles and permissions (F029 re-loads the graph every request), so a role
+    change made a second ago is already reflected and a revoked one is gone
+    (BP-6.3f: no cache to invalidate). Deliberately reachable during a forced
+    password change — this is how the SPA learns the flag is set and where to
+    route — which is also why it does not ride the gated ``current_session``.
+
+    The permission list is the expanded union, superusers included (every
+    code, never a wildcard): the frontend checks set membership and never
+    special-cases a flag (ARCHITECTURE §6 layer 3 — UX mirroring the server's
+    real answer).
+    """
+    user = context.user
+    return MeResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        must_change_password=user.must_change_password,
+        phone=user.phone,
+        roles=sorted(role.name for role in user.roles),
+        permissions=sorted(effective_permissions(user)),
+    )

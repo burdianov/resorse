@@ -27,6 +27,8 @@ the managing code):
 from enum import StrEnum
 from typing import Final
 
+from app.models.identity import User
+
 
 class PermissionCode(StrEnum):
     """Every permission code the foundation ships with (ARCHITECTURE §6)."""
@@ -91,3 +93,29 @@ PERMISSION_DESCRIPTIONS: Final[dict[PermissionCode, str]] = {
 # Declaration order, for stable seed output and tests. `tuple(...)` of the enum
 # is the same list; the name exists so callers never re-derive it differently.
 ALL_PERMISSION_CODES: Final[tuple[PermissionCode, ...]] = tuple(PermissionCode)
+
+
+def effective_permissions(user: User) -> frozenset[str]:
+    """Every permission code ``user`` holds — the union, computed per request.
+
+    ARCHITECTURE §6: the effective set is the **union across the user's
+    roles**, with one explicit rule for the break-glass flag: ``is_superuser``
+    holds *every* code, current and future, without depending on the
+    ``super_admin`` role's grant rows having been re-seeded after a new code
+    shipped — the seed re-asserts that role's matrix on every run (C16), but
+    nothing runs it automatically, and the one account that exists to be
+    un-lockable must not be lockable out of a feature by deployment order.
+    The seeded role remains the *visible dictionary* of what superuser means
+    (F036's protected matrix column), never the mechanism.
+
+    For everyone else the answer is exactly the roles' union — no implicit
+    grants, nothing held back (a role change applies on the very next request
+    because F029's resolution re-loads this graph from the database, BP-6.3f).
+
+    Reads only loaded relationships (``User.roles`` → ``Role.permissions``
+    are ``selectin``, F024): after a request resolves its session this is a
+    pure in-memory fold with zero further queries.
+    """
+    if user.is_superuser:
+        return frozenset(ALL_PERMISSION_CODES)
+    return frozenset(permission.code for role in user.roles for permission in role.permissions)
