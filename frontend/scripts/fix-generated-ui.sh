@@ -16,6 +16,11 @@
 #   3. It emits the Next.js `"use client"` directive, which means nothing in a
 #      Vite SPA (§0.5).
 #   4. It adds the `cn` package as a dependency, which we do not use.
+#   5. It reinstates dependencies this project deliberately rejected: the
+#      `sonner` item (F018) re-added `next-themes`, which F010 replaced with
+#      our own theme provider. The corrected component is tracked and step 1
+#      restores it, but the dependency entry is new each time — so it is
+#      removed here rather than by hand.
 #
 # Newly created files are untracked, so step 1 leaves them alone.
 
@@ -45,5 +50,8 @@ done
 
 echo "4. removing the unused cn package"
 pnpm remove cn >/dev/null 2>&1 || true
+
+echo "5. removing dependencies the registry reinstates"
+pnpm remove next-themes >/dev/null 2>&1 || true
 
 echo "done. Now run: pnpm run typecheck && pnpm run test:run"

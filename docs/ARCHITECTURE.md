@@ -171,7 +171,7 @@ pnpm run typecheck && pnpm run test:run
 **commit before generating** — uncommitted work in `src/components/ui` will otherwise be lost with the
 generator's own rewrite.
 
-Three deliberate corrections to the generated output, all required by the pack:
+Corrections to the generated output, all required by the pack:
 
 1. **`cn` import remap.** `base-nova` items import a helper from the `cn` package. §2.1 names `clsx` +
    `tailwind-merge`, and the reference carries `lib/utils.ts`, so `src/lib/utils.ts` exports our own `cn` and the
@@ -187,6 +187,12 @@ Three deliberate corrections to the generated output, all required by the pack:
    regenerates those and **silently undoes local changes to them**. F013 lost Button's `loading` prop this way, and
    F014 lost five files at once. `pnpm run fix:ui` restores them from `HEAD`; commit before generating so `HEAD` is
    the correct version.
+
+5. **It reinstates dependencies the project rejected.** The `sonner` item (F018) added `next-themes` back — the
+   package F010 replaced with our own provider — because the generated component imports its `useTheme`. The
+   corrected component is tracked (so step 1 restores it), but the dependency entry is written fresh each time, so
+   `fix:ui`'s step 5 removes it. Expect this for any component whose registry item reaches for a Next.js-era
+   package; check the dependency diff after every generation, not just the file diff.
 
 Anything else the generator emits that conflicts with the spec — a Next API, a hard-coded colour, a missing
 state — is fixed in place with a comment explaining why, as with Button's `loading` prop (§5.2 requires it).
@@ -393,6 +399,21 @@ few tasks is the intended state, not a defect — do not "fix" it by rendering d
 `<RouterProvider router={router}>{extra}</RouterProvider>` silently drops `extra`: the provider has no children
 slot, so UI passed there is never rendered. F016 lost a test round to a command palette that "rendered nothing"
 for exactly this reason. Put extra UI inside a route element.
+
+### The API client and its generated types (F018)
+
+- **The generated artefacts are committed, so regeneration must be byte-stable.** `backend/openapi.json` is
+  written with sorted keys, a fixed indent and an explicit `newline="\n"`; `openapi-ts` output is deterministic.
+  Both were verified by hashing across repeated runs. A platform-dependent newline or an unstable key order would
+  turn F061's `git diff --exit-code` drift check into noise.
+- **`Path.write_text` writes CRLF on Windows.** The default text mode translates `\n`; this repository checks
+  `git ls-files --eol` for `w/lf` everywhere, so any Python script that *writes* a committed file must pass
+  `newline="\n"` explicitly.
+- **MSW 3 renamed `onUnhandledRequest` to `onUnhandledFrame`.** The old key is a TypeScript error here, but at
+  runtime an unknown option is silently ignored — a strict test setup would quietly degrade to warnings.
+- **Axios' XHR adapter and MSW work together in jsdom** without forcing an adapter or a fetch shim; a request made
+  through the shared client is intercepted by `setupServer` as-is. The trap is elsewhere: unmatched requests must
+  be configured to *fail* (`onUnhandledFrame: 'error'`), or a test that forgot its handler just hangs or warns.
 
 ## 13. Non-goals and deferred choices
 

@@ -1,7 +1,29 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, vi } from 'vitest'
+
+import { server } from './msw-server'
+
+/**
+ * Network isolation (F018). Every test file runs with MSW intercepting
+ * requests: handlers registered per test, reset in between, and an **error**
+ * for anything unmatched — an unmocked request is a bug in the test, and
+ * failing loudly beats a request escaping to the network.
+ */
+beforeAll(() => {
+  // MSW 3 renamed this option; `onUnhandledRequest` is silently ignored, which
+  // would downgrade the failure to a warning.
+  server.listen({ onUnhandledFrame: 'error' })
+})
+
+afterEach(() => {
+  server.resetHandlers()
+})
+
+afterAll(() => {
+  server.close()
+})
 
 /**
  * Tear down between tests.

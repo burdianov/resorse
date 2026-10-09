@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-09 — after task F017.
+> Last updated: 2026-10-09 — after task F018.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F018 in
-claude_code_pack/TASKS.md. Implement F018 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F019 in
+claude_code_pack/TASKS.md. Implement F019 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F018` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F019` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -44,9 +44,9 @@ re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/R
 |---|---|
 | Project root (repo) | `D:\resors` |
 | Instruction pack | `claude_code_pack\` — `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md`, `TASKS.md`, `DECISIONS.md`, `OPERATOR_GUIDE.md` (operator runbook incl. the test-command table), `STATE.md` (pointer only) |
-| Task artifacts | `docs\` — `REPOSITORY_AUDIT.md` (F001), `REQUIREMENT_TRACEABILITY.md` (F002), `STACK_VERSIONS.md` (F003), `ARCHITECTURE.md` + `REFERENCE_PARITY.md` (F004), `ROUTES_NAVIGATION.md` (F016) |
-| Frontend (F006) | `frontend\` — `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src\{main.tsx,vite-env.d.ts,app\router.tsx}` |
-| Backend (F007) | `backend\` — `pyproject.toml`, `uv.lock`, `.python-version`, `app\{main.py,core\config.py,api\v1\{router,health}.py}`; `models\`, `schemas\`, `services\`, `migrations\versions\`, `tests\` still empty |
+| Task artifacts | `docs\` — `REPOSITORY_AUDIT.md` (F001), `REQUIREMENT_TRACEABILITY.md` (F002), `STACK_VERSIONS.md` (F003), `ARCHITECTURE.md` + `REFERENCE_PARITY.md` (F004), `ROUTES_NAVIGATION.md` (F016), `OPENAPI_CLIENT.md` (F018) |
+| Frontend (F006) | `frontend\` — `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `openapi-ts.config.ts`, `index.html`, `src\{main.tsx,vite-env.d.ts,app\{router,providers\}.tsx,lib\{api,errors,query-keys\}.ts,lib\generated\api\}` |
+| Backend (F007) | `backend\` — `pyproject.toml`, `uv.lock`, `.python-version`, `openapi.json` (generated, committed), `scripts\export_openapi.py`, `app\{main.py,core\config.py,api\v1\{router,health}.py}`; `models\`, `schemas\`, `services\`, `migrations\versions\`, `tests\` still empty |
 | Reference material (**outside the project folder**) | `D:\RESORS_REFERENCE\qtc360-main.zip`, `D:\RESORS_REFERENCE\BIG-PROMPT.txt` |
 | Unrelated — do not touch | `D:\QTC360\` (a separate QTC360 working area) |
 
@@ -58,17 +58,16 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F017 — error and route states** (`/` → `/dashboard`, `/admin` → first permitted admin route
-  or 403, 403/404 pages, per-route error boundary with Retry, protected placeholder, and the five enhanced
-  generics: PageHeader, EmptyState, ErrorState, LoadingState, StatusBadge).
-- **Next task: F018 — API client foundation.** Axios error normalization, the TanStack Query provider, typed
-  DTOs generated from the FastAPI OpenAPI schema, and `docs/OPENAPI_CLIENT.md` (drift check wired in F061).
-  Acceptance is MSW client tests. It feeds two things F017 left ready: `ErrorState variant="offline"` for
-  network/5xx (the query layer is where "offline" can actually be told apart from "broken") and the
-  `useAccess` provider feeding route guards. Package additions (axios, @tanstack/react-query, msw) are already
-  named in the mandated stack and pinned in `docs/STACK_VERSIONS.md` §2–§3 — allow the install step.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F017 sits on top of
-  `749fe42` (docs: NEXT-line convention).
+- Last completed: **F018 — API client foundation** (shared Axios instance with `ApiError` normalization and the
+  401 retry-once policy, TanStack Query provider with 30 s stale time and the retry/toast rules, typed DTOs
+  generated from FastAPI's OpenAPI schema, `docs/OPENAPI_CLIENT.md`, MSW wired into the test setup).
+- **Next task: F019 — Form framework.** React Hook Form + Zod field kit, `aria-invalid`/`aria-describedby`
+  wiring, and **server error mapping** — the half of F018 that exists for it: `ApiError.fieldErrors` already
+  carries Pydantic's 422 entries as dotted field paths, so F019 maps them onto inputs instead of inventing a
+  second convention. Acceptance is validation and accessibility tests. The mutation toast F018 added is what
+  F019 should refine for handled validation errors.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F018 sits on top of
+  `5b828e5` (F017).
 - Last human verification: **NOT RUN** — no gate suite has been run by the operator yet. F015's three-width
   check, F016's palette check and F017's route-state checks are the operator's visual checks (see §8).
 
@@ -116,6 +115,20 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **Enhanced generics are live (F017):** `components/common/` — `page-header.tsx` (breadcrumbs slot),
   `empty-state.tsx`, `error-state.tsx` (with the `offline` flavour), `loading-state.tsx` (the shell's route
   pending state uses it), `status-badge.tsx` (token-only colours; F034 is its first consumer).
+- **API client foundation is live (F018):** `lib/api.ts` (the shared Axios instance — empty `baseURL` so the
+  schema's relative `/api/v1` paths resolve same-origin; `VITE_API_URL` is an *origin* escape hatch only;
+  `setUnauthorizedHandler` is the seam F032 fills — a 401 re-resolves once, single-flight, and `/auth/*` is never
+  retried), `lib/errors.ts` (`ApiError` — one normalized shape for HTTP/network/cancel/unknown, `fieldErrors`
+  from Pydantic 422s, 5xx bodies never displayed), `lib/query-keys.ts`, `components/providers/query-provider.tsx`
+  (30 s staleTime; 4xx never retried, network/5xx once; cold query failures render inline, background failures and
+  mutations toast), `components/ui/sonner.tsx` (generated, corrected to our theme provider — the registry tried to
+  re-add `next-themes`), `app/providers.tsx` (theme → query → toaster; `main.tsx` mounts `AppProviders`).
+  **Typed DTOs:** `backend/openapi.json` → `frontend/src/lib/generated/api/` via `@hey-api/openapi-ts` 0.99.0
+  (types plugin only); both artefacts are committed and byte-stable — `docs/OPENAPI_CLIENT.md` has the pipeline,
+  the recipe for a new endpoint, and the F061 drift check. **Tests:** MSW is wired into `src/testing/setup.ts`
+  (`onUnhandledFrame: 'error'`; MSW 3 renamed that option) with the server in `src/testing/msw-server.ts`;
+  `tests/lib/` holds `api-client.test.ts` and `query-provider.test.tsx`. New deps: axios 1.20.0,
+  @tanstack/react-query 5.104.1, sonner 2.0.8 (+ dev: msw 3.0.2, @hey-api/openapi-ts 0.99.0).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
 - **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
@@ -153,7 +166,6 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   `*.ps1`/`*.bat`/`*.cmd` CRLF), overriding the machine-wide `core.autocrlf=true`.
 - **Do not "helpfully" bump the pinned deviations:** TypeScript **6.0.3** (typescript-eslint peers `<6.1.0`) and
   jsdom **29.1.1** (30.x needs Node ≥24.15.0). Full rationale in `docs/STACK_VERSIONS.md` §5.
-- **Tailwind is not installed yet** — F009 owns the theme tokens; do not add it early.
 - `docs/ARCHITECTURE.md` §7 defines the extension boundaries (`AppModule`, `ScopePolicy`,
   `ContextSwitcherAdapter`); F063 proves them with a test-only module.
 - **Nothing is open** — G-8 was fixed in F014 (`REQUIREMENT_TRACEABILITY.md` §14 records the resolution).
@@ -162,12 +174,22 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   layout-less DOM rather than a defect, so it is **not** asserted either way; confirm visually when Playwright
   arrives in **F057** and fix or dismiss it there.
 - **`pnpm run fix:ui` after every `shadcn add`** — it restores components the generator reverted, remaps `cn`,
-  strips `"use client"` and drops the `cn` package. **Commit before generating**: it restores from `HEAD`.
+  strips `"use client"`, drops the `cn` package, and removes dependencies the registry reinstates (the `sonner`
+  item re-added `next-themes`, which F010 rejected — `ARCHITECTURE.md` §5 item 5). **Commit before generating**:
+  it restores from `HEAD`. **Check the dependency diff too**, not just the file diff.
 - **Adding a page is one registry entry.** Create the page under `src/pages/`, then add a `RouteDefinition` to
   `APP_ROUTES` in `config/navigation.ts` (lazy `component`, `group`, permissions). The router mounts it, the
   sidebar and palette list it, breadcrumbs resolve it, and `requiredPermissions`/`adminOnly` automatically give
   it its 403 state and error boundary — no other file changes. **Never register a page that does not exist**: a
   registered route is a rendered link (BIG-PROMPT §1.2, no dead links).
+- **An API change is two regeneration commands** (`uv run python -m scripts.export_openapi` in `backend/`, then
+  `pnpm run api:types` in `frontend/`), and the resulting diff belongs in the same commit. **Never hand-edit
+  `src/lib/generated/**`** — it is overwritten, and F061's drift check regenerates and diffs both artefacts.
+  New code calls the API only through `lib/api.ts` (never `axios` directly) so every rejection stays an `ApiError`.
+- **Identity-scoped query keys carry the user id** (`['users', userId, …]`) — see `lib/query-keys.ts`; F032 resets
+  the cache on identity change, and the key shape is the second line of defence.
+- **The toast rule is deliberate:** a cold query failure is rendered inline (F017's `ErrorState`), a background
+  failure and a failed mutation toast. Do not "unify" them — see `docs/OPENAPI_CLIENT.md` §4.
 - **`RouterProvider` renders the route tree only** — `<RouterProvider>{extra}</RouterProvider>` silently drops
   `extra`; put extra UI inside a route element (`ARCHITECTURE.md` §12, learned in F016).
 - **The 403 page is not the login redirect.** Route guards deny with the 403 UI; the anonymous → `/login`
@@ -188,6 +210,29 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F018 — API client foundation.** The whole request path now exists, in one shape. `lib/api.ts` is the only
+  Axios instance: empty `baseURL`, so the paths the OpenAPI schema uses (`/api/v1/...`) resolve against whatever
+  served the SPA — Vite proxy in dev, Caddy in prod — with `VITE_API_URL` kept as an origin-only escape hatch.
+  `lib/errors.ts` normalizes **every** rejection into an `ApiError` (HTTP / network / cancelled / unknown) with
+  field-addressable 422 entries (`loc` minus its `body`/`query` prefix → dotted paths), the request id when the
+  server sends one, and one hard rule: **a 5xx body is never displayed** (§6.2f). The 401 policy is the opaque-cookie
+  one ARCHITECTURE §3 chose: no refresh call, a single-flight re-resolution through `setUnauthorizedHandler` (F032
+  fills it), one retry, never for `/auth/*`. `components/providers/query-provider.tsx` scopes the `QueryClient`
+  (30 s stale time; 4xx and cancellations never retried, network/5xx once; mutations never) and decides where a
+  failure is *visible*: cold failures belong to the page's F017 `ErrorState`, background failures and failed
+  mutations toast — asserted against the real `<Toaster />`, not a mock. `app/providers.tsx` stacks theme → query →
+  toaster and `main.tsx` mounts it. **Typed DTOs come from the backend:** `scripts/export_openapi.py` writes
+  `backend/openapi.json` by importing the app (no server, no DB — CI-safe), `@hey-api/openapi-ts` 0.99.0 turns it
+  into `src/lib/generated/api/` with the types plugin only; both artefacts are committed and **byte-stable**
+  (hash-verified), which is what makes F061's drift check a plain `git diff --exit-code`. The generator was chosen
+  on registry evidence — `openapi-typescript` 7.13.0 still peers `typescript ^5.x` and would drag in a second TS
+  copy, while `orval` would duplicate the hand-written client (`STACK_VERSIONS` §3). `shadcn add sonner` tried to
+  reinstate `next-themes`; the component now reads our theme provider and `fix:ui` gained a step 5 that removes
+  such dependencies — recorded in ARCHITECTURE §5/§12 together with the MSW 3 option rename
+  (`onUnhandledRequest` → `onUnhandledFrame`) and the Python CRLF trap (`write_text(..., newline="\n")`).
+  `docs/OPENAPI_CLIENT.md` is the artifact. Checks run: **290 tests across 37 files, all passing** (+28 in
+  `tests/lib/`); typecheck exit 0; build exit 0 — entry chunk 621.93 kB → 734.67 kB (the same >500 kB warning the
+  previous build already printed; splitting stays F058's).
 - **F017 — error and route states.** The route table became a function, `buildAppRoutes(access?, routes?)` in
   `app/router.tsx`, so tests mount the **real** table with fixture routes instead of re-declaring it. `/`
   redirects to `/dashboard` (F032 makes it auth-aware); `/admin` goes to the first `/admin/*` section the caller
@@ -291,18 +336,21 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F017)** | `cd D:\resors\frontend; pnpm run test:run` | **262 passing** across 35 files |
+| **Frontend tests (F011–F018)** | `cd D:\resors\frontend; pnpm run test:run` | **290 passing** across 37 files |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
-| **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"` (run after every `shadcn add`) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **262 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| **API client tests (F018)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib` | **28 passing** in 2 files (MSW; no network) |
+| **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |
+| **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"`, removes reinstated dependencies (run after every `shadcn add`) |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **290 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
 | **Sidebar preference (F015)** | click the round chevron on the sidebar edge, then press **F5** | it stays collapsed after reload; console: `localStorage.getItem('app.sidebar')` → `"collapsed"` |
-| **Nav behaviour (F015)** | inside the collapsed rail, hover the **Status** row; click the **Foundation** group label | the label appears as a tooltip in the rail; the group collapses/expands and the choice survives **F5** (`app.sidebar.groups`) |
+| **Nav behaviour (F015)** | inside the collapsed rail, hover the **Dashboard** row; click the **Overview** group label | the label appears as a tooltip in the rail; the group collapses/expands and the choice survives **F5** (`app.sidebar.groups`) |
 | **Context slot is off (F015)** | look at the header on desktop | **no** context selector is rendered — the slot is disabled by default (BIG-PROMPT §3.2a); it appears only when a module injects an enabled adapter |
 | **Command palette (F016)** | press **Ctrl+K** (or Cmd+K), or click the **Search anything** box in the header | the palette opens listing `Overview → Dashboard`; typing filters; **Enter** jumps to the highlighted page; **Escape** closes and focus returns to where it was |
 | **Route states (F017)** | visit **`/`**, **`/admin`**, **`/nonexistent`**, **`/403`**, **`/404`** in turn | `/` lands on `/dashboard` — the protected placeholder, which says plainly that the real screen is F047; `/admin` shows the **403** page (no admin route is registered yet, so there is nothing to redirect to); any unknown path shows **404 inside the shell** (navigation still usable); `/403` and `/404` render those pages directly |
-| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — today only **Status**. The Administration group is **absent, not empty**: its pages arrive in F034–F044, and an anonymous caller (no session until F032) may see none of them |
+| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — today only **Dashboard**. The Administration group is **absent, not empty**: its pages arrive in F034–F044, and an anonymous caller (no session until F032) may see none of them |
+| **Typed client, end to end (F018)** | with the backend running, open http://localhost:5173 and paste into the devtools console: `const { api } = await import('/src/lib/api.ts'); await api.get('/api/v1/health')` | the health JSON straight from FastAPI (`{"status":"ok","name":"Application Platform",…}`) — the SPA reached the API through the Vite proxy with the generated types. Then `await api.get('/api/v1/nope').catch(e => e.detail)` → **`The requested item was not found.`** — the normalised `ApiError`, not an Axios error. The app itself makes **no** API calls on load yet: no page fabricates data, and F047's dashboard is the first real consumer |
 | **Theme persists (F010)** | open the app, click the **sun/moon button in the header**, choose **Light / Dark / System**, then press **F5** | the chosen theme is still applied after reload, with **no flash** of the other theme first |
 | Inspect the stored theme (F010) | browser console: `localStorage.getItem('app.theme')` | `"light"`, `"dark"` or `"system"` |
 | Force a theme by hand (F009) | browser console: `document.documentElement.classList.add('dark')` / `.remove('dark')` | page repaints; a dark scrollbar on a light page would mean the token theme is broken |

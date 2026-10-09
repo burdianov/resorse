@@ -74,11 +74,22 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `@testing-library/user-event` | **14.6.7** | 2026-09-02 | |
 | `@testing-library/jest-dom` | **7.0.1** | 2026-08-09 | engines `node >=22` |
 | `msw` | **3.0.2** | 2026-10-03 | engines `node >=22.12`; peer `vite >=6` |
+| `@hey-api/openapi-ts` | **0.99.0** | 2026-06-22 | engines `node >=22.18.0`; peers `typescript >=5.5.3 \|\| >=6.0.0` — the OpenAPI→TypeScript generator, added in F018. Dev-only CLI, never a runtime dependency. |
 | `@playwright/test` | **1.64.0** | 2026-10-07 | engines `node >=20` |
 | `@axe-core/playwright` | **4.13.0** | 2026-08-11 | |
 | `@types/react` | **19.3.0** | 2026-09-09 | matches `react` |
 | `@types/react-dom` | **19.3.0** | 2026-09-09 | |
 | `@types/node` | **24.19.1** | 2026-10-01 | major tracks the Node runtime, not the newest (`26.6.4`) |
+
+**Tool choice: OpenAPI → TypeScript DTOs (F018).** `TASKS.md` F018 requires typed DTOs generated from FastAPI's
+OpenAPI schema but names no generator, so one was selected with the §2.4 discipline — registry evidence, not
+assumption:
+
+| Candidate | Latest (2026-10-09) | Outcome |
+|---|---|---|
+| `openapi-typescript` | 7.13.0 (2026-02-11) | Rejected: peer `typescript ^5.x`, unsatisfied by the pinned TS 6.0.3. Under pnpm's `auto-install-peers` that resolves a **second TypeScript copy**, and the package predates TS 6 entirely. |
+| `orval` | 8.41.0 (2026-10-08) | Rejected: generates per-endpoint Query hooks and its own client, duplicating `lib/api.ts` (error normalization, 401 policy) and the centralised query keys. |
+| **`@hey-api/openapi-ts`** | **0.99.0 (2026-06-22)** | **Chosen**: peers `typescript >=5.5.3 \|\| >=6.0.0` (TS 6 supported explicitly), engines `node >=22.18.0` (installed 24.14.0 ✓). Runs as a pinned devDependency CLI with only the `@hey-api/typescript` plugin — types out, no generated SDK transport. Pipeline and drift check: `docs/OPENAPI_CLIENT.md`. |
 
 ## 4. Backend — Python 3.14
 
@@ -162,6 +173,12 @@ Every one of these was checked against the published manifests, not inferred:
   `next/*`, which is the static evidence behind BP §2.1's conditional "may remain only if verified to work in
   a Vite SPA". The runtime check belongs to **F010**; if it fails there, the documented fallback is an equally
   small framework-agnostic provider.
+- **`msw@3.0.2` against Vitest's optional peer (observed F018).** `pnpm peers check` reports
+  `@vitest/mocker@5.0.3` wanting `msw ^2.4.9`. The declaration is an **optional** peer, and the installed 5.0.3
+  only references `msw` in `dist/browser.js` — the browser-mode module mocking this project does not use. The
+  jsdom/node path (`msw/node` `setupServer`) is unaffected: the full suite passes with msw 3.0.2, and no second
+  copy is installed. If a future Vitest version starts importing msw outside browser mode, the fallback is
+  msw 2.x.
 
 ## 7. Package manager — operator override
 
