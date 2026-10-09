@@ -467,6 +467,38 @@ response (redundant once expanded — the frontend checks set membership, never 
 (a disabled account's session never resolves). It stays reachable during a forced change. `PATCH /auth/me`
 and the preferences live with F041.
 
+### The admin user directory (F033)
+
+Six endpoints under `/api/v1/admin/users` (`app/api/v1/admin_users.py` over `app/services/users.py`), each
+behind one `require_permission` code, with the business rules — not the HTTP layer — owning the refusals:
+
+- **Who may touch whom.** Superusers are managed by superusers only, for every verb including creation
+  (§6.3's least-privilege list, made concrete). A role grant must be a **subset of the caller's own
+  effective permissions**: the seeded catalogue makes this exact — a plain `admin` holds every code the
+  `admin` role has, so it can grant `admin`, while `super_admin` is grantable only by a superuser (whose
+  effective set is every code, C20). Nobody edits their own `role_ids`/`is_active` through this API —
+  self-demotion is refused on purpose; own profile fields (name, email, phone) stay editable.
+- **The one account the platform refuses to lose.** The last active super-admin cannot be deactivated or
+  deleted (409), whoever asks. The check runs before the self rules — so a last super-admin deactivating
+  *themselves* hears the platform's reason, not "no self-changes" — and after the target rule, so an
+  unauthorized caller learns nothing about super-admin counts.
+- **Deletion is soft and final** (BP-6.1b, §7.3): the row survives for audit, every session ends in the
+  same commit (`admin`, F030's primitive), GET-by-id answers 404, and the email stays occupied — an
+  account is never silently reborn.
+- **The directory list filters in SQL** (BP-8.2): ILIKE search with escaped wildcards, a
+  `sort` allowlist with `id` as the tiebreaker (offset pagination needs a *total* order), and a
+  `total` counted from the same criteria the rows come from — the footer and the page cannot disagree
+  (ARCHITECTURE §10). Soft-deleted rows are audit material, not directory entries.
+- **Creation and reset install temporary credentials** exactly once (BP-6.1b): shown in the response
+  only when the server generated them, `must_change_password=true`, and the policy runs before the hash —
+  F030's exception classes, rendered as the same field-addressable 422s.
+
+Two kinds of 403 live here, and the difference is deliberate: the *guard's* 403 says "you do not hold the
+code this endpoint needs" and stays generic (F031); the *rule* 403s describe the rule a permitted caller
+hit (escalation, protected account, self-changes). Conflicts are 409; field problems are 422 in the same
+shape the forms already map. Audit events are **not** written yet — F043 owns the store and must backfill
+them (recorded in C22 and the F033 handoff).
+
 ## 7. Extension boundaries (the reason this is a foundation)
 
 Stage B adds construction modules against these interfaces; the foundation must not need rewriting. Interfaces
@@ -922,6 +954,22 @@ be the thing that proves re-reads.
   `configure({ asyncUtilTimeout: 3000 })`: Vitest isolates module state per test file, so the raised
   default cannot leak into other suites.
 
+### An UPDATE makes `updated_at` cost IO — and a rollback empties the map (F033)
+
+Two more async-ORM traps, both found while serialising the admin API's responses:
+
+- **`TimestampMixin.updated_at` is a SQL-expression `onupdate`.** After an ORM UPDATE, SQLAlchemy marks
+  the attribute *expired* (the database computed it); the response builder's first read of it is a lazy
+  refresh — a `MissingGreenlet` in async code. A service that returns a just-updated row therefore
+  `await session.refresh(row)` after the commit before anything serialises it
+  (`services/users.py::update_user`). In the sync world this was an invisible extra SELECT.
+- **A service-level `session.rollback()` empties the identity map for everyone sharing it.** When the
+  unique index answers a duplicate email, the service rolls the poisoned transaction back — correct, and
+  per-request sessions make it invisible in production. In tests the session is *shared* with the test
+  body, so every captured ORM object is expired and the next attribute access is IO. The F031 lesson
+  repeats one level up: capture ids before a request that may roll back, and re-read rows with
+  `populate_existing` (or `expunge_all`) instead of trusting in-memory state across it.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -941,6 +989,8 @@ be the thing that proves re-reads.
   forced change, the re-authentication throttle, the one-commit rotate-and-revoke, the admin-reset
   semantics — C19, §3), **F031 the authorization guards** (the union via `effective_permissions`,
   the `is_superuser` expansion as break-glass, the fail-closed dependency defaulting with the auth
-  router as the staged exemption list, `require_permission`, `/auth/me` — C20, §6), and **F032 the
+  router as the staged exemption list, `require_permission`, `/auth/me` — C20, §6), **F032 the
   session layer in the SPA** (the four-status session provider, the 401 re-resolution handler, the
-  CSRF interceptor, the login/forced-change standalone routes and the account menu — C21, §5).
+  CSRF interceptor, the login/forced-change standalone routes and the account menu — C21, §5), and
+  **F033 the admin user directory** (the six guarded endpoints with their privilege rules, soft
+  deletion, and the SQL-filtered paginated list — C22, §6).

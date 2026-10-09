@@ -5,6 +5,62 @@ export type ClientOptions = {
 };
 
 /**
+ * AdminUserItem
+ *
+ * One account, as every admin endpoint returns it.
+ */
+export type AdminUserItem = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Is Deleted
+     */
+    is_deleted: boolean;
+    /**
+     * Is Superuser
+     */
+    is_superuser: boolean;
+    /**
+     * Last Login At
+     */
+    last_login_at: string | null;
+    /**
+     * Must Change Password
+     */
+    must_change_password: boolean;
+    /**
+     * Phone
+     */
+    phone: string | null;
+    /**
+     * Roles
+     */
+    roles: Array<RoleRef>;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
  * AuthenticatedUser
  *
  * Who just signed in — identity only.
@@ -48,6 +104,47 @@ export type ChangePasswordRequest = {
      * New Password
      */
     new_password: string;
+};
+
+/**
+ * CreateUserRequest
+ */
+export type CreateUserRequest = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Is Superuser
+     */
+    is_superuser?: boolean;
+    /**
+     * Password
+     */
+    password?: string | null;
+    /**
+     * Phone
+     */
+    phone?: string | null;
+    /**
+     * Role Ids
+     */
+    role_ids?: Array<string>;
+};
+
+/**
+ * CreateUserResponse
+ */
+export type CreateUserResponse = {
+    /**
+     * Temporary Password
+     */
+    temporary_password: string | null;
+    user: AdminUserItem;
 };
 
 /**
@@ -160,6 +257,87 @@ export type MeResponse = {
 };
 
 /**
+ * ResetPasswordResponse
+ */
+export type ResetPasswordResponse = {
+    /**
+     * Temporary Password
+     */
+    temporary_password: string;
+};
+
+/**
+ * RoleRef
+ *
+ * A role as the directory shows it: what to display and what to submit.
+ */
+export type RoleRef = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * UpdateUserRequest
+ *
+ * A partial edit. Absence and explicit ``null`` differ: an absent field
+ * is untouched, ``"phone": null`` clears the phone. The endpoint reads
+ * ``model_fields_set`` — the model itself cannot express the difference.
+ */
+export type UpdateUserRequest = {
+    /**
+     * Email
+     */
+    email?: string | null;
+    /**
+     * Full Name
+     */
+    full_name?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Phone
+     */
+    phone?: string | null;
+    /**
+     * Role Ids
+     */
+    role_ids?: Array<string> | null;
+};
+
+/**
+ * UserListResponse
+ *
+ * One page of the directory, with the server's total — the footer count
+ * and the page contents can therefore never disagree (ARCHITECTURE §10).
+ */
+export type UserListResponse = {
+    /**
+     * Items
+     */
+    items: Array<AdminUserItem>;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Page Size
+     */
+    page_size: number;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -186,6 +364,277 @@ export type ValidationError = {
      */
     type: string;
 };
+
+export type ListUsersApiV1AdminUsersGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Page Size
+         */
+        page_size?: number;
+        /**
+         * Search
+         */
+        search?: string | null;
+        /**
+         * Is Active
+         */
+        is_active?: boolean | null;
+        /**
+         * Sort
+         */
+        sort?: 'full_name' | 'email' | 'created_at' | 'last_login_at';
+        /**
+         * Order
+         */
+        order?: 'asc' | 'desc';
+    };
+    url: '/api/v1/admin/users';
+};
+
+export type ListUsersApiV1AdminUsersGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the users.read permission.
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListUsersApiV1AdminUsersGetError = ListUsersApiV1AdminUsersGetErrors[keyof ListUsersApiV1AdminUsersGetErrors];
+
+export type ListUsersApiV1AdminUsersGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserListResponse;
+};
+
+export type ListUsersApiV1AdminUsersGetResponse = ListUsersApiV1AdminUsersGetResponses[keyof ListUsersApiV1AdminUsersGetResponses];
+
+export type CreateUserApiV1AdminUsersPostData = {
+    body: CreateUserRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/users';
+};
+
+export type CreateUserApiV1AdminUsersPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing users.create, creating a super-admin without being one, or granting a role that exceeds the caller's own permissions.
+     */
+    403: unknown;
+    /**
+     * The email address is already in use.
+     */
+    409: unknown;
+    /**
+     * Shape errors, unknown role ids, or a policy-refused password.
+     */
+    422: unknown;
+};
+
+export type CreateUserApiV1AdminUsersPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: CreateUserResponse;
+};
+
+export type CreateUserApiV1AdminUsersPostResponse = CreateUserApiV1AdminUsersPostResponses[keyof CreateUserApiV1AdminUsersPostResponses];
+
+export type DeleteUserApiV1AdminUsersUserIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * User Id
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/users/{user_id}';
+};
+
+export type DeleteUserApiV1AdminUsersUserIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing users.deactivate, or a self/last-super-admin refusal.
+     */
+    403: unknown;
+    /**
+     * No such user.
+     */
+    404: unknown;
+    /**
+     * The account is the last active super-admin.
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteUserApiV1AdminUsersUserIdDeleteError = DeleteUserApiV1AdminUsersUserIdDeleteErrors[keyof DeleteUserApiV1AdminUsersUserIdDeleteErrors];
+
+export type DeleteUserApiV1AdminUsersUserIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteUserApiV1AdminUsersUserIdDeleteResponse = DeleteUserApiV1AdminUsersUserIdDeleteResponses[keyof DeleteUserApiV1AdminUsersUserIdDeleteResponses];
+
+export type GetUserApiV1AdminUsersUserIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * User Id
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/users/{user_id}';
+};
+
+export type GetUserApiV1AdminUsersUserIdGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the users.read permission.
+     */
+    403: unknown;
+    /**
+     * No such user (soft-deleted accounts answer 404 too).
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetUserApiV1AdminUsersUserIdGetError = GetUserApiV1AdminUsersUserIdGetErrors[keyof GetUserApiV1AdminUsersUserIdGetErrors];
+
+export type GetUserApiV1AdminUsersUserIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdminUserItem;
+};
+
+export type GetUserApiV1AdminUsersUserIdGetResponse = GetUserApiV1AdminUsersUserIdGetResponses[keyof GetUserApiV1AdminUsersUserIdGetResponses];
+
+export type UpdateUserApiV1AdminUsersUserIdPatchData = {
+    body: UpdateUserRequest;
+    path: {
+        /**
+         * User Id
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/users/{user_id}';
+};
+
+export type UpdateUserApiV1AdminUsersUserIdPatchErrors = {
+    /**
+     * An empty edit (no fields set).
+     */
+    400: unknown;
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing users.update (or users.deactivate for the is_active toggle), a protected account, an escalation attempt, or a self-change of roles/status.
+     */
+    403: unknown;
+    /**
+     * No such user.
+     */
+    404: unknown;
+    /**
+     * The email address is already in use.
+     */
+    409: unknown;
+    /**
+     * Shape errors or unknown role ids.
+     */
+    422: unknown;
+};
+
+export type UpdateUserApiV1AdminUsersUserIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdminUserItem;
+};
+
+export type UpdateUserApiV1AdminUsersUserIdPatchResponse = UpdateUserApiV1AdminUsersUserIdPatchResponses[keyof UpdateUserApiV1AdminUsersUserIdPatchResponses];
+
+export type ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostData = {
+    body?: never;
+    path: {
+        /**
+         * User Id
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/users/{user_id}/reset-password';
+};
+
+export type ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing users.reset_password, or a protected super-admin account.
+     */
+    403: unknown;
+    /**
+     * No such user.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostError = ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostErrors[keyof ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostErrors];
+
+export type ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ResetPasswordResponse;
+};
+
+export type ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostResponse = ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostResponses[keyof ResetPasswordEndpointApiV1AdminUsersUserIdResetPasswordPostResponses];
 
 export type ChangePasswordApiV1AuthChangePasswordPostData = {
     body: ChangePasswordRequest;

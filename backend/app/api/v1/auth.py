@@ -39,6 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # ``/auth/me`` is how the SPA learns the flag is set). Regular endpoints get
 # the gate by default — see ``app/api/v1/dependencies.py``.
 from app.api.v1.dependencies import authenticated_session, optional_session
+from app.api.v1.errors import field_error
 from app.core.cookies import clear_session_cookies, set_session_cookies
 from app.core.database import get_session
 from app.core.permissions import effective_permissions
@@ -63,19 +64,6 @@ router = APIRouter(prefix="/auth")
 INVALID_CREDENTIALS_DETAIL = "Invalid email or password."
 RATE_LIMITED_DETAIL = "Too many login attempts. Try again later."
 PASSWORD_RATE_LIMITED_DETAIL = "Too many password attempts. Try again later."
-
-
-def _field_error(field: str, message: str) -> dict[str, object]:
-    """One Pydantic-shaped 422 entry — deliberately without ``input``.
-
-    Pydantic's own validation errors echo the offending value in ``input``;
-    for credential fields that value is a password, and a response body is
-    the last place it belongs. ``loc``/``msg``/``type`` is everything the
-    frontend's field mapper reads (``frontend/src/lib/errors.ts``), so
-    omitting ``input`` changes nothing for the client and everything for
-    "never echo a credential".
-    """
-    return {"type": "value_error", "loc": ["body", field], "msg": message}
 
 
 @router.post(
@@ -205,12 +193,12 @@ async def change_password(
     except InvalidCurrentPassword as invalid:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=[_field_error("current_password", "Current password is incorrect.")],
+            detail=[field_error("current_password", "Current password is incorrect.")],
         ) from invalid
     except PasswordPolicyViolation as violation:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=[_field_error("new_password", message) for message in violation.violations],
+            detail=[field_error("new_password", message) for message in violation.violations],
         ) from violation
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)

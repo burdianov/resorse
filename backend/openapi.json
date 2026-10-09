@@ -1,6 +1,96 @@
 {
   "components": {
     "schemas": {
+      "AdminUserItem": {
+        "description": "One account, as every admin endpoint returns it.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_deleted": {
+            "title": "Is Deleted",
+            "type": "boolean"
+          },
+          "is_superuser": {
+            "title": "Is Superuser",
+            "type": "boolean"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "must_change_password": {
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/RoleRef"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "phone",
+          "is_active",
+          "is_deleted",
+          "is_superuser",
+          "must_change_password",
+          "last_login_at",
+          "created_at",
+          "updated_at",
+          "roles"
+        ],
+        "title": "AdminUserItem",
+        "type": "object"
+      },
       "AuthenticatedUser": {
         "description": "Who just signed in — identity only.\n\nNo roles and no permissions: the effective permission union is resolved by\nF031's dependency and served by ``/auth/me``. Login answers \"here is your\nsession\", not \"here is everything about you\"; a second round trip after\nsign-in is the honest cost of keeping one definition of the access set.",
         "properties": {
@@ -52,6 +142,89 @@
           "new_password"
         ],
         "title": "ChangePasswordRequest",
+        "type": "object"
+      },
+      "CreateUserRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "is_superuser": {
+            "default": false,
+            "title": "Is Superuser",
+            "type": "boolean"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "role_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Role Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "email",
+          "full_name"
+        ],
+        "title": "CreateUserRequest",
+        "type": "object"
+      },
+      "CreateUserResponse": {
+        "properties": {
+          "temporary_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporary Password"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AdminUserItem"
+          }
+        },
+        "required": [
+          "user",
+          "temporary_password"
+        ],
+        "title": "CreateUserResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -193,6 +366,141 @@
         "title": "MeResponse",
         "type": "object"
       },
+      "ResetPasswordResponse": {
+        "properties": {
+          "temporary_password": {
+            "title": "Temporary Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "temporary_password"
+        ],
+        "title": "ResetPasswordResponse",
+        "type": "object"
+      },
+      "RoleRef": {
+        "description": "A role as the directory shows it: what to display and what to submit.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "RoleRef",
+        "type": "object"
+      },
+      "UpdateUserRequest": {
+        "description": "A partial edit. Absence and explicit ``null`` differ: an absent field\nis untouched, ``\"phone\": null`` clears the phone. The endpoint reads\n``model_fields_set`` — the model itself cannot express the difference.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "role_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Ids"
+          }
+        },
+        "title": "UpdateUserRequest",
+        "type": "object"
+      },
+      "UserListResponse": {
+        "description": "One page of the directory, with the server's total — the footer count\nand the page contents can therefore never disagree (ARCHITECTURE §10).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminUserItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "UserListResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -241,6 +549,386 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/users": {
+      "get": {
+        "description": "One page of accounts, newest first by default.\n\nSoft-deleted accounts never appear — they are audit material (F024), not\ndirectory entries. ``total`` counts everything the filters match, so the\ntable footer can count without lying (ARCHITECTURE §10).",
+        "operationId": "list_users_api_v1_admin_users_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "created_at",
+              "enum": [
+                "full_name",
+                "email",
+                "created_at",
+                "last_login_at"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the users.read permission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List the user directory",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "Create the account; the response carries the temporary password\n**exactly once**, and only when the server generated it (an admin who\nsupplied one already has it). The account starts ``must_change_password``.",
+        "operationId": "create_user_api_v1_admin_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing users.create, creating a super-admin without being one, or granting a role that exceeds the caller's own permissions."
+          },
+          "409": {
+            "description": "The email address is already in use."
+          },
+          "422": {
+            "description": "Shape errors, unknown role ids, or a policy-refused password."
+          }
+        },
+        "summary": "Create an account with a temporary password",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}": {
+      "delete": {
+        "description": "Deactivates and marks deleted — the row survives for audit, sessions\nend, and the email stays occupied (an account is never silently reborn).",
+        "operationId": "delete_user_api_v1_admin_users__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing users.deactivate, or a self/last-super-admin refusal."
+          },
+          "404": {
+            "description": "No such user."
+          },
+          "409": {
+            "description": "The account is the last active super-admin."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Soft-delete an account",
+        "tags": [
+          "admin"
+        ]
+      },
+      "get": {
+        "operationId": "get_user_api_v1_admin_users__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the users.read permission."
+          },
+          "404": {
+            "description": "No such user (soft-deleted accounts answer 404 too)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One account",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "description": "A partial edit; ``role_ids`` replaces the whole role set when present.\n\nFlipping ``is_active`` additionally requires ``users.deactivate`` — the\nrouter guard cannot know which fields a payload will touch, so the\nservice raises ``MissingPermission`` and the translator answers the\ngeneric permission 403.",
+        "operationId": "update_user_api_v1_admin_users__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "An empty edit (no fields set)."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing users.update (or users.deactivate for the is_active toggle), a protected account, an escalation attempt, or a self-change of roles/status."
+          },
+          "404": {
+            "description": "No such user."
+          },
+          "409": {
+            "description": "The email address is already in use."
+          },
+          "422": {
+            "description": "Shape errors or unknown role ids."
+          }
+        },
+        "summary": "Edit an account",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/reset-password": {
+      "post": {
+        "description": "The recovery path (no email flow exists): a generated temporary\ncredential shown **exactly once**, a forced change at next sign-in, and\nevery session of the target revoked (F030's mechanics, reason ``admin``).",
+        "operationId": "reset_password_endpoint_api_v1_admin_users__user_id__reset_password_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetPasswordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing users.reset_password, or a protected super-admin account."
+          },
+          "404": {
+            "description": "No such user."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset a user's password",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/auth/change-password": {
       "post": {
         "description": "Change the caller's own password — the forced first-login flow and\nProfile > Security are the same request.\n\n204 with a **fresh cookie pair**: the session that asked is rotated (a\nnew ID, same family), every *other* session of the account is revoked\n(``password_change``), and ``must_change_password`` clears — one commit\nin the service. Refusals are field-addressable 422s (wrong current\npassword, policy violations, new equals current); a wrong current\npassword is deliberately *not* a 401, which this API reserves for \"your\nsession is over\" — a typo must not sign the user out. The current\npassword is itself throttled (its own bucket, 429 with ``Retry-After``),\nbecause a stolen session must not become a password oracle.",
