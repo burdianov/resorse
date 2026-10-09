@@ -10,6 +10,7 @@ the rate-limit buckets. Each later group arrives with the task that owns it.
 """
 
 from app.models.identity import Permission, Role, User, role_permissions, user_roles
+from app.models.preferences import UserPreference
 from app.models.rate_limit import RateLimitBucket
 from app.models.session import REVOCATION_REASONS, UserSession
 from app.models.settings import AppSetting
@@ -21,6 +22,7 @@ __all__ = [
     "RateLimitBucket",
     "Role",
     "User",
+    "UserPreference",
     "UserSession",
     "role_permissions",
     "user_roles",

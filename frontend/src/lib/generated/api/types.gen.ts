@@ -343,6 +343,42 @@ export type PermissionListResponse = {
 };
 
 /**
+ * PreferenceItem
+ */
+export type PreferenceItem = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Value
+     */
+    value: unknown;
+};
+
+/**
+ * PreferencesResponse
+ *
+ * Every preference of the signed-in user — and only theirs.
+ */
+export type PreferencesResponse = {
+    /**
+     * Items
+     */
+    items: Array<PreferenceItem>;
+};
+
+/**
+ * PutPreferenceRequest
+ */
+export type PutPreferenceRequest = {
+    /**
+     * Value
+     */
+    value: unknown;
+};
+
+/**
  * ResetPasswordResponse
  */
 export type ResetPasswordResponse = {
@@ -437,6 +473,30 @@ export type SettingsResponse = {
     values: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * UpdateMeRequest
+ *
+ * Self-service profile edit (F041, §7.6): the fields a user owns.
+ *
+ * **Email is absent on purpose** — it is admin-managed (§7.3, F033), and
+ * ``extra="forbid"`` makes a payload that tries anyway a 422 at the unknown
+ * field instead of a silent no-op: the one thing worse than "you cannot
+ * change this here" is "we accepted it and nothing happened".
+ *
+ * Absence and explicit ``null`` differ, the F033 convention: an absent
+ * field is untouched; ``"phone": null`` clears the phone.
+ */
+export type UpdateMeRequest = {
+    /**
+     * Full Name
+     */
+    full_name?: string | null;
+    /**
+     * Phone
+     */
+    phone?: string | null;
 };
 
 /**
@@ -1463,6 +1523,140 @@ export type MeApiV1AuthMeGetResponses = {
 };
 
 export type MeApiV1AuthMeGetResponse = MeApiV1AuthMeGetResponses[keyof MeApiV1AuthMeGetResponses];
+
+export type UpdateMeApiV1AuthMePatchData = {
+    body: UpdateMeRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/me';
+};
+
+export type UpdateMeApiV1AuthMePatchErrors = {
+    /**
+     * An empty edit (no fields set).
+     */
+    400: unknown;
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Password change pending (regular endpoints are gated).
+     */
+    403: unknown;
+    /**
+     * Unknown fields (email is admin-managed) or shape errors.
+     */
+    422: unknown;
+};
+
+export type UpdateMeApiV1AuthMePatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeResponse;
+};
+
+export type UpdateMeApiV1AuthMePatchResponse = UpdateMeApiV1AuthMePatchResponses[keyof UpdateMeApiV1AuthMePatchResponses];
+
+export type ListPreferencesApiV1AuthMePreferencesGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/me/preferences';
+};
+
+export type ListPreferencesApiV1AuthMePreferencesGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Password change pending.
+     */
+    403: unknown;
+};
+
+export type ListPreferencesApiV1AuthMePreferencesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PreferencesResponse;
+};
+
+export type ListPreferencesApiV1AuthMePreferencesGetResponse = ListPreferencesApiV1AuthMePreferencesGetResponses[keyof ListPreferencesApiV1AuthMePreferencesGetResponses];
+
+export type DeletePreferenceApiV1AuthMePreferencesKeyDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Key
+         */
+        key: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/me/preferences/{key}';
+};
+
+export type DeletePreferenceApiV1AuthMePreferencesKeyDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Password change pending.
+     */
+    403: unknown;
+    /**
+     * Malformed key.
+     */
+    422: unknown;
+};
+
+export type DeletePreferenceApiV1AuthMePreferencesKeyDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeletePreferenceApiV1AuthMePreferencesKeyDeleteResponse = DeletePreferenceApiV1AuthMePreferencesKeyDeleteResponses[keyof DeletePreferenceApiV1AuthMePreferencesKeyDeleteResponses];
+
+export type PutPreferenceApiV1AuthMePreferencesKeyPutData = {
+    body: PutPreferenceRequest;
+    path: {
+        /**
+         * Key
+         */
+        key: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/me/preferences/{key}';
+};
+
+export type PutPreferenceApiV1AuthMePreferencesKeyPutErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Password change pending.
+     */
+    403: unknown;
+    /**
+     * Malformed key, a null value, or an oversized value.
+     */
+    422: unknown;
+};
+
+export type PutPreferenceApiV1AuthMePreferencesKeyPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: PreferenceItem;
+};
+
+export type PutPreferenceApiV1AuthMePreferencesKeyPutResponse = PutPreferenceApiV1AuthMePreferencesKeyPutResponses[keyof PutPreferenceApiV1AuthMePreferencesKeyPutResponses];
 
 export type HealthApiV1HealthGetData = {
     body?: never;

@@ -87,3 +87,21 @@ class MeResponse(AuthenticatedUser):
     is_superuser: bool
     roles: list[str]
     permissions: list[str]
+
+
+class UpdateMeRequest(BaseModel):
+    """Self-service profile edit (F041, §7.6): the fields a user owns.
+
+    **Email is absent on purpose** — it is admin-managed (§7.3, F033), and
+    ``extra="forbid"`` makes a payload that tries anyway a 422 at the unknown
+    field instead of a silent no-op: the one thing worse than "you cannot
+    change this here" is "we accepted it and nothing happened".
+
+    Absence and explicit ``null`` differ, the F033 convention: an absent
+    field is untouched; ``"phone": null`` clears the phone.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str | None = Field(default=None, min_length=1, max_length=200)
+    phone: str | None = Field(default=None, max_length=32)

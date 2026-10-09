@@ -38,7 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # be possible, the change-password endpoint is the forced change itself, and
 # ``/auth/me`` is how the SPA learns the flag is set). Regular endpoints get
 # the gate by default — see ``app/api/v1/dependencies.py``.
-from app.api.v1.dependencies import authenticated_session, optional_session
+from app.api.v1.dependencies import authenticated_session, current_session, optional_session
 from app.api.v1.errors import field_error
 from app.core.cookies import clear_session_cookies, set_session_cookies
 from app.core.database import get_session
@@ -49,7 +49,9 @@ from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
     MeResponse,
+    UpdateMeRequest,
 )
+from app.services import users as users_service
 from app.services.auth import InvalidCredentials, LoginRateLimited, log_in
 from app.services.passwords import (
     InvalidCurrentPassword,
@@ -260,6 +262,48 @@ async def me(
     real answer).
     """
     user = context.user
+    return MeResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        must_change_password=user.must_change_password,
+        phone=user.phone,
+        is_superuser=user.is_superuser,
+        roles=sorted(role.name for role in user.roles),
+        permissions=sorted(effective_permissions(user)),
+    )
+
+
+@router.patch(
+    "/me",
+    response_model=MeResponse,
+    summary="Edit your own profile",
+    responses={
+        400: {"description": "An empty edit (no fields set)."},
+        401: {"description": "No usable session was presented."},
+        403: {"description": "Password change pending (regular endpoints are gated)."},
+        422: {"description": "Unknown fields (email is admin-managed) or shape errors."},
+    },
+)
+async def update_me(
+    payload: UpdateMeRequest,
+    context: Annotated[SessionContext, Depends(current_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MeResponse:
+    """Full name and phone — the fields a user owns (§7.6).
+
+    Uses the **gated** `current_session`, unlike the GET: editing a profile is
+    a regular mutation and the forced password change outranks it (C30). The
+    response is the same `MeResponse` the GET serves, so a client that just
+    saved has the fresh identity without a follow-up read.
+    """
+    changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No changes were submitted.",
+        )
+    user = await users_service.update_own_profile(session, user=context.user, changes=changes)
     return MeResponse(
         id=user.id,
         email=user.email,

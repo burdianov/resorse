@@ -281,6 +281,29 @@ async def update_user(
     return target
 
 
+async def update_own_profile(
+    session: AsyncSession,
+    *,
+    user: User,
+    changes: dict[str, Any],
+) -> User:
+    """Self-service field assignment (F041): full name and phone.
+
+    Thin on purpose — the *rules* live at the boundaries: the schema forbids
+    unknown fields (email is admin-managed, §7.3) and the endpoint's gate
+    (`current_session`) keeps the forced change ahead of it. What is left is
+    exactly this: apply the submitted fields, commit once, return the row.
+    """
+    if "full_name" in changes and changes["full_name"] is not None:
+        user.full_name = changes["full_name"].strip()
+    if "phone" in changes:
+        phone = changes["phone"]
+        user.phone = phone.strip() if isinstance(phone, str) and phone.strip() else None
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
 async def delete_user(session: AsyncSession, *, actor: User, target: User) -> None:
     """Soft-delete: the row survives for audit, the account stops existing
     for everyone else (login refuses, the list hides it, the email stays

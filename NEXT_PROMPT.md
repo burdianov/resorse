@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F040.
+> Last updated: 2026-10-10 — after task F041.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F041 in
-claude_code_pack/TASKS.md. Implement F041 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F042 in
+claude_code_pack/TASKS.md. Implement F042 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F041` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F042` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,32 +67,33 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F040 — Settings UI** (`/admin/settings` — Card sections under ONE form/save because
-  the wire is one bare-map PUT (C29); the form is **nested where the wire is flat** (RHF reads dotted
-  field names as paths while `reset` stores verbatim — the flat-schema first draft validated seeds and
-  ignored typing; ARCHITECTURE §12 records the trap) with `toRegistryPayload` rebuilding the flat map at
-  submit; timezone suggests real IANA zones via `Intl.supportedValuesOf`; read-only without
-  `settings.manage`; **consumption deferred** to F047/F048 with the record in C29 — the shell keeps
-  `config/branding.ts` for now). Route registered (fourth admin route). +6 frontend tests (**472
-  passing**); backend unchanged (212).
-- **Next task: F041 — Profile API.** "Own profile and preferences API with isolation." Accept
-  (TASKS.md): "Cross-user access denied". BP-7.6 fixes the surface: `/auth/me`'s `PATCH` (self fields
-  constrained by policy — full name, phone; email is admin-managed per §7.3) and the **preferences**
-  API (`user_preferences` JSONB keyed by (`user_id`,`key`) with a unique constraint — §8.2's data
-  model; themes/table prefs/rows-per-page/date format/notification display prefs are F048's UI
-  consumers). F041 owns: the `user_preferences` model + **migration `0006`**, the endpoints
-  (`PATCH /auth/me` extending F031's `/auth/me` router file; `GET/PUT/DELETE /auth/me/preferences`
-  per §8.3's `GET /auth/me/preferences`, `PUT /auth/me/preferences/{key}`, `DELETE
-  /auth/me/preferences/{key}` — decide per-key shape vs bulk in C30), **self-only isolation at the SQL
-  level** (the acceptance: every query filters by the session's user id — never a cross-user fetch
-  filtered in Python, BP-8.2), value types per key (JSONB is permissive — decide whether a registry
-  like F039's governs preference keys or free-form keys with a size/shape cap; recommend a cap +
-  reserved-key namespace), and the forced-change gate note (these endpoints use `current_session` —
-  gated by default per F031 — decide whether profile edits should be reachable mid-forced-change;
-  recommend NO, they are regular endpoints). Also decide whether preference keys echo F039's display
-  keys (theme etc. have local-only lives until F048 reconciles them per ARCHITECTURE §5's theme note).
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F040 sits on top of
-  `defbda1` (F039).
+- Last completed: **F041 — Profile API** (`PATCH /auth/me` (full name + phone, `extra="forbid"` so an
+  email attempt is a 422, not a silent no-op; response = the same `MeResponse` the GET serves) and the
+  preferences API (`user_preferences`, **migration `0006`**: JSONB under a unique `(user_id, key)`,
+  free-form vocabulary by design — C30 contrasts it with settings' registry — with the key pattern
+  enforced at API and CHECK, an 8 KiB serialized value cap, null refused (deleting IS the nulling),
+  `GET/PUT/DELETE /auth/me/preferences[/{key}]`, DELETE **idempotent 204**; isolation is structural —
+  the service takes the user id from the session, every query filters by it in SQL, and the acceptance
+  test runs two users on one key). Gating split (C30): `GET /auth/me` stays exempt during a forced
+  change; `PATCH /auth/me` and all preferences endpoints take the gate. `ON DELETE CASCADE` on
+  preferences (personal data, no audit value — the mirror of settings' SET NULL). DECISIONS C30; +8
+  backend tests (**220 passing**); frontend unchanged (472); `openapi.json` + types regenerated).
+- **Next task: F042 — Profile UI.** "Profile and security page with editable allowed fields." Accept
+  (TASKS.md): "Save/error tests". BP-7.6/§4's page tree: `/profile` (card with name/email/roles/active/
+  created info, editable self fields — full name, phone — view-only effective permissions as
+  appropriate, security CTA) and `/profile/security` (own password change — **reuse the F032
+  `ChangePasswordPage` or link to `/change-password`**; session security info if cheap). Route
+  registration for BOTH pages (`requiredPermissions: []` — any signed-in user; NOT under /admin;
+  showInNavigation: false per §4's nav spec — "profile is accessible from the top-right and
+  sidebar-footer avatar menus"; wire the account-menu's profile item that F032 deliberately left
+  unlinked). Decisions to record (C31): how /profile and /profile/security split (or one page with a
+  security card); whether the effective-permissions view is a list or grouped; profile fields use
+  the F041 PATCH with the same nested/none-dotted RHF shape (no dots in these field names — plain
+  form). Consumption note: `/profile` is the natural first consumer of the preferences API (F048
+  still owns table prefs) — keep F042 to profile fields + links; do not build the theme/profile-prefs
+  UI here.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F041 sits on top of
+  `4ae921a` (the F040 byte repair).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -213,6 +214,14 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **Profile and preferences are live (F041):** `PATCH /auth/me` — full name/phone only,
+  `extra="forbid"` (email stays admin-managed; an attempt is 422, never a silent no-op), response is
+  the full `MeResponse`. Preferences: `user_preferences` (**migration `0006`**) — JSONB under unique
+  `(user_id, key)` (free-form keys, lowercase dotted shape enforced twice, 8 KiB value cap, JSON null
+  refused), `GET/PUT/DELETE /auth/me/preferences[/{key}]` with **idempotent 204** deletes; isolation
+  is structural (session-derived id, SQL filters; two-users-one-key test). Gating: `GET /auth/me`
+  exempt during a forced change; `PATCH /auth/me` + preferences take the gate. **Tests:** 8 new in
+  `tests/test_profile_api.py`, `uv run pytest` is now **220 passed**.
 - **The settings editor is live (F040):** `/admin/settings` — Branding + Display **Card sections**
   under **one** form and one Save (the wire is one bare-map PUT; per-card saves would be partial
   success in costume). The form is **nested where the wire is flat** (C29): RHF reads dotted field
@@ -544,6 +553,11 @@ the archive original — `sha256sum` both to check):
   while the server validates; read-only without `settings.manage`; consumption deferred to F047/F048
   with its reason — a non-admin cannot read the admin settings endpoint), same date and same basis;
   rationale in ARCHITECTURE §5/§12.
+- **C30** — F041's profile and preferences (`PATCH /auth/me` owned-fields-only with
+  `extra="forbid"`; the `0006` `user_preferences` table with the free-form vocabulary (contrast
+  with settings' registry), key pattern + 8 KiB cap + null-refusal, idempotent DELETE, structural
+  session-scoped isolation, CASCADE edges, and the gating split where only `GET /auth/me` is
+  exempt), same date and same basis; rationale in ARCHITECTURE §5.
 - **C26** — F037's permission dictionary (the in-use freeze — rename and delete both 409 while granted;
   descriptions free; refused-not-normalised codes against the model's own pattern; duplicates via the
   unique index's 409; **no subset rule by design** — grants are where escalation lives; seed
@@ -644,6 +658,11 @@ the archive original — `sha256sum` both to check):
   filter (its counts are loaded rows), one always-on server sort, and row actions through
   `DataTableRowActions`. Permission mirrors hide controls the caller cannot use; they never replace the
   server's check. Preferences keys are per screen (`admin-users` today).
+- **F041's ownership rules are F042's contract (C30):** profile edits go through `PATCH /auth/me`
+  (never a preferences key for name/phone); preference keys are lowercase dotted strings the
+  frontend owns — F048 must keep its keys within that shape and its values under 8 KiB; the
+  preferences API is session-scoped by construction, so no UI needs to pass a user id; forced-change
+  users cannot reach any of it except `GET /auth/me`.
 - **The settings-editor pattern is F041+'s canvas (F040, C29):** nested form where the schema's
   names are dotted, flat payload at the wire; one form per atomic write; read-only without the
   manage code; suggestions come from real sources (browser lists), never hand-kept tables.
@@ -797,6 +816,33 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F041 — Profile API.** The endpoints behind `/profile` and `/profile/security`'s data needs, split
+  along one ownership rule each (C30). **`PATCH /auth/me`** joins F031's `/auth/me` in the auth
+  router and edits exactly the fields a user owns — full name and phone; **email is admin-managed**
+  (§7.3), and `extra="forbid"` makes a payload trying anyway a 422 at the unknown field instead of
+  the silent no-op that "we accepted it and nothing happened" would be; absence vs explicit null
+  follows the F033 convention (null clears the phone); the response is the same `MeResponse` the GET
+  serves, so a client that just saved has the fresh identity. **Preferences** are the `0006`
+  `user_preferences` table — JSONB values under a unique `(user_id, key)`, §8.2's model — with a
+  **free-form vocabulary by deliberate contrast with settings' registry**: a preference is personal
+  display data with no authority, and the moment a key carried authority it would be a setting
+  instead. The guards are the key's lowercase dotted/dashed/underscored shape (the model's pattern,
+  enforced by the API as a 422 at `loc ["path","key"]` and by a database CHECK), a serialized value
+  cap of 8 KiB (422, not a parse problem), and the refusal of JSON null — deleting the key IS the
+  nulling, because "no preference" must have one spelling. The three endpoints are §8.3's:
+  `GET /auth/me/preferences`, `PUT /auth/me/preferences/{key}` (upsert, returns the item), `DELETE`
+  (**idempotent 204** — the goal state holds whether or not a row existed; a malformed key is still
+  a 422). **Isolation is structural, not a filter**: the service's functions take the user id from
+  the session — there is no parameter through which another user's id could arrive — and every query
+  filters by it in SQL (BP-8.2); the acceptance runs two users on the same key and asserts each
+  other's snapshots stay byte-identical. **The gating split** (C30's second half): `GET /auth/me`
+  stays on the forced-change exemption list (the SPA reads the flag there), while `PATCH /auth/me`
+  and every preferences endpoint take the gated `current_session` — they are regular mutations. The
+  CASCADE edge is the deliberate mirror of settings' SET NULL: a deleted user's display preferences
+  are personal data with no audit value. Checks run: `uv run pytest` **220 passed** (8 new in
+  `tests/test_profile_api.py`); `ruff check`/`format --check` clean; `mypy app migrations` clean (54
+  files); **migration `0006`** applied to `app_dev`, the chain round-trip clean on `app_test`;
+  `openapi.json` + generated frontend types regenerated (frontend unchanged: 472).
 - **F040 — Settings UI.** `/admin/settings` — the editor for F039's registry, shaped by what the wire
   actually is. **Card sections, one form, one save**: Branding (name, description) and Display (date
   format, timezone) render as separate cards but share a single `<form>`, because the API's write is
@@ -1476,8 +1522,8 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F039)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) → `0005` (app settings) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0005 (head)`** (`app_dev` is at `0005`; F027–F038 added no revision, **F039 added `0005`**); `uv run alembic history` shows the five revisions. **The round-trip check targets a scratch database only** — `downgrade base` drops every table it touches; derive the test URL in PowerShell: `$t = uv run python -c "from sqlalchemy.engine import make_url; from app.core.config import get_settings; print(make_url(get_settings().database_url).set(database='app_test').render_as_string(hide_password=False))"; $env:DATABASE_URL = $t; uv run alembic downgrade base; uv run alembic upgrade head; uv run alembic current` → ends **`0005 (head)`**. **Never run `downgrade base` against `app_dev`** |
-| **Backend tests (F023–F039)** | `cd D:\resors\backend; uv run pytest` | **212 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 20 admin-users + 14 admin-roles + 9 admin-permissions + 8 admin-settings tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F041)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) → `0005` (app settings) → `0006` (user preferences) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0006 (head)`** (`app_dev` is at `0006`; F027–F038 added no revision, **F039 added `0005`**, **F041 added `0006`**); `uv run alembic history` shows the six revisions. **The round-trip check targets a scratch database only** — `downgrade base` drops every table it touches; derive the test URL in PowerShell: `$t = uv run python -c "from sqlalchemy.engine import make_url; from app.core.config import get_settings; print(make_url(get_settings().database_url).set(database='app_test').render_as_string(hide_password=False))"; $env:DATABASE_URL = $t; uv run alembic downgrade base; uv run alembic upgrade head; uv run alembic current` → ends **`0006 (head)`**. **Never run `downgrade base` against `app_dev`** |
+| **Backend tests (F023–F041)** | `cd D:\resors\backend; uv run pytest` | **220 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 20 admin-users + 14 admin-roles + 9 admin-permissions + 8 admin-settings + 8 profile tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Login tests (F028)** | `cd D:\resors\backend; uv run pytest tests/test_auth_login.py` | **11 passed** — six credential-failure causes answered with the *same* 401 body, the unknown-email path proven to run a real Argon2 verification against the decoy (whose parameters are pinned current), both throttle buckets (per account and per address) incl. the identical 429 for a non-existent email, `hit_count == 5` persisted after five failures (commit-on-failure), the account-bucket reset on success, rehash-on-login, the exact cookie attributes, and 422 for malformed bodies |
 | **Session lifecycle tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_auth_sessions.py` | **13 passed** — resolution returns the user, the idle slide (committed by the resolver, capped at the absolute deadline, which never moves), expiry refused without a write, disabled users refused and left for the admin flow, rotation (same family, `rotated` + `replaced_by_id`, absolute deadline inherited), the replay killing exactly its own family as `theft_detected` while the presented row keeps `rotated`, logout (204, both cookies cleared, revoked `logout`, idempotent for junk/already-ended cookies), logout-all (401 without a session; every live row of *one* user revoked `logout_all`, others untouched), and a replay through logout still killing the family |
 | **CSRF tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_csrf_protection.py` | **11 passed** — the double-submit enforced whenever the session cookie is present (four refusal shapes, each changing nothing) and passing with no origin for scripted clients, the origin matrix refused even with a perfect double-submit (`https://evil.example`, `null`, scheme mismatch, lookalike host), the `Referer` fallback (and Origin winning when both are present), safe methods never checked, a latin-1 hostile header earning 403 not 500, login refusing a cross-site origin, and the carve-out: a dead session cookie does not lock the login form |
@@ -1505,8 +1551,10 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Permissions smoke (F037)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): create: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/admin/permissions -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"code":"reports.export","description":"Export reports."}'` | **201**; the list (`GET /api/v1/admin/permissions`) shows it sorted. The guardrails worth seeing: the same create again → **409**; `"Users.Read"` → **422** on `code` (never normalised); `DELETE` on a seeded code (e.g. `users.read`, which `super_admin` holds) → **409** `cannot be renamed or deleted`; on the just-created unused code → **204** |
 | **Settings UI tests (F040)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/settings.test.tsx` | **6 passed** — the form seeds from the snapshot (persisted values + defaults), re-seeds from the save response, refuses a too-short name locally with **no request**, maps the server's timezone 422 onto the field named after the registry key, sends one bare-map PUT with all four keys, and renders read-only without `settings.manage` |
 | **Settings tests (F039)** | `cd D:\resors\backend; uv run pytest tests/test_admin_settings.py` | **8 passed** — guards (401/403, read-only callers can read); the snapshot serves registry defaults with zero rows; a failed payload (unknown key, bad format, wrong JSON type) writes **nothing**; overrides stored trimmed with `updated_by`; partial updates leave other overrides alone; `updated_by` → NULL when the author is deleted; and the two restart proofs (expunge-and-reread through the API; write-close-reopen on its own connection) |
+| **Profile & preferences tests (F041)** | `cd D:\resors\backend; uv run pytest tests/test_profile_api.py` | **8 passed** — the gating split (only `GET /auth/me` survives a forced change); PATCH me trims, clears the phone with null, 400s an empty edit and **422s an email attempt** (extra=forbid); preference CRUD round-trips, upserts one row, deletes idempotently; key shapes and null/oversized values refused; **the acceptance: two users share one key and never see or touch each other's rows**; deleting a user cascades their preferences |
 | **Permissions UI tests (F038)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/permissions.test.tsx` | **9 passed** — the table renders and sorts/searches in the browser; no management controls without `permissions.manage`; create posts the dialog and closes; a malformed code is refused locally with **no request**; server 422/409 refusals render in the right surfaces (field, dialog root alert, confirmation-then-toast) with the draft intact |
 | **Settings smoke (F039)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): read: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/admin/settings`; write: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PUT http://localhost:8000/api/v1/admin/settings -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"branding.app_name":"Resors","display.date_format":"YYYY-MM-DD"}'` | read: **200** with all four registry keys at their defaults. write: **200** echoing the fresh snapshot; re-read returns the new values — and they **survive an API restart** (stop/start uvicorn; the row is in PostgreSQL). Refusals: `{"nope.key":"x"}` → **422** at `nope.key`; `{"display.date_format":"31/12/2026"}` → **422** at that key |
+| **Profile & preferences smoke (F041)** | with the bootstrap jar (same `<csrf>`): profile: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PATCH http://localhost:8000/api/v1/auth/me -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"full_name":"Renamed Operator"}'`; preferences: `... -X PUT http://localhost:8000/api/v1/auth/me/preferences/table.rows ... -d '{"value":25}'` | PATCH: **200** with the full MeResponse (identity + roles + permissions); `{"email":"x@y.z"}` → **422** (`extra_forbidden`); `{}` → **400**. PUT → **200** `{"key":"table.rows","value":25}`; `GET /api/v1/auth/me/preferences` lists it; `DELETE` → **204** and again → **204**; `PUT .../BadKey` → **422** at the path key |
 | Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **472 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | **Frontend auth-flow tests (F032)** | `cd D:\resors\frontend; pnpm exec vitest run tests/auth/auth-flows.test.tsx` | **14 passed** — the session boundary (anonymous redirect with intended-path return; network failure → Retry, **not** login), sign-in failures shown verbatim, local validation without a request, the forced-change landing/bounce/completion with the CSRF header asserted on the wire, 422 field mapping, mismatch refusal, both sign-out flows, the registered 401 re-resolution (one retry), and `readCsrfToken` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |

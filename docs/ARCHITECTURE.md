@@ -564,6 +564,28 @@ that matter:
   form should reach), and every secret — BP-7.5 keeps credentials in the environment. Notification
   keys arrive with F045, when their behaviour exists.
 
+### Own profile and preferences (F041)
+
+Two surfaces, one ownership rule each:
+
+- **`PATCH /auth/me`** edits exactly the fields a user owns — full name and phone; email is
+  admin-managed (§7.3), and `extra="forbid"` makes that a 422 at the unknown field rather than the
+  silent no-op that "we accepted it and nothing happened" would be. `GET /auth/me` stays on the
+  forced-change exemption list (the SPA reads the flag there); the PATCH takes the gate — it is a
+  regular mutation (C30).
+- **`user_preferences`** (migration `0006`) is JSONB values under a unique `(user_id, key)`, per
+  §8.2. The vocabulary is **free-form by design, where settings' is a registry** (C30): a preference
+  is personal display data with no authority — the moment a key carried authority it would be a
+  setting instead. The guards are the key's shape (pattern in the model: 422 from the API, CHECK in
+  the database), the value's size (8 KiB serialized), and the refusal of JSON null (delete the key
+  instead; "no preference" has one spelling). DELETE is idempotent 204 — the goal state holds.
+- **Isolation is structural, not a filter.** The service takes the user id from the session and
+  filters by it in SQL; there is no parameter through which another user's id could arrive, which is
+  a stronger claim than "we remembered to check". The acceptance test runs two users on the same key
+  and asserts byte-equal snapshots across each other's writes.
+- **CASCADE, not SET NULL** — the deliberate mirror of settings' `updated_by`: a deleted user's
+  display preferences are personal data with no audit value.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1215,4 +1237,6 @@ schema carry the same structure — mixed representations fail quietly, not loud
   registry** (typed allowlist, defaults for unwritten keys, validate-then-upsert in one commit, SET
   NULL attribution, the deliberately-not-settings list — C28, §5), and **F040 the settings editor**
   (card sections over one atomic save, nested-form-versus-flat-wire, the real-zones datalist,
-  consumption deferred with its record — C29, §5/§12).
+  consumption deferred with its record — C29, §5/§12), and **F041 profile and preferences** (the
+  owned-fields PATCH with `extra="forbid"`, the free-form preference vocabulary under structural
+  session-scoped isolation, idempotent preference deletes, the gating split — C30, §5).

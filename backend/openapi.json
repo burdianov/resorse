@@ -499,6 +499,52 @@
         "title": "PermissionListResponse",
         "type": "object"
       },
+      "PreferenceItem": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "PreferenceItem",
+        "type": "object"
+      },
+      "PreferencesResponse": {
+        "description": "Every preference of the signed-in user — and only theirs.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PreferencesResponse",
+        "type": "object"
+      },
+      "PutPreferenceRequest": {
+        "properties": {
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "PutPreferenceRequest",
+        "type": "object"
+      },
       "ResetPasswordResponse": {
         "properties": {
           "temporary_password": {
@@ -624,6 +670,39 @@
           "values"
         ],
         "title": "SettingsResponse",
+        "type": "object"
+      },
+      "UpdateMeRequest": {
+        "additionalProperties": false,
+        "description": "Self-service profile edit (F041, §7.6): the fields a user owns.\n\n**Email is absent on purpose** — it is admin-managed (§7.3, F033), and\n``extra=\"forbid\"`` makes a payload that tries anyway a 422 at the unknown\nfield instead of a silent no-op: the one thing worse than \"you cannot\nchange this here\" is \"we accepted it and nothing happened\".\n\nAbsence and explicit ``null`` differ, the F033 convention: an absent\nfield is untouched; ``\"phone\": null`` clears the phone.",
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "title": "UpdateMeRequest",
         "type": "object"
       },
       "UpdatePermissionRequest": {
@@ -1926,6 +2005,158 @@
           }
         },
         "summary": "The signed-in user and their effective permissions",
+        "tags": [
+          "auth"
+        ]
+      },
+      "patch": {
+        "description": "Full name and phone — the fields a user owns (§7.6).\n\nUses the **gated** `current_session`, unlike the GET: editing a profile is\na regular mutation and the forced password change outranks it (C30). The\nresponse is the same `MeResponse` the GET serves, so a client that just\nsaved has the fresh identity without a follow-up read.",
+        "operationId": "update_me_api_v1_auth_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "An empty edit (no fields set)."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Password change pending (regular endpoints are gated)."
+          },
+          "422": {
+            "description": "Unknown fields (email is admin-managed) or shape errors."
+          }
+        },
+        "summary": "Edit your own profile",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/preferences": {
+      "get": {
+        "operationId": "list_preferences_api_v1_auth_me_preferences_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Password change pending."
+          }
+        },
+        "summary": "List the signed-in user's preferences",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/preferences/{key}": {
+      "delete": {
+        "operationId": "delete_preference_api_v1_auth_me_preferences__key__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Password change pending."
+          },
+          "422": {
+            "description": "Malformed key."
+          }
+        },
+        "summary": "Remove one preference",
+        "tags": [
+          "auth"
+        ]
+      },
+      "put": {
+        "operationId": "put_preference_api_v1_auth_me_preferences__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPreferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Password change pending."
+          },
+          "422": {
+            "description": "Malformed key, a null value, or an oversized value."
+          }
+        },
+        "summary": "Set one preference",
         "tags": [
           "auth"
         ]
