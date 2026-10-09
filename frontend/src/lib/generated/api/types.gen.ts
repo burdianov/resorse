@@ -271,6 +271,10 @@ export type MatrixRoleEntry = {
  */
 export type MeResponse = {
     /**
+     * Created At
+     */
+    created_at: string;
+    /**
      * Email
      */
     email: string;

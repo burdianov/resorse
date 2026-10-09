@@ -586,6 +586,18 @@ Two surfaces, one ownership rule each:
 - **CASCADE, not SET NULL** — the deliberate mirror of settings' `updated_by`: a deleted user's
   display preferences are personal data with no audit value.
 
+The pages that consume those APIs (F042): `/profile` holds three cards — Details (the editable
+fields plus the account facts; email read-only with the reason in prose, member-since from
+`MeResponse.created_at`), Security (a CTA into `/profile/security`), and Effective permissions (the
+server's current union, grouped by namespace, view-only — a permission you could toggle here would
+be a role edit in costume). The Active badge is truthful-by-construction, not a served field: a
+disabled account's session never resolves (F029), so being signed in *is* the proof. The password
+form itself is F032's `ChangePasswordForm`, extracted so the forced flow and Profile > Security
+cannot drift apart on inputs, guidance or 422 mapping — only the wrappers differ. Both routes are
+`showInNavigation: false` with no permission requirement (profile is not an admin surface; the
+shell's session boundary is the gate), reached through the account menu, whose Profile item F032
+had deliberately left unlinked.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1239,4 +1251,6 @@ schema carry the same structure — mixed representations fail quietly, not loud
   (card sections over one atomic save, nested-form-versus-flat-wire, the real-zones datalist,
   consumption deferred with its record — C29, §5/§12), and **F041 profile and preferences** (the
   owned-fields PATCH with `extra="forbid"`, the free-form preference vocabulary under structural
-  session-scoped isolation, idempotent preference deletes, the gating split — C30, §5).
+  session-scoped isolation, idempotent preference deletes, the gating split — C30, §5), and **F042
+  the profile pages** (the two-route/one-form split, the read-only email with its reason, the
+  truthful Active badge, view-only grouped permissions, the menu wiring — C31, §5).

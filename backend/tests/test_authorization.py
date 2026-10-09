@@ -220,6 +220,7 @@ async def test_me_returns_identity_roles_and_the_deduped_sorted_union(
     assert body["phone"] == "+971 50 000 0000"
     assert body["must_change_password"] is False
     assert body["is_superuser"] is False
+    assert body["created_at"] is not None  # the F042 profile page's "member since"
     assert body["roles"] == ["editor", "reader"]  # sorted names
     # The union across roles, deduplicated and sorted: users.read is held by
     # both roles and appears once.

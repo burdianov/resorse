@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F041.
+> Last updated: 2026-10-10 — after task F042.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F042 in
-claude_code_pack/TASKS.md. Implement F042 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F043 in
+claude_code_pack/TASKS.md. Implement F043 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F042` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F043` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,33 +67,36 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F041 — Profile API** (`PATCH /auth/me` (full name + phone, `extra="forbid"` so an
-  email attempt is a 422, not a silent no-op; response = the same `MeResponse` the GET serves) and the
-  preferences API (`user_preferences`, **migration `0006`**: JSONB under a unique `(user_id, key)`,
-  free-form vocabulary by design — C30 contrasts it with settings' registry — with the key pattern
-  enforced at API and CHECK, an 8 KiB serialized value cap, null refused (deleting IS the nulling),
-  `GET/PUT/DELETE /auth/me/preferences[/{key}]`, DELETE **idempotent 204**; isolation is structural —
-  the service takes the user id from the session, every query filters by it in SQL, and the acceptance
-  test runs two users on one key). Gating split (C30): `GET /auth/me` stays exempt during a forced
-  change; `PATCH /auth/me` and all preferences endpoints take the gate. `ON DELETE CASCADE` on
-  preferences (personal data, no audit value — the mirror of settings' SET NULL). DECISIONS C30; +8
-  backend tests (**220 passing**); frontend unchanged (472); `openapi.json` + types regenerated).
-- **Next task: F042 — Profile UI.** "Profile and security page with editable allowed fields." Accept
-  (TASKS.md): "Save/error tests". BP-7.6/§4's page tree: `/profile` (card with name/email/roles/active/
-  created info, editable self fields — full name, phone — view-only effective permissions as
-  appropriate, security CTA) and `/profile/security` (own password change — **reuse the F032
-  `ChangePasswordPage` or link to `/change-password`**; session security info if cheap). Route
-  registration for BOTH pages (`requiredPermissions: []` — any signed-in user; NOT under /admin;
-  showInNavigation: false per §4's nav spec — "profile is accessible from the top-right and
-  sidebar-footer avatar menus"; wire the account-menu's profile item that F032 deliberately left
-  unlinked). Decisions to record (C31): how /profile and /profile/security split (or one page with a
-  security card); whether the effective-permissions view is a list or grouped; profile fields use
-  the F041 PATCH with the same nested/none-dotted RHF shape (no dots in these field names — plain
-  form). Consumption note: `/profile` is the natural first consumer of the preferences API (F048
-  still owns table prefs) — keep F042 to profile fields + links; do not build the theme/profile-prefs
-  UI here.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F041 sits on top of
-  `4ae921a` (the F040 byte repair).
+- Last completed: **F042 — Profile UI** (`/profile` — Details card (editable name/phone via F041's
+  PATCH + `auth.refresh()` so the header menu moves with the save; email read-only with the reason in
+  prose; member-since from the new `MeResponse.created_at` — additive; roles badges; an Active badge
+  truthful-by-construction, no `is_active` field) + Security CTA + **view-only permissions grouped by
+  namespace**; `/profile/security` — **reuses F032's `ChangePasswordForm`** (extracted from the
+  standalone page; wrappers differ, the form cannot drift); both routes `showInNavigation: false`,
+  `requiredPermissions: []`, reached through the account menu whose **Profile** item is now wired and
+  whose Change password points at `/profile/security`. DECISIONS C31; +8 frontend tests (**480
+  passing**); backend 220 (+ the `created_at` field, tested); `openapi.json` + types regenerated).
+- **Next task: F043 — Audit storage.** "Immutable audit events redacted diff and request ID." Accept
+  (TASKS.md): "Mutation/audit atomicity tests". BP-8.2's model: `audit_logs` — id, timestamp, user_id?,
+  action, entity_type, entity_id?, summary, details JSONB?, correlation_id?, source metadata; §7.8:
+  append-only, no mutation routes; §6.3: "Audit every permission/role change with before/after
+  sanitized diff". F043 owns the **store + write path + the backfill C22/C24 recorded**: the F033 user
+  mutations, F035 role/matrix changes, F037 permission changes, F039 settings changes, F041 profile/
+  preference changes join the event vocabulary — decide its shape in C32: an `AuditAction` enum-ish
+  vocabulary (module constant like PermissionCode), `record(session, actor, action, entity, summary,
+  details)` called **inside the mutating transaction** (the acceptance is atomicity: the event and the
+  change commit together — never an event without the change, never a change without its event) with a
+  **redaction law**: details carry before/after of *safe* fields only (never hashes, never passwords,
+  never preference values wholesale?), and the request correlation id (decide where it comes from —
+  a middleware setting a request id (contextvar) that F060's logging will reuse; the X-Request-Id
+  convention the frontend already reads in errors.ts!). Migration `0007`. Immutability: no UPDATE/
+  DELETE statements anywhere in app code; the model docstring states it; tests assert the handlers
+  never offer mutation routes (that's F044's viewer read-only). The backfill must be surgical: add
+  `record(...)` calls to existing services WITHOUT changing their behaviour; each mutation's test
+  asserts its event row (the atomicity test style: fail the mutation after record() → nothing
+  commits, or vice versa).
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F042 sits on top of
+  `2886121` (F041).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -214,6 +217,14 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **The profile pages are live (F042):** `/profile` (Details: editable name/phone seeded from the
+  session, save → PATCH + `auth.refresh()` so the header follows; email read-only; member-since
+  `created_at`; roles badges; Active-by-construction) + Security CTA + **view-only permissions
+  grouped by namespace**; `/profile/security` reuses the extracted **`ChangePasswordForm`** (the
+  standalone forced-flow page unchanged). Both `showInNavigation: false`; reached via the account
+  menu (Profile wired, Change password → `/profile/security`); the forced-change redirect outranks
+  them (tested). `MeResponse.created_at` added. **Tests:** 8 new, `pnpm exec vitest run` is now
+  **480 passed**; backend 220.
 - **Profile and preferences are live (F041):** `PATCH /auth/me` — full name/phone only,
   `extra="forbid"` (email stays admin-managed; an attempt is 422, never a silent no-op), response is
   the full `MeResponse`. Preferences: `user_preferences` (**migration `0006`**) — JSONB under unique
@@ -558,6 +569,10 @@ the archive original — `sha256sum` both to check):
   with settings' registry), key pattern + 8 KiB cap + null-refusal, idempotent DELETE, structural
   session-scoped isolation, CASCADE edges, and the gating split where only `GET /auth/me` is
   exempt), same date and same basis; rationale in ARCHITECTURE §5.
+- **C31** — F042's profile pages (two routes one form with the extracted `ChangePasswordForm`;
+  read-only email with its reason; truthful Active badge; view-only grouped permissions; both
+  routes hidden from navigation with no permission requirement; the account menu wired; the forced
+  redirect outranking), same date and same basis; rationale in ARCHITECTURE §5/§13.
 - **C26** — F037's permission dictionary (the in-use freeze — rename and delete both 409 while granted;
   descriptions free; refused-not-normalised codes against the model's own pattern; duplicates via the
   unique index's 409; **no subset rule by design** — grants are where escalation lives; seed
@@ -658,6 +673,10 @@ the archive original — `sha256sum` both to check):
   filter (its counts are loaded rows), one always-on server sort, and row actions through
   `DataTableRowActions`. Permission mirrors hide controls the caller cannot use; they never replace the
   server's check. Preferences keys are per screen (`admin-users` today).
+- **Profile pages are menu-reached, never nav-listed (F042, C31):** any future personal page follows
+  `showInNavigation: false` + `requiredPermissions: []` (the shell's boundary is the gate) and is
+  linked from the account menu; the password form stays one component (`ChangePasswordForm`) — never
+  fork it; and `MeResponse` grew `created_at` — other consumers may use it.
 - **F041's ownership rules are F042's contract (C30):** profile edits go through `PATCH /auth/me`
   (never a preferences key for name/phone); preference keys are lowercase dotted strings the
   frontend owns — F048 must keep its keys within that shape and its values under 8 KiB; the
@@ -816,6 +835,26 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F042 — Profile UI.** The two profile pages (C31). `/profile` renders three cards: **Details** —
+  full name and phone editable through F041's `PATCH /auth/me`, seeded from the session and saved
+  through `auth.refresh()` so the header menu moves with the change; email rendered read-only with
+  the reason in prose (admin-managed, §7.3); member-since from the new `MeResponse.created_at`
+  (added this task — additive, tested); roles as badges; an **Active badge that is
+  truthful-by-construction** rather than a served field (a disabled account's session never
+  resolves, F029 — the decoration F031 refused to serve). **Security** — a CTA into
+  `/profile/security`. **Effective permissions** — the server's current union, grouped by namespace
+  the way the matrix groups rows, view-only (a permission you could toggle here would be a role edit
+  in costume). `/profile/security` reuses F032's password form — extracted as
+  **`ChangePasswordForm`** so the forced flow and this page cannot drift on inputs, guidance or
+  422-mapping; only the wrappers differ (shell-less screen with its sign-out escape vs card with
+  toast-and-stay). Both routes register with `showInNavigation: false` and no permission
+  requirement — profile is not an admin surface, the shell's session boundary is the gate — and the
+  account menu's **Profile** item, which F032 deliberately left unlinked, is now wired, with
+  Change password re-pointed to `/profile/security` (the standalone `/change-password` stays the
+  forced flow's landing). F032's forced-change redirect outranks both routes (tested). Checks run:
+  `pnpm run typecheck` clean; `pnpm exec vitest run` **480 passed** (8 new in
+  `tests/profile/profile.test.tsx`); `pnpm run build` succeeds; backend **220 passed** (the
+  `created_at` addition covered); `openapi.json` + generated types regenerated.
 - **F041 — Profile API.** The endpoints behind `/profile` and `/profile/security`'s data needs, split
   along one ownership rule each (C30). **`PATCH /auth/me`** joins F031's `/auth/me` in the auth
   router and edits exactly the fields a user owns — full name and phone; **email is admin-managed**
@@ -1552,10 +1591,11 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Settings UI tests (F040)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/settings.test.tsx` | **6 passed** — the form seeds from the snapshot (persisted values + defaults), re-seeds from the save response, refuses a too-short name locally with **no request**, maps the server's timezone 422 onto the field named after the registry key, sends one bare-map PUT with all four keys, and renders read-only without `settings.manage` |
 | **Settings tests (F039)** | `cd D:\resors\backend; uv run pytest tests/test_admin_settings.py` | **8 passed** — guards (401/403, read-only callers can read); the snapshot serves registry defaults with zero rows; a failed payload (unknown key, bad format, wrong JSON type) writes **nothing**; overrides stored trimmed with `updated_by`; partial updates leave other overrides alone; `updated_by` → NULL when the author is deleted; and the two restart proofs (expunge-and-reread through the API; write-close-reopen on its own connection) |
 | **Profile & preferences tests (F041)** | `cd D:\resors\backend; uv run pytest tests/test_profile_api.py` | **8 passed** — the gating split (only `GET /auth/me` survives a forced change); PATCH me trims, clears the phone with null, 400s an empty edit and **422s an email attempt** (extra=forbid); preference CRUD round-trips, upserts one row, deletes idempotently; key shapes and null/oversized values refused; **the acceptance: two users share one key and never see or touch each other's rows**; deleting a user cascades their preferences |
+| **Profile UI tests (F042)** | `cd D:\resors\frontend; pnpm exec vitest run tests/profile/profile.test.tsx` | **8 passed** — the page renders identity/roles/grouped permissions; a save PATCHes the owned fields and the **session refresh moves the header menu**; clearing the phone sends null; the server's 422 lands on the named field; the menu leads to `/profile` and `/profile/security` and the sidebar never lists them; the forced-change redirect outranks `/profile`; the reused password form submits for real |
 | **Permissions UI tests (F038)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/permissions.test.tsx` | **9 passed** — the table renders and sorts/searches in the browser; no management controls without `permissions.manage`; create posts the dialog and closes; a malformed code is refused locally with **no request**; server 422/409 refusals render in the right surfaces (field, dialog root alert, confirmation-then-toast) with the draft intact |
 | **Settings smoke (F039)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): read: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/admin/settings`; write: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PUT http://localhost:8000/api/v1/admin/settings -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"branding.app_name":"Resors","display.date_format":"YYYY-MM-DD"}'` | read: **200** with all four registry keys at their defaults. write: **200** echoing the fresh snapshot; re-read returns the new values — and they **survive an API restart** (stop/start uvicorn; the row is in PostgreSQL). Refusals: `{"nope.key":"x"}` → **422** at `nope.key`; `{"display.date_format":"31/12/2026"}` → **422** at that key |
 | **Profile & preferences smoke (F041)** | with the bootstrap jar (same `<csrf>`): profile: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PATCH http://localhost:8000/api/v1/auth/me -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"full_name":"Renamed Operator"}'`; preferences: `... -X PUT http://localhost:8000/api/v1/auth/me/preferences/table.rows ... -d '{"value":25}'` | PATCH: **200** with the full MeResponse (identity + roles + permissions); `{"email":"x@y.z"}` → **422** (`extra_forbidden`); `{}` → **400**. PUT → **200** `{"key":"table.rows","value":25}`; `GET /api/v1/auth/me/preferences` lists it; `DELETE` → **204** and again → **204**; `PUT .../BadKey` → **422** at the path key |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **472 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **480 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | **Frontend auth-flow tests (F032)** | `cd D:\resors\frontend; pnpm exec vitest run tests/auth/auth-flows.test.tsx` | **14 passed** — the session boundary (anonymous redirect with intended-path return; network failure → Retry, **not** login), sign-in failures shown verbatim, local validation without a request, the forced-change landing/bounce/completion with the CSRF header asserted on the wire, 422 field mapping, mismatch refusal, both sign-out flows, the registered 401 re-resolution (one retry), and `readCsrfToken` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |

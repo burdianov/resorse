@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOutIcon, KeyRoundIcon } from 'lucide-react'
+import { LogOutIcon, KeyRoundIcon, UserRoundIcon } from 'lucide-react'
 import { useNavigate } from 'react-router'
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -20,11 +20,11 @@ import { useAuth } from '@/lib/auth'
  * The header's account menu (F032, BIG-PROMPT §7.1) — the profile menu the
  * header deliberately left out until a real session existed behind it.
  *
- * Three real actions and nothing else: change password (the same screen the
- * forced flow uses), sign out, and sign out everywhere — the last behind a
+ * Four real actions and nothing else: profile (F042's `/profile`),
+ * change password (now Profile > Security — the forced flow keeps its own
+ * standalone screen), sign out, and sign out everywhere — the last behind a
  * confirmation, because it ends the account's sessions on every device and
- * the menu item alone cannot say that much. "Profile" is deliberately absent:
- * the page arrives with F042, and a menu item that 404s is a dead link.
+ * the menu item alone cannot say that much.
  *
  * The avatar shows the account's initials; the menu label shows the name and
  * email the session actually carries — no fabricated avatar URL, no cached
@@ -73,7 +73,18 @@ export function UserMenu() {
           <DropdownMenuGroup>
             <DropdownMenuItem
               onClick={() => {
-                void navigate('/change-password')
+                void navigate('/profile')
+              }}
+            >
+              <UserRoundIcon />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                // F042 moved the in-shell destination to Profile > Security;
+                // the standalone /change-password screen stays the forced
+                // flow's landing (it has no shell by design).
+                void navigate('/profile/security')
               }}
             >
               <KeyRoundIcon />

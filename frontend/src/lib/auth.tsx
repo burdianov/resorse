@@ -55,6 +55,9 @@ export interface AuthContextValue {
   logoutAll: () => Promise<void>
   /** Re-resolve after an `error` status (the Retry button). */
   retry: () => void
+  /** Re-read `/auth/me` **without** touching the status (F042's profile save:
+   * the state must not flicker to loading while already authenticated). */
+  refresh: () => Promise<void>
 }
 
 /** Rejects loudly: the actions cannot work without the provider. Typed with a
@@ -76,6 +79,7 @@ const AuthContext = createContext<AuthContextValue>({
   logout: UNAVAILABLE,
   logoutAll: UNAVAILABLE,
   retry: () => undefined,
+  refresh: () => Promise.resolve(),
 })
 
 function accessFrom(user: MeResponse | null): NavigationAccess {
@@ -191,6 +195,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void resolveSession()
   }, [resolveSession])
 
+  // A silent re-read for callers that changed the identity out-of-band
+  // (PATCH /auth/me): the current state stays until the fresh answer lands,
+  // and a failed refresh keeps it too — a hiccup must not sign anyone out
+  // (the F032 rule; the next request's 401 path remains the arbiter).
+  const refresh = useCallback(async () => {
+    try {
+      applyIdentity(await fetchMe(), 'authenticated')
+    } catch {
+      // Keep the current state on purpose (see above).
+    }
+  }, [applyIdentity])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status: state.status,
@@ -201,8 +217,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       logoutAll,
       retry,
+      refresh,
     }),
-    [state, login, changePassword, logout, logoutAll, retry],
+    [state, login, changePassword, logout, logoutAll, retry, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

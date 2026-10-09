@@ -269,6 +269,7 @@ async def me(
         must_change_password=user.must_change_password,
         phone=user.phone,
         is_superuser=user.is_superuser,
+        created_at=user.created_at,
         roles=sorted(role.name for role in user.roles),
         permissions=sorted(effective_permissions(user)),
     )
@@ -311,6 +312,7 @@ async def update_me(
         must_change_password=user.must_change_password,
         phone=user.phone,
         is_superuser=user.is_superuser,
+        created_at=user.created_at,
         roles=sorted(role.name for role in user.roles),
         permissions=sorted(effective_permissions(user)),
     )

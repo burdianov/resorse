@@ -18,6 +18,7 @@ therefore reaches the caller as a field-addressable 422 built by the endpoint,
 never as a schema error.
 """
 
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -85,6 +86,11 @@ class MeResponse(AuthenticatedUser):
 
     phone: str | None
     is_superuser: bool
+    # When the account was created — displayed on /profile (F042, §7.6's
+    # "account-created info"). No `is_active`: a session belonging to a
+    # disabled account never resolves (F029), so the field could only ever
+    # read true — the same decoration F031 refused to serve.
+    created_at: datetime
     roles: list[str]
     permissions: list[str]
 

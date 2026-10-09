@@ -1,6 +1,6 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { LayoutDashboard, Lock, Settings, Shield, Users } from 'lucide-react'
+import { LayoutDashboard, Lock, Settings, Shield, ShieldCheck, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
@@ -106,6 +106,16 @@ const AdminSettingsPage = lazy(async () => {
   return { default: module.AdminSettingsPage }
 })
 
+const ProfilePage = lazy(async () => {
+  const module = await import('@/pages/profile')
+  return { default: module.ProfilePage }
+})
+
+const ProfileSecurityPage = lazy(async () => {
+  const module = await import('@/pages/profile-security')
+  return { default: module.ProfileSecurityPage }
+})
+
 /**
  * Built-in routes. `/dashboard` currently renders the protected placeholder
  * (F017) — F047 replaces the component, not the entry, so the navigation, the
@@ -145,6 +155,30 @@ export const APP_ROUTES: readonly RouteDefinition[] = [
     adminOnly: true,
     requiredPermissions: ['roles.read'],
     component: AdminRolesPage,
+  },
+  {
+    // Personal pages: any signed-in user, never in the navigation (§4's nav
+    // spec — profile lives behind the avatar menus, wired in F042's
+    // `UserMenu`). `requiredPermissions: []` deliberately: the routes are
+    // session-gated by the shell's boundary, and no *permission* governs a
+    // user's own profile.
+    id: 'profile',
+    path: '/profile',
+    label: 'Profile',
+    icon: UserRound,
+    group: 'overview',
+    showInNavigation: false,
+    component: ProfilePage,
+  },
+  {
+    id: 'profile-security',
+    path: '/profile/security',
+    label: 'Security',
+    icon: ShieldCheck,
+    group: 'overview',
+    showInNavigation: false,
+    breadcrumb: () => 'Security',
+    component: ProfileSecurityPage,
   },
   {
     id: 'admin-permissions',

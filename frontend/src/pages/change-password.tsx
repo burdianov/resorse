@@ -16,28 +16,30 @@ import { applyServerErrors } from '@/components/form/form-errors'
 import { useAuth } from '@/lib/auth'
 
 /**
- * The password-change step (F032, BIG-PROMPT §7.1) — one screen for the
- * forced first-login/reset change and for a voluntary change; F042's
- * Profile > Security links here.
+ * Changing a password (F032, BIG-PROMPT §7.1) — the forced first-login/reset
+ * change and the voluntary one, served as **one form in two homes**:
  *
- * Like `/login` it lives outside the shell, because the forced-flow user has
- * no usable navigation yet — the server gates every regular endpoint until
- * the change completes (F031), and rendering a sidebar full of links that
- * would 403 would be a lie of exactly the sort this project forbids.
+ * - `ChangePasswordPage` — the standalone, shell-less screen the forced flow
+ *   lands on (the user has no usable navigation until the change completes,
+ *   F031, so rendering a sidebar of links that would all 403 would be a lie).
+ * - `ChangePasswordForm` — the same form inside Profile > Security (F042),
+ *   where the user *does* have a shell around them.
  *
- * Three behaviours worth naming:
+ * The split was made in F042 by extracting the form; the behaviour stayed
+ * identical on purpose, including the details each side keeps:
  *
- * - **Policy lives on the server and is shown from there.** The client
- *   validates shape and the confirmation match; the *rules* (length,
- *   denylist, not-your-email) arrive as F030's field-addressable 422s and
- *   land on `new_password` through `applyServerErrors`. The guidance text is
- *   static prose — it restates the documented policy (ARCHITECTURE §3) but
- *   never pretends to be the enforcement.
+ * - **Policy lives on the server and is shown from there** (F030's
+ *   field-addressable 422s on `new_password`); the guidance text is static
+ *   prose that restates the documented policy, never pretends to enforce it.
  * - **`current_password`/`new_password` are the API's own field names**, so
- *   the 422 `loc` paths map onto the inputs without a translation table.
- * - **There is always a way out.** The forced flow adds a "Sign out instead"
- *   action: a temporary credential the user cannot use must end at a choice,
- *   not at a dead end (§6.1's recovery-UX rule).
+ *   the `loc` paths map onto the inputs with no translation table.
+ * - **Success is handed to the caller** (`onSuccess`): the forced screen
+ *   navigates to the dashboard (the change cleared the flag), while the
+ *   in-profile form stays put with a toast — the user is already where they
+ *   wanted to be.
+ * - **The forced flow's way out** ("Sign out instead") exists only where it
+ *   is needed: the standalone screen. A signed-in shell user already has the
+ *   account menu.
  */
 
 const schema = z
@@ -53,29 +55,74 @@ const schema = z
 
 type Values = z.infer<typeof schema>
 
-export function ChangePasswordPage() {
+export function ChangePasswordForm({ onSuccess }: { onSuccess?: () => void }) {
   const auth = useAuth()
-  const navigate = useNavigate()
-  const forced = auth.user?.must_change_password === true
-
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { current_password: '', new_password: '', confirm_password: '' },
   })
 
   const mutation = useMutation({
-    mutationFn: (values: Values) => auth.changePassword(values.current_password, values.new_password),
+    mutationFn: (values: Values) =>
+      auth.changePassword(values.current_password, values.new_password),
     meta: { suppressErrorToast: true },
     onError: (error) => {
       applyServerErrors(error, form)
     },
     onSuccess: () => {
       toast.success('Password changed')
-      // The change rotated this session and cleared the flag in one server
-      // commit (F030); the dashboard is the honest destination for both flows.
-      void navigate('/dashboard', { replace: true })
+      form.reset()
+      onSuccess?.()
     },
   })
+
+  return (
+    <Form {...form}>
+      <form
+        noValidate
+        onSubmit={(event) => {
+          void form.handleSubmit((values) =>
+            mutation.mutateAsync(values).catch(() => undefined),
+          )(event)
+        }}
+        className="grid gap-4"
+      >
+        <FormError />
+        <InputField
+          control={form.control}
+          name="current_password"
+          label="Current password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
+        <InputField
+          control={form.control}
+          name="new_password"
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          description="At least 12 characters. Not a common password, and not your email address."
+          required
+        />
+        <InputField
+          control={form.control}
+          name="confirm_password"
+          label="Confirm new password"
+          type="password"
+          autoComplete="new-password"
+          required
+        />
+        <FormActions submitLabel="Change password" className="mt-2" />
+      </form>
+    </Form>
+  )
+}
+
+export function ChangePasswordPage() {
+  const auth = useAuth()
+  const navigate = useNavigate()
+  const forced = auth.user?.must_change_password === true
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-muted/40 px-4">
@@ -98,56 +145,25 @@ export function ChangePasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form
-                noValidate
-                onSubmit={(event) => {
-                  void form.handleSubmit((values) =>
-                    mutation.mutateAsync(values).catch(() => undefined),
-                  )(event)
+            <ChangePasswordForm
+              onSuccess={() => {
+                // The change rotated this session and cleared the flag in one
+                // server commit (F030); the dashboard is the honest
+                // destination for both flows here.
+                void navigate('/dashboard', { replace: true })
+              }}
+            />
+            <div className="mt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  void auth.logout()
                 }}
-                className="grid gap-4"
               >
-                <FormError />
-                <InputField
-                  control={form.control}
-                  name="current_password"
-                  label="Current password"
-                  type="password"
-                  autoComplete="current-password"
-                  autoFocus
-                  required
-                />
-                <InputField
-                  control={form.control}
-                  name="new_password"
-                  label="New password"
-                  type="password"
-                  autoComplete="new-password"
-                  description="At least 12 characters. Not a common password, and not your email address."
-                  required
-                />
-                <InputField
-                  control={form.control}
-                  name="confirm_password"
-                  label="Confirm new password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                />
-                <FormActions submitLabel="Change password" className="mt-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      void auth.logout()
-                    }}
-                  >
-                    Sign out instead
-                  </Button>
-                </FormActions>
-              </form>
-            </Form>
+                Sign out instead
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
