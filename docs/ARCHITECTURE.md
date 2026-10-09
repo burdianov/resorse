@@ -297,6 +297,14 @@ unrestricted rows in Python. **No domain table is created in Stage A.**
 - The initial migration creates only the domain-neutral schema above. Historical QTC360 migrations are never
   imported.
 - Destructive changes use expand → migrate → contract, so a rollback is always available during a release.
+- **Implemented in F023.** `app/core/database.py` holds what every table inherits: `Base` with a naming
+  convention (unnamed constraints still reach PostgreSQL as `pk_…`/`uq_…`/`fk_…`), `UUIDPrimaryKeyMixin`
+  (`uuidv7()`, PostgreSQL 18 — time-ordered, so inserts append to the primary-key index), and `TimestampMixin`
+  (`timestamptz` instants; `updated_at` moved by the ORM's `onupdate`). The async Alembic environment lives in
+  `backend/migrations/` and takes its engine from the application, so the CLI and the app cannot point at
+  different databases — the committed `alembic.ini` deliberately carries no URL. Revisions are hand-numbered
+  (`alembic revision -m "…" --rev-id 0002`) so the directory reads in order, and **revision 0001 creates no
+  tables**: it is the chain's root, and each table arrives with the task that owns it.
 
 ## 10. API contract
 

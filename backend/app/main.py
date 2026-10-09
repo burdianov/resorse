@@ -12,13 +12,17 @@ from fastapi import FastAPI
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
+from app.core.database import dispose_engine
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    # Startup hooks (database engine, settings validation) arrive with F023/F028.
+    # The database engine is created lazily on first use (app/core/database.py),
+    # so startup only has to validate configuration — which F028/F060 add.
     yield
-    # Shutdown hooks (engine disposal) arrive with F023.
+    # Return pooled connections on the way out; a reload otherwise leaves them
+    # for the server to time out.
+    await dispose_engine()
 
 
 def create_app() -> FastAPI:
