@@ -7,7 +7,7 @@ Acceptance: a traceability table with **no domain modules**.
 
 | Source | Role | Location |
 |---|---|---|
-| `BIG-PROMPT.txt` | origin of the foundation requirements; 15 sections (§0–§14) | `D:\RESORS_REFERENCE\BIG-PROMPT.txt` (outside the project folder) |
+| `BIG-PROMPT.txt` | origin of the foundation requirements; 15 sections (§0–§14) | `claude_code_pack\BIG-PROMPT.txt` (verbatim copy, in-repo since 2026-10-10; the archive original at `D:\RESORS_REFERENCE\BIG-PROMPT.txt` is the audit record — never edit either) |
 | `PRODUCT_SPEC.md` | authoritative functional contract | `claude_code_pack\PRODUCT_SPEC.md` |
 | `TASKS.md` | the ordered backlog this table maps onto | `claude_code_pack\TASKS.md` |
 | `CLAUDE_MASTER.md` | non-negotiables and engineering constraints | `claude_code_pack\CLAUDE_MASTER.md` |

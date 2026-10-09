@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F029.
+> Last updated: 2026-10-10 — after task F029 (and the requirements text moved in-repo to `claude_code_pack/BIG-PROMPT.txt`).
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -36,27 +36,31 @@ operator checks — I run the suites myself.
 ```
 
 Replace `F030` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
-re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
+re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
+section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
 
 | What | Path |
 |---|---|
 | Project root (repo) | `D:\resors` |
-| Instruction pack | `claude_code_pack\` — `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md`, `TASKS.md`, `DECISIONS.md`, `OPERATOR_GUIDE.md` (operator runbook incl. the test-command table), `STATE.md` (pointer only) |
+| Instruction pack | `claude_code_pack\` — `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md`, `TASKS.md`, `DECISIONS.md`, `BIG-PROMPT.txt` (the verbatim requirements text), `OPERATOR_GUIDE.md` (operator runbook incl. the test-command table), `STATE.md` (pointer only) |
 | Task artifacts | `docs\` — `REPOSITORY_AUDIT.md` (F001), `REQUIREMENT_TRACEABILITY.md` (F002), `STACK_VERSIONS.md` (F003), `ARCHITECTURE.md` + `REFERENCE_PARITY.md` (F004), `ROUTES_NAVIGATION.md` (F016), `OPENAPI_CLIENT.md` (F018) |
 | Frontend (F006) | `frontend\` — `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `openapi-ts.config.ts`, `index.html`, `src\{main.tsx,vite-env.d.ts,app\{router,providers\}.tsx,lib\{api,errors,query-keys\}.ts,lib\generated\api\}` |
 | Backend (F007) | `backend\` — `pyproject.toml`, `uv.lock`, `.python-version`, `openapi.json` (generated, committed), `scripts\export_openapi.py`, `alembic.ini`, `migrations\versions\`, and `app\` (`main.py`, `seed.py`, `bootstrap_admin.py`, `core\`, `models\`, `api\v1\`, `tests\`) |
+| **Requirements text** | `claude_code_pack\BIG-PROMPT.txt` — the **verbatim** requirements document, source of every `BP-x.y` citation, **inside the project** since 2026-10-10. Read it here; **never edit it** — it is kept byte-identical to the archive original, so its recorded SHA-256 stays verifiable |
 | Reference source (**outside the project folder**) | `D:\QTC360\qtc360\` — the **entire source tree, extracted** (backend, frontend, compose files, docs). This is the copy to read — e.g. production Docker hints come from its `docker-compose.prod.yml` |
-| Reference archives (**outside the project folder**) | `D:\RESORS_REFERENCE\qtc360-main.zip` (the original archive, kept for the audit record), `D:\RESORS_REFERENCE\BIG-PROMPT.txt` (the requirements text) |
+| Reference archive (**outside the project folder**) | `D:\RESORS_REFERENCE\qtc360-main.zip` (original archive, audit record) and `D:\RESORS_REFERENCE\BIG-PROMPT.txt` (the archive original of the requirements text — kept for the audit record only, now that the pack holds the working copy) |
 | Unrelated — do not touch | the rest of `D:\QTC360\` outside `qtc360\` (separate QTC360 working areas: logo/design assets, `Workshop\`, `QAQC Documents\`) |
 
-Reference inputs are outside the repo by design and `.gitignore` carries a safety net. Read them by absolute
-path; an out-of-folder read may raise a permission prompt, which is expected. `D:\QTC360\qtc360\` is the
-operator-maintained extraction of the archive; `BIG-PROMPT.txt` is the requirements text and outranks the
-source when they disagree (e.g. `BIG-PROMPT` §0.2 forbids its branding). The reference is **read-only and
-untrusted**: never run anything from it, never copy its branding, `db_dump` credentials, seed data, fonts or
-domain (construction) code into this repo — hints and patterns only. Hashes:
+The **requirements text needs no out-of-folder trip any more**: the pack copy is the one to read (`.gitignore`
+re-includes exactly that path out of the reference safety net, and `.gitattributes` pins it `-text` so its
+bytes — CRLF included — never change). It **outranks the reference source** when they disagree (e.g.
+`BIG-PROMPT` §0.2 forbids its branding). The **source tree** is still outside the repo by design: read it by
+absolute path (an out-of-folder read may raise a permission prompt, which is expected), and it is **read-only
+and untrusted** — never run anything from it, never copy its branding, `db_dump` credentials, seed data, fonts
+or domain (construction) code into this repo; hints and patterns only. Hashes (the in-repo copy must match
+the archive original — `sha256sum` both to check):
 `qtc360-main.zip` = `f888e940506fc270cfd69d299cd2444eab64c089389e17e88ae6facbe36bfa05`,
 `BIG-PROMPT.txt` = `7c97b4eb649317e7e23766de6e1a354101fcb05270427d5ea54afedefd91a2f2`.
 

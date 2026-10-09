@@ -1,0 +1,622 @@
+
+
+I want to build an app for our company with the following functionality. 
+
+Context: 
+We are a construction company in UAE doing data centres. We will have the disciplines: Electrical, Mechanical, Plumbing, CSI, MEP, ELV, General. 
+We have various departments (classification groups): some belong to Head Office, e.g. Procurement, Cost Control, Engineering, Estimation, etc. Others belong to site (site related), e.g. Project Management, Project Engineers, Site Engineers, Planning, QA/QC, etc.
+Each designation belongs to a certain department. Also, each designation belongs to a certain discipline.
+We have employees, in the employee master we will have EmployeeID, Full Name, Designation, etc.
+We have also manhour rates. The manhour rates should be assigned for each designation, and the effective date should be stored for each individual designation. We have projects and the master will contain ProjectCode, Name, StartDate, EndDate, etc...
+The Employees we'll be assigned to projects. The cost per month per project per employee is calculated considering 208 hours per month times the manhour rate. There are also other details, but we we'll get them gradually as we go.
+
+There will be basically 3 parts in the project:
+
+1. The admin (or maybe other suitable role for this particular user) will work on forecasting the deployment and cost of a tender. The tender is a project with code number in the system, but with tender status. It's not yet awarded. So, at this stage, the user selects the respective project. No actual names will be used. The user first selects the required departments (all site related), then drills down and selects the required designations under each department. The user can add the same designation multiple times. Then, the user assignes the deployment period for all the deisgnations in bulk: from a certan date to another date. Also, the designations and the period should be possible to upload from excel as a bulk, providing a downloadable format template. The display shows in the left a column with the required designations and on top the months as per the longest period; the number of months actually should be more than that. By default, after assigning the period for the first time, all the cells are filled with 100 (meaning 100%) if the month is complete; if the month is incomplete, the program should consider 26 working days, 8 working hours per day and apply the percentage accordingly. The same ratio will be used later for the cost forecast. Afterwards, the user can go and change any individual value inside a cell representing the allocation for that particular month and person. If the user decides to change the period for a certain designation having priorly changed manually a value for a certain month, the edited values should not change, just the months which already don't belong to the new period should be removed, and the new last month calculated accordingly. The values for the new months should be 100 (or calculated percentage if the month is incomplete). After the document is saved, it becomes revision 0. If document should be editted, there should be a check box on top "Create new Revision" unchecked by default. If the user wants to create a new revision with the latest changes, they should check that box before saving. The latest revision will participate in further calculations, reports, etc. This staff allocation should also be generated as a nice pdf report on A3 page format by default (could be A4 also). It should show also the total cost, cost per month, etc. It should be a very user friendly and mainly helpful report, ready to be presented to CEO.
+
+2. After the project is awarded, a similar exercise will be done but using not only designations, but also names of the existing employees. So, we might see some positions with names, some without. The forecast is based on hourly rate per designation. A certain employee can have the rate at employee level, which is maintained with historical records with effect date. In that case, the employee rate takes precedence over the designation rate. The forecast can be updated at any time, the revision system applies. First time, at the project start, the employees and designations can be bulk uploaded. They can be assigned individually as well. 
+Then we will have documents various documents, i.e. 
+
+* Transfer form (from project to project) which will mention the employee name, designation, source project, destination project, period from to.
+Once the form is approved, the respective employee will be considered allocated to the respective site and displayed accordingly the forecast and everywhere in company records, the forecast cost will be influenced accordingly. I need you to think and advise how we can handle people who work on shared bases among than one project.
+
+* Leave form, personal data plus from date to date. Will not reallocate the person to other project, but this info will be used for other reports.
+
+* Possiblity to mention whether the person is in day or night shift.
+
+* Termination / resignation: ...
+
+* Other possible cases (you advise)
+
+3. The user of part 1, which I said that could be admin, views a comprehensive picture of all allocated staff for all projects. He has to see a screen somehow similar to those above, but they should include consolidated information for all projects, both tenders and awarded. If a tender was awarded, only the awarded one will be shown. He can add or remove projects to participate in this view from top of the form. This page is view only. He needs to extract very useful information, like when we will have excess staff, and when we need to hire people. He needst to see the cost as well. You propose the best UX UI and the most useful outcome. The output can be a pdf report, or a dashborad with charts, etc.
+
+Basically, these are the 3 major parts. I need you to analize them and come up with professional ideas how to enhance the UI UX and functionality, usefulness, friendliness and modern design of the application.
+
+
+
+Below is the prompt for the tech stack part. I need you to combine the above prompt with the below one and create a comprehensive detailed step by step PRD with the help of which the agent will know exactly what to do.
+Also, keep in mind that I need to spend as few tokens as possible, therefore I want to commit myself, run tests myself, etc. You advise what to do and what the best way is.
+
+# CODING-AGENT MASTER PROMPT
+## Build a production-ready, domain-neutral application foundation inspired by the supplied QTC360 source
+
+**Reference input:** The repository supplied as `qtc360-main(2).zip` (root folder: `qtc360-main/`, archived 2026-06-17). **Primary goal:** Produce a complete, working, tested, deployment-ready, reusable web application foundation with the **same reusable architecture, UI design language, navigation model, engineering tools, and general-purpose capabilities** evidenced in this specific repository. **Required deviations:** Replace **Next.js with React + Vite**; **do not use Redis anywhere**; upgrade to the **latest compatible stable releases** available at implementation time. **Non-goal:** Do not implement or transplant QTC360 QA/QC, commissioning, inspection, asset/discipline, contractor, client, document-workflow or other business-domain rules.
+
+> This is an implementation order, not a request for a mockup, sample dashboard, a plan only, or an inoperative boilerplate. Make the application actually work end-to-end. Finish all phases. Never claim something was implemented or tested without running the relevant verification. Do not insert TODO endpoints, fake API replies, seeded production credentials, fictitious KPI data, or buttons that do nothing. If a requirement cannot be completed, report it as unfinished with an actionable explanation, rather than disguising it as complete.
+
+---
+
+# 0. NON-NEGOTIABLE EXECUTION INSTRUCTIONS
+
+1. **Read this entire prompt first.** Then inspect the actual supplied QTC360 source files listed below before choosing details, component APIs, visual geometry or dependency versions. The archive is the visual and architectural **reference**, not the application to preserve. Build a *new, independent, domain-neutral product* in the target workspace.
+2. **Do not copy QTC360 branding** into the deliverable: replace product name, favicon, logo, alt text, app description, app domains, splash text, and company-specific copy with a configurable neutral `APP_NAME` (for example `Application Platform`). Do not reuse QTC360 artwork or seeded company names. Reproduce the layout language, not someone else's brand identity.
+3. **Preserve reference features whose utility transcends the domain** (authentication, authorization, admin tools, audit, notification center, profile, preferences, DataTable, dialogs, form framework, report/file pipeline). Do not include the QTC360 business features enumerated in section 3.
+4. **Maintain the same stack when compatible**, specifically the manifest-backed libraries and Python ecosystem below. Use a recent **stable compatible release**, lock dependencies, resolve peer-dependency conflicts carefully, and document exact installed versions. Do not install packages simply to tick a checklist when their only intended use has been removed with business logic.
+5. **Remove Next.js completely.** No `next`, `next/navigation`, `next/link`, `next/image`, `next/font`, app-router folder conventions, `use client` requirement, Next server actions, or Next standalone server. Use Vite SPA, React Router, client-safe assets and a static-serving production frontend instead.
+6. **Remove Redis completely.** No Redis images, environment variables, SDK, Celery/RQ/BullMQ broker integrations, Redis cache/session storage, or Redis operational dependency. The supplied source does **not** declare a Redis Compose service; treat this as an explicit target-state prohibition, not an invented source migration. Use PostgreSQL for durable state, process-local caches only for disposable optimizations, and browser-backed preferences only where appropriate.
+7. No self-service/public registration. An existing privileged administrator creates accounts and assigns initial temporary passwords. Users can change passwords; administrators can reset them. First sign-in after initial creation or reset requires a password change. There must be a safe, documented **one-time bootstrap super-admin command** through CLI/env, with no default password in source or demo credentials available in production.
+8. Implement **multiple roles per user** through user-role and role-permission many-to-many relations. Effective permissions are the union of assigned roles (with explicit super-admin protections). All sensitive authorization is enforced **server-side**; visual hiding of navigation alone is insufficient.
+9. Implement every page and API endpoint listed as required. Use genuine persistence and correct loading, empty, denied, offline, success, and error states. Any scaffold/showcase must be clearly marked as a developer-only component lab, not presented as production business data.
+10. Use a phased workflow, with each phase fully integrated and tested before proceeding. A completed implementation contains a database migration history, typed API interface, production Docker Compose setup, CI checks, backend + frontend + browser E2E tests, security baseline, operating instructions, and proof of passing checks.
+11. Do not ask the user which business rules to implement: **none** are requested. Do not implement employee allocation, manpower costing, construction workflows, or similar domain logic at this stage. New business modules must be possible to add later with clean extension points.
+12. Where the source has a problem, **match its intended user experience but improve implementation**. Security, data isolation, accessibility and reliability outrank byte-for-byte parity of bugs.
+
+# 1. VERIFIED REPOSITORY EVIDENCE AND SOURCE MAP
+
+Use the following as an evidence-backed inventory of the supplied archive. This inventory has been derived from inspecting its manifest, file tree, styles, components, endpoints and deployment scripts, not from the public GitHub page. Reinspect the files locally before building.
+
+| Dimension | Source evidence | Target interpretation |
+|---|---|---|
+| Frontend core | `frontend/package.json`: Next.js `16.2.6`, React/React DOM `19.2.4`, TypeScript 5, `next-themes` | Replace Next with Vite + React + React Router. Keep React, TypeScript, a theme provider and SPA routing. |
+| Styling | `frontend/src/app/globals.css`; `frontend/components.json` | Tailwind CSS 4, CSS-first OKLCH theme tokens, `shadcn` **base-nova** style, neutral surfaces, blue accent, `@base-ui/react` foundation and Lucide icons. Adapt `components.json` for Vite (`rsc:false`). |
+| Layout | `frontend/src/app/(dashboard)/layout.tsx`; `frontend/src/components/layout/{app-sidebar,navbar,command-palette}.tsx` | Responsive, collapsible sidebar, 64px header, 260px expanded sidebar, 64px icon-only sidebar, top search, profile menu, theme toggle, notification bell, navigation command palette. |
+| Navigation | `frontend/src/config/navigation.ts` | A declarative hierarchy of collapsible labeled groups, route titles, URLs, icons and permission visibility. Replace domain entries with generic administration/extension-point routes. |
+| Data utilities | `frontend/src/components/data-table/*` | TanStack Table; sortable and searchable columns, column visibility/order, filters, selection, pagination, action menus, inline editing, CSV import/export hooks, saved user preferences. |
+| Form utilities | `frontend/src/components/form/*`, `frontend/src/components/ui/*` | React Hook Form + Zod and reusable validated fields; dialogs, dropdowns, popovers, dates, tabs, file widgets, skeletons and toasts. |
+| Client data | `frontend/src/lib/api.ts`, `frontend/src/components/providers/query-provider.tsx`, `frontend/src/hooks/*` | Axios service + TanStack Query, cache invalidation, single-flight token renewal concept, global mutation error toasts, typed hooks. Improve token storage and error handling. |
+| Auth UI | `frontend/src/app/login/page.tsx`, `frontend/src/components/providers/auth-guard.tsx` | Centered, themed login card with branded background pattern, protected layout and forced-change-password step. |
+| Admin screens | `frontend/src/app/(dashboard)/admin/{users,roles,permissions,settings,audit}/page.tsx` | Fully functioning users, role matrix, permission dictionary, settings, audit pages. |
+| Personal screens | `frontend/src/app/(dashboard)/profile/page.tsx`, `frontend/src/app/(dashboard)/notifications/page.tsx` | User profile and preferences, password change, generic optional signature asset, notifications with read/delete/clear. |
+| Backend core | `backend/pyproject.toml`, `backend/app/{main.py,core/*}` | Python 3.12+ compatibility, FastAPI, async SQLAlchemy 2, asyncpg, Pydantic 2, Pydantic Settings, Alembic, uv/uvicorn. |
+| Auth/RBAC | `backend/app/api/v1/{auth,admin}.py`, `backend/app/models/{user,rbac,audit_log,user_preference,notification,app_setting}.py` | Persistent admin-created accounts, access/refresh tokens, token revocation versioning, active/deleted state, union-of-role permissions, preferences, audit and notifications. |
+| Files/reports | `backend/app/services/{storage,pdf,pdf_merge}.py`, `backend/app/api/v1/reports/*`; `frontend/src/components/pdf-preview-modal.tsx` | Reusable private file-storage adapter, PDF preview, generic DOCX/PDF conversion and PDF generation/merging; **no QA forms, approvals, CRS, signature workflows or document template business rules**. |
+| Infrastructure | `docker-compose{,.prod,.e2e}.yml`, `frontend/Dockerfile`, `backend/Dockerfile`, `Caddyfile` | Docker, PostgreSQL, Gotenberg, Caddy reverse proxy/TLS, local dev and prod profiles. Static Vite frontend replaces Next node server. No Redis. |
+| Testing/CI | `backend/tests/e2e/*`, `.github/workflows/{ci,deploy}.yml`, `scripts/run_e2e.sh` | Pytest + pytest-asyncio + httpx with real PostgreSQL integration; npm lint/build/typecheck; enhance with Vitest/React Testing Library and Playwright. |
+| Migrations | `backend/migrations/versions/*` | Alembic revision-based schema management, fresh-domain-neutral initial migration, constraints and indexes. Do not import domain tables. |
+
+### 1.1 Source UI primitives that must remain available
+
+The archive has **29** `frontend/src/components/ui/*.tsx` components: `avatar`, `badge`, `breadcrumb`, `button`, `card`, `checkbox`, `collapsible`, `command`, `date-picker`, `dialog`, `dropdown-menu`, `input-group`, `input`, `label`, `popover`, `progress`, `scroll-area`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `spinner`, `switch`, `table`, `tabs`, `textarea`, `time-picker`, `tooltip`. Recreate/refresh **all** of these in the Vite-based library and expose them through stable import paths. Implement correct accessible behavior, current Base UI APIs and styling; don't blindly paste stale shadcn generated code.
+
+Also recreate the seven DataTable files (`data-table`, `data-table-toolbar`, `data-table-faceted-filter`, `data-table-column-header`, `data-table-row-actions`, `data-table-view-options`, `data-table-pagination`), `form/form.tsx`, `form/fields.tsx`, loaders (`centered-spinner`, `page-skeleton`, `table-skeleton`, `form-skeleton`, `card-grid-skeleton`), `pdf-preview-modal` and generic format/upload/CSV helpers.
+
+### 1.2 Detailed visual source characteristics
+
+- **Top bar:** height `h-16` / 64px; horizontal padding `px-4 md:px-6`; bottom border; desktop search trigger with magnifying glass, `Search anything...`, `⌘K` visual key hint; theme sun/moon toggle; unread notification count badge; optional context-selector slot; profile avatar dropdown. The mobile top bar uses a hamburger, logo and compact controls.
+- **Sidebar:** `260px` expanded and `64px` icon rail. Logo region height 64px and visually separated. Thin separator and round outward-positioned collapse chevron. Navigation grouped under 11px uppercase muted labels; group disclosure icons; about 40px tall rows; Lucide outline icons about 20px. Active row uses `bg-primary/10` and `text-primary` with a quiet, not high-saturation, appearance. Profile dropdown pinned at bottom, showing two-letter initials, name and email.
+- **Responsive:** desktop sidebar + header; tablet sidebar auto-collapses between 768 and 1023px in source; mobile uses off-canvas menu/hamburger. Persist collapse preference while respecting first-load viewport. No horizontal viewport overflow; DataTable itself may scroll horizontally.
+- **Application content:** `main` padding `p-6`, usual `space-y-6`, page titles `text-2xl font-semibold tracking-tight`, small muted explanations, primary action at upper right, white/charcoal surfaces with subtle thin borders, compact enterprise-form controls. Retain whitespace rhythm and density.
+- **Login:** full viewport themed patterned background (`login-bg[-light].svg` in reference); centrally aligned maximum-small-width (`max-w-sm`) card, 32px padding, translucent surface/backdrop blur, logo centered, form labels, field errors, full-width 44px submit. Theme switch in upper-right of viewport. Forced password change reuses the login card. Replace original brand imagery/text with neutral, original artwork built using CSS/SVG.
+- **Typography:** original `next/font` loads Geist Sans + Geist Mono. In Vite use appropriately licensed font assets or normal `@font-face` integration or external permitted distribution, with a safe system stack fallback. Match weights/tracking, not Next font APIs.
+- **Colors:** faithfully port the CSS variable design system: light background `oklch(0.995 0 0)`, foreground `oklch(0.145 0 0)`, card `oklch(1 0 0)`, primary `oklch(0.488 0.243 264.376)`, neutral muted surfaces; dark background `oklch(0.13 0 0)`, card `oklch(0.2 0 0)`, popover `oklch(0.16 0 0)`, border `oklch(0.28 0 0)` and same primary. The source root radius is `0.5rem`, with derived radius tokens. Also copy the *semantic structure* of chart colors, sidebar colors, input/ring/accent and CSS-first Tailwind mappings, checking contrast.
+- **Dark/light/system:** Tailwind dark class (`@custom-variant dark (&:is(.dark *))`), automatic system default, persisted user selection; dynamic theme changes without flash; consistent themed dialogs, charts, tooltips, notifications, scrollbars, loading visuals and login assets. The source toggles light/dark and defaults to system. Make all three preferences explicit in the new settings UX.
+- **Motion/feedback:** 200ms collapsible group transitions, subtle hover and focus, Sonner top-right notification toasts styled with theme variables, skeleton loading and spinner states, confirm dialogs for destructive actions, inline form errors. Respect `prefers-reduced-motion`.
+- **Keyboard:** Ctrl+K/Meta+K opens a searchable command dialog backed by the same permission-filtered registry as the sidebar; Escape closes, Enter navigates, focus returns to trigger. Include semantic active `aria-current` and tooltips in collapsed navigation.
+
+**Design parity rule:** Preserve proportions, visual hierarchy, interactions, and composition. Do not show dead links for excluded domain pages; instead show the configured groups with real generic links and an empty extension registry for modules added later. Configure navigation once and use it for sidebar, command palette, breadcrumbs, accessibility, and route permission tests.
+
+# 2. REQUIRED TECHNOLOGY STACK AND UPDATE POLICY
+
+## 2.1 Frontend: retain categories and libraries from reference
+
+- React + React DOM (latest stable compatible); **Vite** + `@vitejs/plugin-react`; TypeScript in `strict` mode; modern supported Node LTS and npm with `package-lock.json`.
+- **React Router** (`react-router` current stable, declarative or data-router SPA mode, not SSR/framework build), nested layouts, protected routes, lazy route chunks, 404/403/error pages. Choose a single routing mode and document it.
+- Tailwind CSS 4 (with Vite-compatible official integration; do not transplant Next-only PostCSS defaults), `tw-animate-css`, shadcn CLI/component code in **base-nova**, `@base-ui/react` when compatible, `lucide-react`, `class-variance-authority`, `clsx`, `tailwind-merge`.
+- `@tanstack/react-query`, `@tanstack/react-table`, `@tanstack/react-virtual`, Axios, React Hook Form, `@hookform/resolvers`, Zod 4, `date-fns`, `react-day-picker`, `cmdk`, `sonner`, `recharts`.
+- `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` for reusable table column ordering/drag-drop. `react-pdf` if generic PDF preview is enabled. `next-themes` can remain **only if current release is verified to work in a Vite SPA**; otherwise use an equally small framework-agnostic theme provider and document this exception (Next.js itself must not be installed).
+- Developer quality additions justified by target: ESLint (flat config), Prettier, `tsc --noEmit`, Vitest, @testing-library/react, @testing-library/user-event, @testing-library/jest-dom, MSW for API mocks, Playwright for real browser E2E and visual checks, and axe tooling for accessibility.
+
+## 2.2 Backend: retain reference approach
+
+- Python latest **stable version supported by all selected dependencies**; minimum 3.12 unless a newer minimum is agreed by the environment. Use `uv` as resolver/runner/lockfile and `pyproject.toml` with separate dev group.
+- FastAPI + Starlette + Uvicorn; Pydantic 2 + Pydantic Settings; SQLAlchemy 2 async + asyncpg; PostgreSQL; Alembic; email-validator, python-multipart; bcrypt-capable approved password hashing. Preserve the pattern of `app/core/{config,database,deps,security}.py`, `app/models`, `app/schemas`, `app/api/v1`, `app/services`.
+- Source uses `passlib[bcrypt]`, `python-jose[cryptography]`, and direct `bcrypt`. On upgrade, choose **currently maintained, compatible** versions or secure minimal equivalent libraries for JWT and password hashing if an existing dependency has compatibility/security issues. A substitution requires a written reason, working tests and no authentication regression. Don't add unnecessary identity SaaS or replace the FastAPI auth architecture.
+- Generic document/file/report capabilities should use source families as appropriate: `docxtpl`, `reportlab`, `pypdf`, `pymupdf`, `pillow`, `openpyxl`, `react-pdf` and **Gotenberg**. OCR (`pytesseract`) and free-text date parsing (`dateparser`) are source dependencies but not mandatory if there is no genuine generic feature using them; do not copy obsolete domain recognition algorithms just to include a package.
+- Unit/integration tools: Pytest, pytest-asyncio, HTTPX, coverage, Ruff (lint/format), mypy/pyright or similarly appropriate type checks for Python; test Postgres rather than only fake SQLite.
+
+## 2.3 Operations and exact-version policy
+
+- PostgreSQL: latest supported **stable** major and pinned minor/digest after compatibility testing. The source Compose specifies `postgres:16-alpine`; do not assume 16 is latest. Verify migration/driver compatibility before upgrading.
+- Caddy stable supported v2 line or newer stable major after verifying configuration; reverse proxy, HTTPS, security headers, body limits and SPA fallback.
+- Gotenberg: latest stable supported version; source production Compose uses `gotenberg/gotenberg:8` while an older CI service entry says `:7` (a documented inconsistency). Pick **one tested version** across local, CI, production.
+- Multi-stage Docker build for Vite static assets (served with Caddy or another simple static server), separate Python API image, non-root users, persisted Postgres and private uploads, healthchecks, safe restart, backup/restore instructions.
+- GitHub Actions for frontend, backend, integration, browser tests, container builds, vulnerability checks and optional guarded deployment. Keep uv + npm, not Poetry/pnpm/Yarn unless explicitly required.
+- **No Redis or Next.js** in any artifact, including lockfiles, docs, Compose overlays, CI and production files.
+
+### 2.4 Latest versions: executable discovery, not guesses
+
+Before implementation, query official npm/PyPI/container registries, record actual stable versions and release timestamps in `docs/STACK_VERSIONS.md`. Avoid alpha, beta, canary, nightly and pre-release tags. Verify `engines`, peer dependencies, React/React Router/Vite compatibility, Python support and transitive vulnerabilities. Produce reproducible `package-lock.json`, `uv.lock` and container references. Run `npm outdated` / `uv tree --outdated` or equivalents and document any package that cannot be at absolute latest due to a *specific observed* incompatibility. Pin working released versions, not `latest` runtime floating tags.
+
+**As-of audit examples, not implementation-time guarantees:** The archive pins React `19.2.4` and FastAPI `>=0.136.3`. As of 2026-10-08, official/public release pages list React `19.3.0`, FastAPI `0.142.4`, React Router `8.4.0`, TanStack Query `5.104.0`, Tailwind CSS `4.3.3`. Revalidate all these and every other package before locking rather than copying these numbers unexamined. Latest does **not** mean break runtime compatibility.
+
+# 3. EXCLUSIONS AND PRECISE SCOPE
+
+## 3.1 Explicitly excluded business logic, screens, data and services
+
+Do **not** port or reimplement any of the following QTC360-specific routes or their underlying domain models/rules:
+
+- `/qaqc/*`: FAT, MIR, WIR, CIR, CRS lists, creation/detail pages, request forms and lifecycle state machines.
+- `/commissioning/*`: inspection tracker, requirements, tag targets, inspection/commissioning tracking, linkages and gate logic.
+- `/master-data/*` domain masters: Projects, Disciplines, Services, Requirement Templates, Asset Types, Assets, Systems, Contractors, Clients, Approvers, Designations, or their cross-relations.
+- `/documents` and `/documents/templates` **as QTC360 operational document entities**; approval rounds, Aconex responses, inspector/client workflow, bundles, submitted field drawings, report numbering by discipline, task-type-specific signing.
+- Domain dashboards/KPIs, commissioning progress matrices, weekly inspection charts, domain activity timelines, seeded clients/assets/designations, approval status codes and hard-coded construction statuses.
+- QA forms and signatures governed by QTC360 signatory requirements; company logos, fonts/graphics used only for source e-signature business workflows, QTC360 example data and credential seeds.
+- Backend modules `api/v1/{checklist,commissioning,dashboard,documents,master,ref_config}` and corresponding specialized services, schemas, migrations, seed scripts and frontend pages, except isolated **genuinely domain-neutral utilities** extracted cleanly into core modules.
+
+## 3.2 Keep the reusable *capability*, not a domain-specific implementation
+
+- **Context/project selector:** source uses a project selector and user-project membership. Build a **generic optional `WorkspaceContext` extension contract** (for future organizations/projects/business units), not a QTC360 Project table or mandatory project selection. It is disabled by default and **does not** show an inert selector. If an actual generic workspace module is built, its CRUD, membership and server-side scoping must be functional and tested; otherwise retain an injectable context-selector slot with a documented extension interface and no navigation entry.
+- **Dashboard:** deliver a working generic home screen with actual permitted identity, application/system health and actionable notifications, plus tasteful non-fabricated UI. Do not show fake construction KPI values, example charts masquerading as operational data, or rely on a fake dashboard API.
+- **File/report toolkit:** keep secure storage, uploads, PDF preview/generation/merge and DOCX-to-PDF via Gotenberg as **reusable infrastructure**, with a documented generic sample/test fixture, but no specialized reports or approval entities.
+- **Digital signature and delegation:** source contains profile signature assets and delegation endpoints, but their consuming workflows are domain-specific. Retain a clean, optional **reusable profile signature asset component/storage API** if it can be implemented securely, and a typed future capability interface for delegated permissions; **do not implement approval/signing/delegation business semantics** or create permissions granting unbounded action rights.
+- **CSV/Excel import/export:** keep generic validation, preview, controlled bulk import/export infrastructure plus an actual tested example on a safe administrative entity (e.g., exporting users or importing permitted generic configurations). No asset templates.
+- **Audit & notification APIs:** fully functional with independent events for account creation, role changes, login security, profile changes, admin configuration and safe generic events. Do not tie them to a project or document.
+- **Master data/navigation category:** preserve the **grouping mechanism and layout**, not misleading empty links. New business module groups should be plugged into a registry later.
+
+# 4. REQUIRED PAGE TREE, ROUTING, NAVIGATION AND ROUTE STATES
+
+Create Vite React Router routes with a public authentication layout and protected dashboard layout. Use URL paths as below, and implement all listed routes with real integrated behavior:
+
+```text
+/
+  -> (redirect to /dashboard if authenticated, otherwise /login)
+/login                       public, no registration link
+/change-password             protected forced-change flow (or consistent secured login-card step)
+/dashboard                   protected generic home / working overview
+/notifications               protected user-specific inbox
+/profile                     protected user profile
+/profile/security            protected own password change / session security
+/admin                       redirect to /admin/users (authorized) or 403
+/admin/users                 users data table, create/edit, enable/disable, roles, reset, deactivate
+/admin/roles                 role management and permission matrix
+/admin/permissions           permission dictionary (restricted privileged users)
+/admin/settings              general app settings, date format, optional branding settings
+/admin/audit                 immutable audit trail viewer with filtering/pagination
+/tools/components            dev-only UI component laboratory (disabled in production)
+/403                         not authorized
+/404                         not found / unknown route
+/*                           not found
+```
+
+### Navigation registry (generic adaptation of source)
+
+**Overview**: Dashboard (LayoutDashboard), Notifications (Bell). **Administration**: Users (Users), Roles (Shield), Permissions (Lock), Settings (Settings), Audit Trail (FileText); show only those the caller is permitted to access. Profile is accessible from top-right and sidebar-footer avatar menus, not necessarily a top-level group. **Future Modules**: an extension-slot registry capable of accepting new titled groups and module route objects. Show no empty fake groups. Developer-only `Component Lab` lives behind a dev-mode/admin-only Tools group or direct dev URL and is excluded from production builds/navigation as appropriate.
+
+Do not show domain navigation labels such as QA/QC, Commissioning or Projects in the final app. Preserve **source nav UX**: expandable/collapsible groups with icons, active row styling, icon-only collapsed sidebar, tooltips, persistent group/sidebar state, scroll active item into view, responsive off-canvas drawer, accessible focus management. Command palette must share *exactly the same filtered route definition* as the sidebar and respect permissions. Link navigation, browser back/forward, deep-link refresh and hard reload must all work with the static server's SPA fallback.
+
+The route registry must support metadata: `id`, `path`, `label`, `icon`, `group`, `requiredPermissions`, `adminOnly`, `showInNavigation`, `featureFlag`, breadcrumb factory, and a lazily imported route component. Test route visibility and direct-path API protection separately. Route-level 403 should be distinct from anonymous redirect to `/login`. Use `Outlet`-style nesting (or equivalent current Router data mode), `Suspense`/pending skeletons and an error boundary. Preserve the source top navbar and 24px main padding. Never navigate to a source-only route that does not exist.
+
+# 5. DESIGN SYSTEM AND COMPONENT WORK PACKAGES
+
+## 5.1 Foundation and theme
+
+Build CSS-first Tailwind 4 with all source semantic CSS variables (`background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`, `border`, `input`, `ring`, `chart-1..5`, `sidebar-*`, `radius-*`) with both light and dark definitions described in §1.2. Keep styling decentralized from business modules and shared through tokens. Create `ThemeProvider`, `ThemeToggle`, `ThemeSelect`, persisted mode light/dark/system, first-paint anti-flash handling, reduced motion, focus-visible indicators and correct text contrast. Keep the global small scrollbar theme where cross-browser safe; do not force dark scrollbars on light UI.
+
+Use `shadcn` **base-nova** style on top of `@base-ui/react` where current versions support that exact variant. The reference has `components.json` with `style:base-nova`, `baseColor:neutral`, `iconLibrary:lucide`, aliases under `@/`, `cssVariables:true`. Preserve those choices but set `rsc:false`, rewrite stylesheet paths, and use a Vite alias matching tsconfig.
+
+## 5.2 Shared component inventory — fully operative
+
+Implement each of the **29 source UI primitives**, preserve their composable public APIs where feasible, and verify in story/example tests: Button (variants/sizes/loading/disabled), Badge, Input, InputGroup, Label, Textarea, Checkbox, Switch, Select, Date Picker, Time Picker, Popover, Dialog/Alert confirm, Dropdown Menu, Command, Tooltip, Tabs, Card, Separator, Scroll Area, Avatar, Breadcrumb, Skeleton, Spinner, Progress, Table, Collapsible and Sidebar/Sheet.
+
+Enhance generically where appropriate: `PageHeader(title,description,actions,breadcrumbs)`, `EmptyState`, `ErrorState`, `LoadingState`, `StatusBadge`, `ConfirmDialog`, `FormActions`, `PermissionGate`, `SecureLink`, `PaginationBar`, `SearchField`, `FilterChip`, `FileDropzone`, `FilePreview`, `PDFPreviewModal`, `ThemeAwareChart`, `IconButton`, `RelativeTime`, `DateDisplay`, `ActionMenu`, `KeyboardShortcut`. All interactive components need disabled/busy/validation/focus states. Avoid decorative orphan controls.
+
+## 5.3 Enterprise DataTable parity
+
+Build the source-inspired table system on TanStack Table, TanStack Virtual as justified, DnD Kit for column ordering, shadcn table/menus/dialogs, and a backend pagination contract. Features:
+
+- Client and manual server-side pagination; page number, total count, rows/page and prev/next; never mismatch server totals and UI rows.
+- Typed column definitions, sorting asc/desc/reset, global or field search, faceted multi-select filters, active filter chips, clear filters, empty state.
+- Per-user column visibility and drag-reordered column order saved in `user_preferences` (typed JSONB) **per table key**; restore on login/reload; avoid leaking one user's preferences into another's cache; reset defaults.
+- Optional row selection, select-all-current-page, bulk actions with server permission and confirmation, accessible row action dropdown.
+- Optional inline cell edits for text/number/boolean/select with optimistic or mutation-backed saves, loading, validation, Escape cancel, Enter save and rollback on failure. **No mutating React state while rendering**.
+- Optional CSV export and import with column mapping/preview and row-level validation; download templates where an actual entity supports them; protect against CSV formula injection, prohibit silent partial writes and disclose import errors.
+- Search+sort+pagination state optionally encoded in URL query parameters, stable on back/forward and refresh. Debounce network search. Handle high-row-count virtualization without breaking keyboard/focus navigation.
+- Actual working usage in `/admin/users`, `/admin/permissions` and `/admin/audit`, not just a component demo. Test column order persistence, filtering, pagination and authorization.
+
+## 5.4 Reusable forms
+
+Use React Hook Form + Zod v4 + `@hookform/resolvers` typed forms. Mirror the source `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage`, `FormDescription` pattern plus `InputField`, `SelectField`, `TextareaField`, `CheckboxField` and reusable date/time fields. Implement required asterisks, `aria-describedby`, `aria-invalid`, validation and server-to-form error mapping, unsaved-change prompts where appropriate, pending submission, duplicate-submit prevention, reset/cancel and consistent toast feedback.
+
+## 5.5 Feature parity UX acceptance snapshots
+
+At minimum visually compare at desktop width about 1440px, tablet about 900px and mobile about 390px for: dark and light login, collapsed/expanded dashboard, top search/command dialog, profile dropdown, user list with filters, user create/edit dialogs, permission role matrix, audit table, settings card, notification list/empty state, 403/404/error states. Use the supplied **code-derived design**; if the agent can run the original app locally, capture screenshots for more precise parity **without reusing domain data**. Protect existing visual proportions from generic redesigns.
+
+# 6. IDENTITY, AUTHENTICATION, SESSIONS AND SECURITY
+
+## 6.1 Account lifecycle
+
+Database-backed `User` has UUID, unique normalized email, `full_name` (single field), optional phone, hashed password, `is_active`, `is_deleted`, `is_superuser`, `must_change_password`, `password_reset_at`, `token_version`, created/updated metadata, optional last-login metadata. No domain-specific `designation_id`, `projects` relationship or hard-coded company identifier. Administrators create accounts through `/admin/users` using explicit temporary password or securely generated initial password shown once; never log/echo passwords later. First-login required change. Admin reset increments revocation version and forces change. Password changes require current password except privileged reset. Account deactivation/deletion revokes sessions. Email is canonicalized consistently and unique at DB layer. Disallow last-super-admin removal/deactivation and non-super-admin privilege escalation.
+
+Use contemporary robust password hashing (Argon2id preferred if selection is justified; bcrypt is allowed when properly configured and tested), strong configurable password policy with length/denylist/rate limits where feasible; never store raw password, never return `hashed_password` in API response. Expired temporary password -> clear recovery/admin-reset UX, not a dead-end form. First-login change should not accidentally grant ordinary app access before completion; API should enforce `must_change_password` for all regular endpoints.
+
+## 6.2 Session design — improve upon source
+
+The source uses access and refresh JWTs in `localStorage` and Axios interceptors with one refresh promise. **Do not blindly reproduce this security tradeoff.** Implement secure, production-appropriate authentication without Redis: a short-lived access token (in memory only, or an appropriate secure cookie) and an **HttpOnly, Secure, SameSite** refresh cookie with server-managed rotation/revocation in PostgreSQL. Alternatively use entirely opaque HttpOnly session cookies stored as hashed session IDs in PostgreSQL. Choose one documented design and implement it consistently; favor same-origin reverse proxy `/api/v1` to avoid unnecessary cross-origin cookie complexity.
+
+- Login/logout/refresh/me/change password, status checks, disabled-user and version-based revocation.
+- Rotate refresh tokens with hashed token/session rows, absolute expiry, replay/reuse detection, logout-current and logout-all/revoke-all (if supported). No exposed refresh secret in JavaScript or `localStorage`.
+- Protect cookie-authenticated state-changing operations with tested SameSite policy and robust CSRF mitigation (origin validation and/or CSRF token as appropriate). Keep CORS tight with no wildcard+credentials, ensure TLS in prod, HTTP-only development handling, secure cookie domain/path.
+- Avoid refresh request loops and duplicate refreshes: client `api.ts` performs **single-flight** refresh and retries an original request once, except auth/refresh/login requests. Race-proof across tabs where practical, clear private caches when identity changes.
+- Redirect to `/login` only after clear anonymous/expired-auth resolution; **network failure and 5xx get a Retry UI**, as the source auth guard intends. An anonymous visitor to `/dashboard` must be redirected. A logged-in unauthorized user must see 403 without data leak. Persist intended destination safely within the app.
+- Login failures must not enumerate users. Rate-limit by IP/account using PostgreSQL-backed counters or other non-Redis strategy with tested concurrency; consider reverse-proxy protections. Record security events with privacy-aware details, not passwords or raw tokens. Support audit of reset/deactivate/logout and security-sensitive admin changes.
+- Source's backend has a global FastAPI `APIRouter.include_router` monkey patch for an old compatibility issue in `backend/app/main.py`. **Do not copy this monkey patch**. Use normal current FastAPI router composition and adjust paths properly.
+
+## 6.3 RBAC model and authorization
+
+Model `Role`, `Permission`, `user_roles` (M:N) and `role_permissions` (M:N) with UUIDs, unique `name`/`code`, safe admin CRUD and `role.permissions` associations. User can have **multiple roles**. Permission codes are machine-stable (`users.read`, `users.create`, `users.update`, `users.deactivate`, `users.reset_password`, `roles.read`, `roles.manage`, `permissions.read`, `permissions.manage`, `settings.read`, `settings.manage`, `audit.read`, `notifications.read`, `notifications.manage_own`, `files.read`, `files.create`, `reports.generate`); add granular variants only as needed.
+
+- Default `super_admin`, `admin`, `viewer` roles with narrowly justified capabilities; seeded roles and permissions are idempotent. Super-admin may bootstrap safely. `viewer` is read-only through explicit permission definitions; **do not** use the source shortcut that blocks any user whose role set equals `{viewer}` from even appropriate read operations.
+- Server `get_current_user`, `require_permission`, `require_admin` must check active/deleted status and effective permissions every request (or safely invalidated cache), fail closed, and apply filters on SQL queries. Route guard and `PermissionGate`/navigation visibility share permission registry but are never the security boundary.
+- Least-privilege protection for role assignment, admin role modification, permission creation, super-admin role update, self-demotion/deletion and simultaneous administrative changes. Validate unknown role/permission IDs and duplicate associations.
+- On role changes, invalidate affected users' sessions or ensure next request re-evaluates privileges (source `token_version` supplies a pattern). Prevent a normal admin from granting themselves elevated rights. Audit every permission/role change with before/after sanitized diff.
+- Provide a documented future *resource-scope policy interface* (`ScopePolicy`/resource object checks) to extend RBAC to projects/business units, but **do not create** QTC360 project masters or grant client-controlled scope IDs authority. If scope selection is added later, server must always verify membership.
+
+## 6.4 Global security baseline
+
+Validate environment on startup (strong secret, DB connection, TLS/cookie settings, production origins), build properly parameterized DB queries, input schemas, least privilege DB user, standard non-sensitive errors, no leaking call stacks in prod, body/upload caps, filename/path traversal prevention, MIME + magic-byte checking, malware scan hook, safe file response headers, no public uploads volume, CSP for static app, X-Content-Type-Options, Referrer-Policy, HSTS/TLS in production. Avoid debug `print` logs containing users or raw project memberships (present in old source). Use structured logs with request IDs and secrets redaction. CSP must allow Vite static JS and only required API connections. Document threat model including XSS, CSRF, leaked refresh tokens, horizontal privilege escalation, audit tampering, rate limit bypass and malicious CSV/PDF uploads.
+
+# 7. APPLICATION-WIDE REUSABLE FEATURES (REAL END-TO-END)
+
+## 7.1 Login and password experience
+
+- Pixel-close source login composition with light/dark themed background and accessible logo/brand slot.
+- Email and password with client/server validation, submit spinner, real backend error mapping, credential auto-complete attributes and keyboard navigation.
+- Mandatory initial/reset password change, password-policy guidance, confirm new password, error handling, reissue/revoke sessions and redirect.
+- User-initiated password change available in Profile > Security, with current/new/confirm fields. Logging out must wipe cached privileged state and return to login.
+- No public signup, no public invite workflow, no forgotten-password email infrastructure unless it is genuinely implemented securely and explicitly enabled later. Admin reset is the default recovery.
+
+## 7.2 `/dashboard` (generic, honest overview)
+
+Reference source has extensive domain-specific analytics; do **not** reproduce them. Build a polished generic responsive dashboard with the same visual language: PageHeader, identity welcome, quick links to accessible admin areas, actual unread notification count, user's roles/permission summary as appropriate, recent relevant audit/security activity where authorized, and a real backend health status from `/health`/`/ready` (do not leak internals to unprivileged clients). Show empty states when there is nothing to display. A genuine `SystemStats` tile (e.g. active users) may only appear if the backend supports it, permissions are enforced and the number is real. Reusable Recharts wrappers and chart tokens remain available in the component lab; fake analytics must not appear on the production dashboard.
+
+## 7.3 `/admin/users`
+
+Match the source's compact header, add-user action, DataTable, dialog and reset confirmation flow. The user table has full name, email, assigned roles (multiple badges), active status, created time, row actions. Features: server-pagination/filter/search/sort; create account with initial temporary password and role multiselect; edit full name/email/roles/active; password reset in a separate confirmation/dialog; deactivate/soft delete with prompt; prohibition on own deletion and last super-admin removal; server-authoritative error messages; loading/skeleton and no-users empty states; audit entries. Optional import/export must be access controlled. No QTC360 designation dropdown.
+
+## 7.4 `/admin/roles` and `/admin/permissions`
+
+- Roles page uses the source **permission matrix**: permission codes grouped by namespace, columns for roles, checkboxes per intersection, super-admin protected/read-only column, sticky headers or horizontal scroll on mobile, visible unsaved edits and one **atomic server save** (avoid reference's sequential PATCH partial success). Also provide create/edit/delete role interface, safeguards if role assigned to users, clear validation.
+- Permissions page is searchable/sortable DataTable of `code`, `description`, optionally classification; create/edit/delete behind privileged permissions, confirm destructive action, refuse deleting permissions still in use or require explicit safe resolution. Permission codes must obey canonical namespace/action validation and cannot silently collide.
+- Admin screens enforce backend checks in every mutation. 403 UI is shown for direct navigation to restricted pages.
+
+## 7.5 `/admin/settings`
+
+Recreate source design of title + multiple **Card** sections rather than a giant bare form. Implement generic key/value settings in `app_settings` with declared typed schemas and allowlist (no arbitrary mass-assignment). Required: application display name/description (safe text), date display format (source options: `DD.MM.YYYY`, `MM/DD/YYYY`, `YYYY-MM-DD`, `DD-MM-YYYY`, `DD/MM/YYYY`), timezone/display localization preference, and optional notification behavior defaults. Keep secrets outside the UI/config DB. Validate admin-only updates, persist and re-read across restart, show saving state/toasts, audit changes. Remove source document filename formats, asset custom fields, reference number configuration and CRS-specific headers.
+
+## 7.6 `/profile`, `/profile/security` and preferences
+
+Profile card with name, email, assigned roles, active status, editable self fields constrained by policy (e.g. full name and phone), account-created info, view-only effective permissions as appropriate, and security CTA. User preferences stored in `user_preferences` JSONB keyed by (`user_id`,`key`) with unique constraint: theme choice, preferred table column orders/visibility, rows/page, date format if user override allowed, notification display preferences. User cannot modify another user's settings. Include optional secure profile/avatar upload if realistically used, plus optional standalone signature image asset UI as a generic library without a document signing workflow. Avoid source's QTC360-specific signatory/delegation forms.
+
+## 7.7 `/notifications`
+
+Port the source's list visual pattern: narrow centered max-width, unread count pill, mark-all-read, clear-all with confirmation, individual cards with primary-tinted left accent when unread, relative timestamps, delete control and subtle exit animation. APIs implement list (pagination), unread count, mark-one-read, mark-all-read, delete-one and clear-all for **current user only**. Optional `link` must be a safe internal app route (prevent off-site untrusted navigation). Top bar unread badge updates via TanStack Query polling every ~30s or another deterministic non-Redis mechanism. Provide empty state, loading, read/unread filtering, optimistic rollback, and no fabricated notifications. Trigger real notifications for a few relevant account lifecycle events when useful (e.g. account created, password reset), without revealing credentials in notification text.
+
+## 7.8 `/admin/audit` and app-wide audit
+
+Persist immutable `audit_logs`: UUID, timezone-aware timestamp, actor ID, `action`, `entity_type`, `entity_id`, sanitized summary, JSONB sanitized `details`, request/correlation ID, optional IP/user-agent with retention policy. Admin viewer displays sortable/filterable DataTable (actor, action, entity, timestamp, summary) with server pagination; detail dialog shows before/after diff with secrets redacted. Include auth/admin/config/file report events. Never expose mutable/delete audit routes for normal administrators. Prevent audit suppression or failure hiding; transactionally record critical DB changes. Make search and timezone behavior reliable.
+
+## 7.9 Generic upload, reporting, PDF and export infrastructure
+
+Keep a generic backend storage abstraction analogous to `services/storage.py`: safe path resolution, read/write/delete, UUID storage keys, per-file size and MIME allowlist, SHA-256 checksum, metadata DB row, audit, reference authorization, private file serving; optional local-volume adapter now and interface for future S3 without bringing S3 in as required stack. Keep generic `file` upload/download/list/delete endpoints **only if fully wired to a non-domain resource** (for example an admin-controlled file library or report-templates resource). Never expose publicly traversable upload folders.
+
+Retain generic backend `ReportService`: ReportLab PDF rendering, docxtpl for a safe example DOCX template, Gotenberg DOCX→PDF conversion, pypdf PDF merge, PDF page metadata and a health/test endpoint, and `react-pdf` client preview with supported worker configuration. Create a **real, permission-protected generic sample**: "User Directory" PDF export for administrators or "Application Configuration" report, drawing only from authorized DB rows and containing no domain entities. Include CSV/Excel export in a generic module with formula injection protection, streaming where appropriate, tested MIME headers, filename sanitation, and error cleanup. Include an actual sample report test in CI with Gotenberg healthy. Do not port template-lock, external approval, signature stamping, OCR business extraction, drawing-bundle merge rules or other QTC360-specific logic.
+
+# 8. BACKEND ARCHITECTURE, SCHEMA AND API CONTRACT
+
+## 8.1 Recommended directory structure
+
+```text
+backend/
+  pyproject.toml  uv.lock  Dockerfile  alembic.ini
+  migrations/{env.py,versions/*}
+  app/
+    main.py  api/v1/{router.py,auth.py,admin_users.py,roles.py,
+      permissions.py,settings.py,preferences.py,notifications.py,
+      audit.py,files.py,reports.py,health.py}
+    core/{config.py,database.py,deps.py,security.py,logging.py,
+      errors.py,permissions.py,rate_limit.py}
+    models/{base.py,user.py,rbac.py,session.py,user_preference.py,
+      app_setting.py,notification.py,audit_log.py,file_asset.py}
+    schemas/{auth.py,user.py,role.py,permission.py,settings.py,
+      notification.py,audit.py,files.py,common.py}
+    services/{auth.py,user.py,permissions.py,audit.py,notifications.py,
+      settings.py,storage.py,reporting.py,pdf.py,uploads.py}
+    seed.py  bootstrap_admin.py
+  tests/{unit,integration,e2e,fixtures}
+```
+
+This is a flexible target structure, not an invitation to create unused files. Preserve separated HTTP routers, DTO validation, transactional service logic, models and configuration, with dependency injection and typing. Prefer FastAPI lifespan handlers and async SQLAlchemy sessions. All migrations should create **only the new, domain-neutral schema**. Never import historical QTC360 production migrations into a new application.
+
+## 8.2 Minimal relational data model
+
+Define proper UUID PKs, UTC timestamptz, constraints, indexes, unique keys and cascade behavior:
+
+```text
+users
+  id, email [unique normalized], full_name, phone?, hashed_password,
+  is_active, is_deleted, is_superuser, must_change_password,
+  password_reset_at?, token_version, created_at, updated_at, last_login_at?
+roles
+  id, name [unique], description?, is_system?, created_at, updated_at
+permissions
+  id, code [unique], description?, created_at
+user_roles (user_id, role_id) PK/unique association
+role_permissions (role_id, permission_id) PK/unique association
+sessions OR refresh_tokens
+  id, user_id, hashed_credential/jti, family_id?, expiry, revoked_at?,
+  replaced_by?, created_at, last_seen_at?, IP/user-agent metadata redacted
+user_preferences
+  id, user_id, key, value JSONB, unique(user_id,key), timestamps
+app_settings
+  key unique, value JSONB/string typed via registry, updated_by?, updated_at
+notifications
+  id, user_id, title, message, link?, is_read, created_at
+  [optional notification_type/priority, safe internal link]
+audit_logs
+  id, timestamp, user_id?, action, entity_type, entity_id?, summary,
+  details JSONB?, correlation_id?, source metadata
+file_assets  [if generic file/report module enabled]
+  id, owner_user_id?, key, original_filename, content_type, size,
+  sha256, category, created_at
+login_attempts / rate_limit_buckets [if DB-backed rate limit implemented]
+```
+
+Use SQL-level constraints and unit tests for model invariants. Prevent cross-user notification/file/preference access at **SQL filter** level rather than filtering unrestricted responses in Python. Use keyset or correct offset pagination with total. Use concurrency-safe DB transactions for role edits, session token rotation, rate limits and settings updates. Bootstrap roles/permissions idempotently.
+
+## 8.3 Minimal functional versioned REST API
+
+Follow source's `/api/v1` convention and OpenAPI generation. Use JSON response schemas, consistent error shape with `detail`, and explicit 200/201/204/400/401/403/404/409/422/429 semantics. Evolve endpoint names only if justified and keep a typed frontend client aligned. Required surface:
+
+```http
+GET    /api/v1/health
+GET    /api/v1/ready                         [protected appropriately at ingress]
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+POST   /api/v1/auth/logout
+POST   /api/v1/auth/logout-all               [if session UI supports it]
+GET    /api/v1/auth/me
+PATCH  /api/v1/auth/me
+POST   /api/v1/auth/change-password
+GET    /api/v1/auth/me/preferences
+PUT    /api/v1/auth/me/preferences/{key}
+DELETE /api/v1/auth/me/preferences/{key}
+GET    /api/v1/admin/users                  [paginated/search/sort]
+POST   /api/v1/admin/users
+GET    /api/v1/admin/users/{id}
+PATCH  /api/v1/admin/users/{id}
+POST   /api/v1/admin/users/{id}/reset-password
+DELETE /api/v1/admin/users/{id}             [soft-delete/deactivate]
+GET    /api/v1/admin/roles
+POST   /api/v1/admin/roles
+PATCH  /api/v1/admin/roles/{id}
+DELETE /api/v1/admin/roles/{id}
+PUT    /api/v1/admin/roles/permission-matrix [atomic batch updates]
+GET    /api/v1/admin/permissions
+POST   /api/v1/admin/permissions
+PATCH  /api/v1/admin/permissions/{id}
+DELETE /api/v1/admin/permissions/{id}
+GET    /api/v1/admin/settings
+GET    /api/v1/admin/settings/{key}
+PUT    /api/v1/admin/settings/{key}
+GET    /api/v1/admin/audit-logs             [filtered/paginated]
+GET    /api/v1/notifications
+GET    /api/v1/notifications/unread-count
+PATCH  /api/v1/notifications/{id}/read
+PATCH  /api/v1/notifications/mark-all-read
+DELETE /api/v1/notifications/{id}
+DELETE /api/v1/notifications
+POST   /api/v1/files                        [if file library enabled]
+GET    /api/v1/files/{id}                    [authorized download]
+DELETE /api/v1/files/{id}
+POST   /api/v1/reports/user-directory        [authorized PDF]
+GET    /api/v1/reports/engine-health         [properly protected]
+```
+
+Use typed schema descriptions and examples, OpenAPI security scheme that correctly describes the actual chosen cookie/Bearer approach, no `/auth/register` public access (source `/auth/register` is explicitly superuser-protected, but the target should use `/admin/users` as canonical account creation), no arbitrary-setting keys written without registry checks.
+
+## 8.4 Operational resilience
+
+- Migrations apply from empty database, downgrade where feasible, repeat with no unexpected schema drift; new migration for each schema change.
+- Startup `config` validates secrets and API URL/cookie settings. Health vs readiness separated; readiness checks PostgreSQL and Gotenberg only when reports explicitly required.
+- Use logging instead of prints; request IDs, exception middleware, standardized errors, selective access logs, no PII/token leakage. Set production OpenAPI exposure deliberately.
+- Explicit DB transactions; deterministic rollback on API exceptions. Clear stale auth caches when permission roles change, make audit write part of the same transaction for material changes.
+- Background tasks (if truly needed) are implemented without Redis: short bounded FastAPI BackgroundTasks for best-effort low-impact work, or a **PostgreSQL transactional outbox + a separate worker** for durable jobs. No phantom async worker; test processing, retries and idempotency or don't claim it exists.
+
+# 9. FRONTEND APPLICATION ARCHITECTURE
+
+Recommended target structure:
+
+```text
+frontend/
+  index.html  vite.config.ts  tsconfig.json  package.json  package-lock.json
+  components.json  eslint.config.*  public/{brand-placeholder.svg,login-pattern*.svg}
+  src/
+    main.tsx  App.tsx  app/router.tsx  app/providers.tsx  styles/globals.css
+    config/{navigation.ts,permissions.ts,branding.ts}
+    components/ui/*                            [all 29 source primitives]
+    components/layout/{app-sidebar,navbar,command-palette,
+      context-switcher-slot}.tsx
+    components/data-table/*
+    components/form/*
+    components/loaders/*
+    components/common/{page-header,confirm-dialog,empty-state,...}.tsx
+    components/providers/{theme-provider,query-provider,auth-provider}.tsx
+    features/auth/{api,hooks,schemas,components}
+    features/admin/users/{api,hooks,components}
+    features/admin/roles/{api,hooks,components}
+    features/admin/permissions/{api,hooks,components}
+    features/admin/settings/{api,hooks,components}
+    features/admin/audit/{api,hooks,components}
+    features/profile/{api,hooks,components}
+    features/notifications/{api,hooks,components}
+    features/reports/{api,hooks,components}
+    pages/{login,dashboard,profile,security,notifications,
+      admin-users,admin-roles,admin-permissions,admin-settings,
+      admin-audit,forbidden,not-found,error}.tsx
+    hooks/{use-auth,use-mobile,use-permission,use-preferences}.ts
+    lib/{api,query-keys,utils,format-date,csv,upload,errors,types}.ts
+    testing/{mocks,fixtures,test-utils}
+  tests/{unit,components,e2e,visual}
+```
+
+Use a properly scoped `QueryClient` with source-like stale time `~30s`, global error normalization and Sonner integration; centralized typed query keys including user ID if identity-specific, cache resets on logout/account switch. Axios instance uses `import.meta.env.VITE_API_URL` only if a cross-origin URL is actually required; **prefer relative `/api/v1`** via Vite development proxy and Caddy same-origin production reverse proxy. Do not expose secrets as `VITE_*` variables. Typed API DTOs may be generated from FastAPI's OpenAPI schema (recommended) and checked for drift in CI.
+
+Use lazy route imports, route-aware suspense/skeletons, shared Form utilities, global/route-level error boundaries. Remove `next/image` in favor of proper HTML `img` with sizes/alt/lazy loading, `next/link` to Router `Link`, `useRouter` to `useNavigate`, `usePathname` to `useLocation`, `next/font` to CSS `@font-face`, app-layout exports to React layout composition, Next config to Vite config, metadata to static `index.html` and dynamic document title where needed. Replace the source's `process.env.NEXT_PUBLIC_API_URL` with Vite-safe config or same-origin.
+
+### Architecture designed for later business modules
+
+Implement small, stable, typed extension interfaces instead of domain-specific code:
+
+```ts
+interface AppModule {
+  id: string;
+  navigation?: NavGroup[];
+  routes: RouteConfig[];
+  permissions?: PermissionDefinition[];
+  featureFlag?: string;
+}
+
+interface ScopePolicy<TResource> {
+  canAccess(user: AuthenticatedUser, action: string, resource: TResource): boolean;
+}
+
+interface ContextSwitcherAdapter<TContext> {
+  enabled: boolean;
+  listAvailable(): Promise<TContext[]>;
+  getSelected(): TContext | null;
+  select(context: TContext): Promise<void> | void;
+}
+```
+
+These are illustrative conceptual types, not literal hard constraints. The backend `ScopePolicy` belongs in Python, not the TypeScript frontend; show the corresponding backend interface in architecture docs. Avoid runtime plugin loaders from arbitrary remote code, and make permission codes registered server-side. Add `docs/ADDING_A_MODULE.md` demonstrating only **how** to register a new route, nav item, permission, database model/migration, schema, endpoint and tests, using a neutral example such as `demo_records` in tests/dev mode, not in production navigation.
+
+# 10. TESTING: REQUIRED PROOF, NOT CHECKBOXES
+
+Build a layered test suite and actually run it on clean databases and browsers:
+
+### 10.1 Backend unit tests (Pytest)
+
+Password hashing/policy, email normalization, JWT/opaque token behavior, expiry, token-version invalidation, session rotation/reuse, permission-union evaluation, privilege boundaries, preference serialization, date/time formats, file path traversal + MIME validation, audit data redaction, pagination/sort/filter parsers, rate-limit calculations, report input sanitation.
+
+### 10.2 Backend integration / API tests (real PostgreSQL)
+
+- Bootstrap admin idempotently; no default production credentials.
+- Create a user with two roles; read effective permissions; remove one role and verify unauthorized operation is **403** immediately.
+- Login good/bad; rate limit; disabled/deleted user; access vs refresh token; expired refresh, stolen/replayed refresh, logout and password-reset invalidation; first-login forced change.
+- Admin users CRUD, role matrix atomic batch updates, permission CRUD guardrails, normal-user vs admin vs super-admin access controls, anti-escalation, last-super-admin safeguard.
+- User preference multi-user isolation, system settings persistence and audit, notification ownership (one user cannot read/mark/delete another's), audit filtering and immutable write behavior.
+- Safe file storage, report export PDF validity and Gotenberg conversion, handling missing converter, upload rejection and cleanup, database migrations and rollback.
+- Concurrency tests for duplicate user email, token rotation, rate limits, settings conflicts; systematic missing/invalid UUID, 404, 409, 422 responses and hostile inputs.
+
+### 10.3 Frontend unit/component (Vitest + Testing Library + MSW)
+
+Login and forced-change forms; auth guard anonymous/authenticated/403/offline; sidebar collapse, active route, accessible mobile drawer; keyboard command palette search; light/dark/system persistence and reduced-motion; RHF/Zod error messages; profile updates; notification count, mark-read/clear confirmation; permission matrix change+save/rollback; DataTable sorting, filters, pagination, column hide/reorder persistent prefs, inline edit cancellation/error; error/skeleton/empty states; Axios single-flight refresh and logout cache cleanup. Test with dark and light themes where visuals change.
+
+### 10.4 Playwright browser E2E
+
+Run against **real API + freshly migrated real Postgres**, seeded with generated test credentials only in isolated test configuration. Cover complete workflow:
+
+1. Launch browser and visit protected route unauthenticated → `/login`.
+2. Bootstrap admin → login → change initial password → dashboard.
+3. Admin creates ordinary account, assigns multiple roles; user logs in and changes password.
+4. User sees only authorized sidebar, profile/notifications; direct forbidden URLs show 403 and forbidden APIs return 403.
+5. Admin edits roles/permissions, changes become effective on next request without stale cached privileges.
+6. User table search/filter/order/pagination, persistent column order/visibility through refresh.
+7. Theme switch on login and dashboard survives reload; sidebar mobile/tablet/desktop layout and `Ctrl/Meta+K` navigation.
+8. Notifications read/unread/delete/clear; a second user never sees first user's notifications.
+9. User profile and password update; old credentials/session invalid; logout redirects and clears state.
+10. User Directory PDF export opens/downloads valid PDF; file access is permission protected; failure modes are handled.
+11. Deep-link refresh works in production-style static server; 404, 403, offline retry, required labels, keyboard tab path, dialog focus trapping.
+
+Run axe accessibility scans or equivalent at least on Login, Dashboard, Admin Users, permission matrix, and Notifications. Build baseline screenshot comparisons in light/dark at 1440×900, 900×800, 390×844; stabilize fonts/animations/seed data. Fail CI for real critical accessibility violations, test failures and visual differences beyond intentionally approved tolerances.
+
+### 10.5 CI quality gates
+
+CI must execute: frontend npm clean install, format/lint/typecheck, Vitest, Vite build; backend uv frozen sync, Ruff/typed lint, Pytest unit+integration, Alembic migration smoke; Playwright E2E against Docker Compose test services, PDF/Gotenberg sample smoke; security dependency checks (`npm audit`, `pip-audit`/`uv` equivalent with documented policy); Docker build/smoke and full clean environment setup. Treat failures as failures — do not increase arbitrary warning thresholds or skip broken tests to get green CI. Publish machine-readable coverage and E2E artifacts/screenshots on failure. Prefer coverage thresholds **≥85% for generic backend/core and frontend shared utilities**, with critical auth/RBAC branch tests even if percentage alone is high.
+
+# 11. DOCKER, CADDY, OPERATIONS AND RELEASE READINESS
+
+1. Local developer experience: `docker compose up -d` supplies PostgreSQL + Gotenberg, API and Vite run via documented uv/npm commands; optionally fully containerized `docker compose --profile app up --build`. Vite on 5173 or documented chosen port. FastAPI on 8000, Postgres 5432 dev only, Gotenberg 3000 internally/3100 dev host if needed. `.env.example` with safe placeholders, no actual secrets.
+2. Production Compose: `caddy`, `frontend` (static built Vite files), `backend`, `postgres`, `gotenberg`, persistent data; no Redis, no Next runtime and no exposed database/document converter on public ingress. Use container healthchecks and dependencies, non-root users, resource limits as appropriate, timeouts, upload size cap, restart policy, internal Docker networks. Prefer same-origin `https://yourdomain.example` and `/api/v1` proxy to API. If distinct API domain is selected, configure secure cookies/CORS correctly and document browser tests. Caddy SPA fallback must route unrecognized frontend deep links to `index.html` but not swallow API 404s.
+3. Startup and migrations: document a safe one-time migration/init command, not an uncoordinated automatic migration in every replica. One-time bootstrap super-admin with env/CLI credentials provided by operator; first-login reset. Provide log review, health/readiness checks and rollback instructions.
+4. Backup/restore: encrypted DB backups, persistent private uploads and config, retention plan, restore smoke test procedure. Avoid describing backup as reliable until it is tested.
+5. Secrets management: `SECRET_KEY`, DB password, bootstrap password and cookies never baked into images, commits or frontend bundles. Example `.env` contains generated-placeholder guidance. Production startup must fail if weak/placeholders are used.
+6. CI/CD: GitHub Actions builds/test separate jobs, optionally publishes images, deploys only if checks pass and credentials exist, has environment protections. Do not keep the QTC360 VPS paths, hostnames, accounts or brand names from source. The source deploy uses SSH to a VPS; adapting to a generic Linux VPS via Docker Compose is appropriate. Document minimum requirements and no-downtime caveats.
+7. Configuration/ops docs: README (quick start, exact commands, demo disabled in production), `docs/ARCHITECTURE.md`, `docs/ROUTES_NAVIGATION.md`, `docs/STACK_VERSIONS.md`, `docs/SECURITY.md`, `docs/DEPLOYMENT.md`, `docs/BACKUP_RESTORE.md`, `docs/ADDING_A_MODULE.md`, `docs/TESTING.md`, `docs/REFERENCE_PARITY.md`, `docs/OPENAPI_CLIENT.md`.
+
+# 12. ORDERED IMPLEMENTATION PHASES AND GATES
+
+Treat each phase as a complete deliverable with recorded test output in `docs/IMPLEMENTATION_LOG.md`. Do **not** declare overall success on an intermediate scaffold.
+
+**Phase 0 — Audit and architecture.** Inspect repository paths in §1, generate a truthful `docs/REFERENCE_PARITY.md` table with reference feature, source path, keep/adapt/exclude and actual target file; confirm latest stable versions; settle secure session strategy; write route/DB/permission maps and migration plan. Gate: all source domain dependencies classified, no Next/Redis intended artifacts, no user-facing fake business page.
+
+**Phase 1 — Reproducible skeleton + design language.** Create separate frontend/backend packages, Vite React Router, TypeScript aliases, Tailwind 4, shadcn base-nova, all theme tokens, query/auth providers, shared 29 UI primitives, sidebar/navbar/command palette and responsive 403/404 layouts, Docker/DB health. Gate: apps boot, `npm run build` + typecheck/lint pass, theme and routes visibly work even before features.
+
+**Phase 2 — Database + authentication + RBAC.** Write initial migrations, bootstrap admin, correct session/login/change/reset/logout/revoke behavior, multiple-role permissions and server guards; API integration and browser authentication tests. Gate: first-admin bootstrap, first-login forced password change, multi-role permission, 401/403 and no privilege escalation tests pass.
+
+**Phase 3 — Administration + profile + preferences.** Build actual users, role matrix, permissions and settings routes with DB CRUD; profile/security, saved table prefs; audit all important mutations; full DataTable features. Gate: two independent users, role changes and isolation pass in browser and API tests; every visible admin control works.
+
+**Phase 4 — Notifications + generic file/report services.** Notifications CRUD/unread badges, context-aware safe navigation, secure file assets, sample report/PDF preview and Gotenberg, CSV utility. Gate: real notifications and actual PDF output verified, no business models present, Gotenberg failure graceful.
+
+**Phase 5 — Hardening + usability + test matrix.** Accessibility, mobile, performance and keyboard UX, feature-flagged component lab, inline editing, source visual parity, HTTP security and upload attack tests, project-independent data. Gate: automatic unit/integration/E2E tests green, core coverage requirement satisfied, navigation and components usable in both themes.
+
+**Phase 6 — Release engineering.** Full production Docker/Caddy with SPA fallback and proper same-origin auth, CI jobs, backup/restore practice, deployment docs, environment check, clean installation test on fresh Postgres and production-like smoke test. Gate: documented clean setup reaches a login page, bootstrap admin works, roles/users/notifications/settings persist across restart, session security holds, and tests/builds are green.
+
+**Phase 7 — Handoff to later business logic.** Validate extension contract by implementing a **test-only** new module that registers one route, nav item, permission, model, migration and API, then *remove or isolate it from production*; prove foundation needs no invasive rewrites. Final docs show file hierarchy, extension instructions, any remaining limitations, and test results. Gate: the app is ready for actual new business modules, not populated with QTC360 domain code.
+
+# 13. DEFINITION OF DONE (MANDATORY ACCEPTANCE CHECKLIST)
+
+The work is complete **only if all of the following are demonstrably true**:
+
+- [ ] Browser and API start from a clean checkout using documented steps; real PostgreSQL migrations apply cleanly.
+- [ ] All required generic pages and APIs work against actual persisted data. No fake buttons, stale demo figures, QTC360 domain modules or placeholder endpoints.
+- [ ] No Next.js and no Redis dependencies, container services, config references or source imports remain in target code.
+- [ ] Exact current stable versions have been selected, locked and documented, with tested compatibility.
+- [ ] Reference sidebar/navbar/layout dimensions, route-group hierarchy UX, command palette, forms, tables, modals and both themes are faithfully adapted, including responsive behavior.
+- [ ] All 29 reference shared UI primitives plus form/loaders/table building blocks exist and are exercised by examples/tests.
+- [ ] Secure administrator-only account creation/reset, forced first-login password change and own password change work; no public registration.
+- [ ] Multi-role RBAC via M:N tables works in DB/API/UI and denies unauthorized direct calls, not just hidden links.
+- [ ] All protected pages distinguish anonymous login redirection, forbidden 403, 404, network/offline errors and loading states.
+- [ ] Admin Users, Roles, Permissions, Settings and Audit are functional, with appropriate data validation, confirmation, privilege control and persistence.
+- [ ] Profile/preferences and persisted table column order/visibility work across reload and per user.
+- [ ] Notification inbox and unread bell count support mark-read, mark-all, delete, clear-all and empty state with correct ownership isolation.
+- [ ] Generic file upload/download security, report/PDF generation, Gotenberg conversion and React PDF preview are real and covered by tests, if included in target baseline (this prompt **requires** the generic sample report baseline).
+- [ ] Logs redact secrets, auth/cookie/CSRF protection works, user and file access is scoped, audit records are immutable for ordinary admins.
+- [ ] Frontend lint, typecheck, tests and production build pass; backend lint/types/unit/integration pass; browser E2E with migrated Postgres passes; key accessibility tests pass.
+- [ ] Production Caddy static SPA fallback, API proxy, HTTPS and Docker startup tested; no runtime Next server, no Redis, no leaked ports/credentials.
+- [ ] README, architecture/route maps, security model, environment/operations, backup/restore, extension guide, reference parity and stack-version docs are present and accurate.
+- [ ] Any unresolved issue is listed as a known blocker with reproduction; implementation never claims unrun checks are green.
+
+# 14. REQUIRED OUTPUT AT THE END OF CODING-AGENT RUN
+
+Implement the actual application; then produce:
+
+1. **Working source tree**, locked dependencies, `.env.example`, Alembic migrations, compose files, Caddyfile, CI and tests.
+2. `docs/REFERENCE_PARITY.md`: a **reference file → target file → status → reason** matrix with all included reusable features, all excluded business modules, Next→Vite changes and Redis absence.
+3. `docs/STACK_VERSIONS.md`: **exact installed stable version**, release/source, compatibility justification and reason for any version not at current latest.
+4. `docs/ROUTES_NAVIGATION.md`: all screens, role/permission visibility and route states.
+5. `docs/SECURITY.md`: concrete session strategy, password/permission policy, CSRF and threat model, without real secrets.
+6. `docs/IMPLEMENTATION_LOG.md`: each phase completed, commands executed and exit status/test counts. List any failing tests and limitations truthfully.
+7. `README.md`: clean-machine development, test, bootstrap, run, build, production deploy and backup/restore commands.
+8. Final concise completion summary containing implemented features, excluded domain features, real test/build output, exact runtime stack, access URL, explicit blockers and steps for adding business logic.
+
+**Final instruction:** Build the strongest possible **generic QTC360-style enterprise foundation**, not QTC360 itself. Preserve the proven technical architecture and UI/UX style, improve the security and test discipline, remove the named framework/infra exceptions, ship a fully working app, and stop immediately before implementing any new application-specific business logic.
+
+---
+
+## Maintainer notes on how to apply this prompt
+
+- Supply the QTC360 ZIP and this prompt together to the coding agent. The master prompt contains enough precise references for the agent to audit the source without public GitHub access.
+- This prompt is a full application-building specification; successful fulfillment requires code execution, runtime verification and real tests by the coding agent.
+- The QTC360 source archive includes historical hard-coded *development* users/passwords. They are **not** safe target defaults and must not be imported.
+- If branding assets are legally reusable and you own them, you may later replace the generic brand slot; the baseline must not silently copy QTC360 branding.

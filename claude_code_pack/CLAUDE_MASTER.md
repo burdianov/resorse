@@ -1,13 +1,13 @@
 # CLAUDE CODE — MASTER OPERATING PROMPT
 
 ## Mission
-Build a production-ready, single-company UAE construction manpower deployment, tender/awarded-project forecasting and project manpower cost application. Work in **small, independently verifiable tasks**, using `TASKS.md` as the ordered backlog and `PRODUCT_SPEC.md` as the authoritative functional contract. `DECISIONS.md` records ambiguities and approved decisions. The original `BIG-PROMPT.txt` is background evidence, not an instruction to implement everything in one run.
+Build a production-ready, single-company UAE construction manpower deployment, tender/awarded-project forecasting and project manpower cost application. Work in **small, independently verifiable tasks**, using `TASKS.md` as the ordered backlog and `PRODUCT_SPEC.md` as the authoritative functional contract. `DECISIONS.md` records ambiguities and approved decisions. The requirements text `BIG-PROMPT.txt` lives in this pack (verbatim — never edit it) and is background evidence, not an instruction to implement everything in one run.
 
 The project has two deliberately separated stages:
 - **Stage A (tasks F001–F063):** a genuinely working, domain-neutral enterprise foundation inspired by the supplied QTC360 source ZIP. Do not add construction business models or screens during this stage.
 - **Stage B (tasks D001–D091):** add the construction-specific domain as independent modules using the foundation's extension points.
 
-The original QTC360 source is a **reference only**, read from the extracted tree at `D:\QTC360\qtc360\` (the archive `D:\RESORS_REFERENCE\qtc360-main.zip` is kept for the audit record). Inspect it there — e.g. for production-Docker hints — by absolute path, read-only; never run anything from it. Never transplant its branding, business rules, seed credentials or domain data.
+The original QTC360 source is a **reference only**, read from the extracted tree at `D:\QTC360\qtc360\` (the archive `D:\RESORS_REFERENCE\qtc360-main.zip` is kept for the audit record). Inspect it there — e.g. for production-Docker hints — by absolute path, read-only; never run anything from it. Never transplant its branding, business rules, seed credentials or domain data. The *requirements* text, by contrast, is in-pack: read `BIG-PROMPT.txt` from this folder, never by external path.
 
 ## Mandatory stack and non-negotiables
 - Frontend: React, Vite, TypeScript strict, React Router SPA, Tailwind CSS 4, shadcn/ui base-nova/Base UI where compatible, Lucide, TanStack Query/Table, React Hook Form + Zod, Axios, Recharts; **pnpm** package manager with `pnpm-lock.yaml` (operator override 2026-10-08, see `DECISIONS.md` C11 — `BIG-PROMPT.txt` says npm); accessible responsive light/dark/system theme.
@@ -18,7 +18,7 @@ The original QTC360 source is a **reference only**, read from the extracted tree
 - Never create fake API responses, fake KPI figures, inert buttons, placeholder production endpoints, or pretend a check passed.
 
 ## One-task-at-a-time protocol (most important)
-1. Read only: `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md` sections needed for the task, `DECISIONS.md`, `STATE.md`, and the selected task's entry in `TASKS.md`. Read source files **only as needed**. Do not repeatedly paste or re-read all of `BIG-PROMPT.txt`.
+1. Read only: `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md` sections needed for the task, `DECISIONS.md`, `STATE.md`, and the selected task's entry in `TASKS.md`. Read source files **only as needed**. Do not repeatedly paste or re-read all of `BIG-PROMPT.txt` — it is in this pack (verbatim; never edit it); consult a single section when a task needs it, via the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 2. Implement **exactly one task ID** requested by the operator. Do not auto-start the next task. If a task is too big, propose a split and stop; do not silently expand scope.
 3. Before edits, give a plan of at most five concise bullets, with expected files and risks. Then implement.
 4. Use existing patterns, migrations, typed schemas and tests; avoid sweeping refactors, unrelated formatting, new dependencies without justification, and regenerating whole modules.

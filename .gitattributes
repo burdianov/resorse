@@ -48,3 +48,9 @@ Caddyfile   text eol=lf
 *.zip   binary
 *.xlsx  binary
 *.docx  binary
+
+# The verbatim requirements text (claude_code_pack/BIG-PROMPT.txt). `-text`
+# disables every line-ending conversion, so its bytes — CRLF included — stay
+# exactly those of the archive original at D:\RESORS_REFERENCE\ and the
+# recorded SHA-256 (7c97b4eb…) remains verifiable with sha256sum.
+claude_code_pack/BIG-PROMPT.txt  -text

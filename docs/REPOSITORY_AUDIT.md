@@ -219,6 +219,13 @@ Consequences to carry forward:
   pack stays where it is. The guideline was not edited — it is the operator's contract document.
 - The files remain untrusted reference material wherever they live: still not to be executed, not to be
   transplanted, and `D:\RESORS_REFERENCE\` is outside the repository, so it can never be committed.
+  *(Update 2026-10-10, operator instruction: the **requirements text** was copied into the pack at
+  `claude_code_pack/BIG-PROMPT.txt`, byte-identical to the archive original — SHA-256 unchanged
+  (`7c97b4eb…`), CRLF preserved via a `.gitattributes` `-text` entry, and `.gitignore` re-includes exactly
+  that one path while every other dropped `BIG-PROMPT.txt` stays caught by the safety net. Task sessions now
+  consult the requirements in-repo; the archive original remains the audit record and the in-repo copy must
+  never be edited. The QTC360 archive and source tree remain outside the project by design. See
+  `NEXT_PROMPT.md` §2.)*
 
 ## 8. Toolchain availability observed (verification deferred to F003)
 

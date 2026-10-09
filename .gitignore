@@ -68,8 +68,16 @@ Thumbs.db
 desktop.ini
 
 # --- Reference material (safety net only) ----------------------------------
-# These live OUTSIDE the repo by design (see docs/REPOSITORY_AUDIT.md s7).
-# They are untrusted reference inputs and must never be committed, even if a
-# copy is dropped back into the workspace.
+# The QTC360 archive and the source tree stay OUTSIDE the repo by design (see
+# docs/REPOSITORY_AUDIT.md s7): they are untrusted reference inputs and must
+# never be committed, even if a copy is dropped back into the workspace.
 qtc360*.zip
 BIG-PROMPT.txt
+
+# ...except the one canonical copy of the requirements text, which lives in
+# the pack on purpose (operator instruction 2026-10-10): sessions consult it
+# in-repo instead of reading D:\RESORS_REFERENCE\. It is kept byte-identical
+# to the archive original (SHA-256 7c97b4eb…, .gitattributes marks it -text),
+# must never be edited in place, and any OTHER BIG-PROMPT.txt in the
+# workspace is still caught by the rule above.
+!claude_code_pack/BIG-PROMPT.txt
