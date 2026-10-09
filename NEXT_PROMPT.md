@@ -6,6 +6,9 @@
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
+- **The handoff's `NEXT:` line carries the task name, not just the ID** — `NEXT: F017 — error and route states`
+  (operator request 2026-10-09). A bare ID forces a lookup in `TASKS.md`; the name is what makes the line
+  readable on its own. Use the title exactly as `TASKS.md` writes it.
 - **The operator runs all whole-suite and gate checks** (C14). Every handoff must give exact, copy-pasteable
   commands with expected outcomes. Never run or report a suite result you did not observe yourself.
 - **Update this file at the end of every completed task — all six places, not the interesting ones.** On 2026-10-09
