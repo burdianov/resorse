@@ -48,6 +48,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.permissions import PermissionCode, effective_permissions
 from app.core.security import generate_password, hash_password, password_policy_violations
 from app.models.identity import Role, User
+from app.services import audit
 from app.services.passwords import PasswordPolicyViolation, reset_password
 from app.services.sessions import revoke_user_sessions
 
@@ -211,6 +212,23 @@ async def create_user(
         # race); the rollback clears the poisoned transaction before the 409.
         await session.rollback()
         raise EmailAlreadyInUse from error
+    # The event rides the mutation's commit (F043): a duplicate email above
+    # raised before this line, so no failed create can leave a story behind.
+    await audit.record(
+        session,
+        actor=actor,
+        action="user.create",
+        entity_type="user",
+        entity_id=user.id,
+        summary=f"Created user {canonical}.",
+        details={
+            "email": canonical,
+            "full_name": user.full_name,
+            "is_superuser": is_superuser,
+            "roles": sorted(role.name for role in roles),
+            "temporary_password_generated": temporary is not None,
+        },
+    )
     await session.commit()
     return user, temporary
 
@@ -232,11 +250,20 @@ async def update_user(
     """
     _ensure_manageable(actor, target)
 
+    # The sanitized before/after for the audit trail (F043): captured before
+    # any mutation, limited to the fields the payload actually touches.
+    before: dict[str, Any] = {}
+    for field in ("full_name", "email", "phone", "is_active"):
+        if field in changes:
+            before[field] = getattr(target, field)
+    before_roles: list[str] | None = None
+
     if "role_ids" in changes:
         roles = await _resolve_roles(session, changes["role_ids"])
         _ensure_roles_assignable(actor, roles)
         if actor.id == target.id:
             raise SelfModification
+        before_roles = sorted(role.name for role in target.roles)
         target.roles = list(roles)  # replace the set, atomically, on commit
 
     if "is_active" in changes and changes["is_active"] != target.is_active:
@@ -265,9 +292,26 @@ async def update_user(
     if "phone" in changes:
         target.phone = changes["phone"]
 
+    after: dict[str, Any] = {field: getattr(target, field) for field in before}
+    if before_roles is not None:
+        before["roles"] = before_roles
+        after["roles"] = sorted(role.name for role in target.roles)
+    await audit.record(
+        session,
+        actor=actor,
+        action="user.update",
+        entity_type="user",
+        entity_id=target.id,
+        summary=f"Updated user {target.email}.",
+        details={
+            "before": before,
+            "after": after,
+        },
+    )
     try:
-        # The row update, the role replacement and any session revocation all
-        # ride this one commit — deactivation cannot half-happen (F030's rule).
+        # The row update, the role replacement, the event and any session
+        # revocation all ride this one commit — deactivation cannot
+        # half-happen (F030's rule), and neither can its record (F043).
         await session.commit()
     except IntegrityError as error:
         await session.rollback()
@@ -294,11 +338,24 @@ async def update_own_profile(
     (`current_session`) keeps the forced change ahead of it. What is left is
     exactly this: apply the submitted fields, commit once, return the row.
     """
+    before: dict[str, Any] = {}
+    for field in ("full_name", "phone"):
+        if field in changes:
+            before[field] = getattr(user, field)
     if "full_name" in changes and changes["full_name"] is not None:
         user.full_name = changes["full_name"].strip()
     if "phone" in changes:
         phone = changes["phone"]
         user.phone = phone.strip() if isinstance(phone, str) and phone.strip() else None
+    await audit.record(
+        session,
+        actor=user,
+        action="profile.update",
+        entity_type="profile",
+        entity_id=user.id,
+        summary=f"Updated own profile ({user.email}).",
+        details={"before": before, "after": {field: getattr(user, field) for field in before}},
+    )
     await session.commit()
     await session.refresh(user)
     return user
@@ -318,6 +375,15 @@ async def delete_user(session: AsyncSession, *, actor: User, target: User) -> No
     target.is_deleted = True
     target.is_active = False
     await revoke_user_sessions(session, target.id, reason="admin")
+    await audit.record(
+        session,
+        actor=actor,
+        action="user.delete",
+        entity_type="user",
+        entity_id=target.id,
+        summary=f"Deleted user {target.email}.",
+        details={"email": target.email},
+    )
     await session.commit()
 
 
@@ -326,6 +392,18 @@ async def reset_user_password(session: AsyncSession, *, actor: User, target: Use
     credential, forced change, every session revoked as ``admin``) are F030's
     :func:`app.services.passwords.reset_password`."""
     _ensure_manageable(actor, target)
+    # Deliberately no password in the details — the field-addressable refusal
+    # credo, applied to the trail: the temporary exists in the response once
+    # and nowhere else.
+    await audit.record(
+        session,
+        actor=actor,
+        action="user.reset_password",
+        entity_type="user",
+        entity_id=target.id,
+        summary=f"Reset the password of {target.email}.",
+        details={"email": target.email},
+    )
     return await reset_password(session, target)
 
 

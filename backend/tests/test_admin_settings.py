@@ -27,7 +27,7 @@ from app.core.csrf import CSRF_HEADER_NAME
 from app.core.permissions import PermissionCode
 from app.core.security import hash_password
 from app.core.settings_registry import defaults
-from app.models import AppSetting, Permission, Role, User
+from app.models import AppSetting, AuditLog, Permission, Role, User
 
 pytestmark = pytest.mark.asyncio
 
@@ -286,5 +286,11 @@ async def test_overrides_survive_a_connection_level_restart(
     finally:
         async with own_database() as cleaner:
             await cleaner.execute(delete(AppSetting).where(AppSetting.key.in_(written_keys)))
+            # The setting update is audited now (F043): its event committed
+            # with the write, so the cleanup owns it too. The frozen
+            # `actor_email` is what makes this exact.
+            await cleaner.execute(
+                delete(AuditLog).where(AuditLog.actor_email == "restart-actor@example.com")
+            )
             await cleaner.execute(delete(User).where(User.email == "restart-actor@example.com"))
             await cleaner.commit()

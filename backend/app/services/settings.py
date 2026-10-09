@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings_registry import SETTINGS_BY_KEY, defaults
 from app.models.identity import User
 from app.models.settings import AppSetting
+from app.services import audit
 
 
 class UnknownSetting(Exception):
@@ -81,6 +82,22 @@ async def update_settings(
             raise InvalidSettingValue(key, str(error)) from error
 
     if validated:
+        before = await get_settings_snapshot(session)
+        changes = {
+            key: {"before": before[key], "after": value}
+            for key, value in validated.items()
+            if before[key] != value
+        }
+        if changes:
+            await audit.record(
+                session,
+                actor=actor,
+                action="setting.update",
+                entity_type="setting",
+                entity_id=None,
+                summary=f"Updated application settings ({len(changes)} key(s) changed).",
+                details={"changes": changes},
+            )
         statement = pg_insert(AppSetting).values(
             [
                 {"key": key, "value": value, "updated_by": actor.id}

@@ -37,7 +37,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.identity import Permission, role_permissions
+from app.models.identity import Permission, User, role_permissions
+from app.services import audit
 
 
 class PermissionNotFound(Exception):
@@ -88,7 +89,7 @@ async def get_permission(session: AsyncSession, permission_id: uuid.UUID) -> Per
 
 
 async def create_permission(
-    session: AsyncSession, *, code: str, description: str | None
+    session: AsyncSession, *, actor: User, code: str, description: str | None
 ) -> Permission:
     permission = Permission(code=code, description=description)
     session.add(permission)
@@ -97,6 +98,15 @@ async def create_permission(
     except IntegrityError as error:
         await session.rollback()
         raise PermissionCodeTaken from error
+    await audit.record(
+        session,
+        actor=actor,
+        action="permission.create",
+        entity_type="permission",
+        entity_id=permission.id,
+        summary=f"Added permission {permission.code}.",
+        details={"code": permission.code, "description": permission.description},
+    )
     await session.commit()
     return permission
 
@@ -104,10 +114,12 @@ async def create_permission(
 async def update_permission(
     session: AsyncSession,
     *,
+    actor: User,
     target: Permission,
     changes: dict[str, str | None],
 ) -> Permission:
     """Rename (only while unused) and/or re-describe. One commit."""
+    before: dict[str, object] = {"code": target.code, "description": target.description}
     if "code" in changes and changes["code"] is not None and changes["code"] != target.code:
         assignments = await _assignment_count(session, target.id)
         if assignments > 0:
@@ -116,6 +128,18 @@ async def update_permission(
     if "description" in changes:
         target.description = changes["description"]
 
+    await audit.record(
+        session,
+        actor=actor,
+        action="permission.update",
+        entity_type="permission",
+        entity_id=target.id,
+        summary=f"Updated permission {target.code}.",
+        details={
+            "before": before,
+            "after": {"code": target.code, "description": target.description},
+        },
+    )
     try:
         await session.commit()
     except IntegrityError as error:
@@ -127,10 +151,19 @@ async def update_permission(
     return target
 
 
-async def delete_permission(session: AsyncSession, *, target: Permission) -> None:
+async def delete_permission(session: AsyncSession, *, actor: User, target: Permission) -> None:
     assignments = await _assignment_count(session, target.id)
     if assignments > 0:
         raise PermissionInUse(assignments)
+    await audit.record(
+        session,
+        actor=actor,
+        action="permission.delete",
+        entity_type="permission",
+        entity_id=target.id,
+        summary=f"Deleted permission {target.code}.",
+        details={"code": target.code},
+    )
     await session.delete(target)
     await session.commit()
 

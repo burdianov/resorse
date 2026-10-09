@@ -86,7 +86,7 @@ async def put_preference(
 ) -> PreferenceItem:
     cleaned = _validated_key_or_422(key)
     row = await preferences_service.put_preference(
-        session, user_id=context.user.id, key=cleaned, value=payload.value
+        session, user=context.user, key=cleaned, value=payload.value
     )
     return PreferenceItem(key=row.key, value=row.value)
 
@@ -107,4 +107,4 @@ async def delete_preference(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> None:
     cleaned = _validated_key_or_422(key)
-    await preferences_service.delete_preference(session, user_id=context.user.id, key=cleaned)
+    await preferences_service.delete_preference(session, user=context.user, key=cleaned)

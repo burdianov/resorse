@@ -14,6 +14,7 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.csrf import CsrfMiddleware
 from app.core.database import dispose_engine
+from app.core.request_context import RequestContextMiddleware
 
 
 @asynccontextmanager
@@ -41,6 +42,9 @@ def create_app() -> FastAPI:
         trusted_origins=settings.trusted_origins,
         session_exempt_paths=frozenset({f"{settings.api_v1_prefix}/auth/login"}),
     )
+    # The request id (F043) wraps even the CSRF refusal: every response
+    # carries X-Request-Id, and audit rows written downstream record it.
+    application.add_middleware(RequestContextMiddleware)
     application.include_router(api_router, prefix=settings.api_v1_prefix)
     return application
 

@@ -46,6 +46,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.identity import Permission, Role, User, role_permissions, user_roles
+from app.services import audit
 from app.services.users import ensure_codes_assignable
 
 
@@ -138,6 +139,19 @@ async def create_role(
         # The unique index is the authority (F024's pattern, F033's shape).
         await session.rollback()
         raise RoleNameInUse from error
+    await audit.record(
+        session,
+        actor=actor,
+        action="role.create",
+        entity_type="role",
+        entity_id=role.id,
+        summary=f"Created role {role.name}.",
+        details={
+            "name": role.name,
+            "description": role.description,
+            "permission_codes": sorted(permission.code for permission in permissions),
+        },
+    )
     await session.commit()
     return role
 
@@ -153,11 +167,26 @@ async def update_role(
     side effect of a rename."""
     if target.is_system:
         raise SystemRoleProtected
+    before: dict[str, object] = {}
     if "name" in changes and changes["name"] is not None:
+        before["name"] = target.name
         target.name = changes["name"].strip()
     if "description" in changes:
+        before["description"] = target.description
         target.description = _cleaned_description(changes["description"])
 
+    await audit.record(
+        session,
+        actor=actor,
+        action="role.update",
+        entity_type="role",
+        entity_id=target.id,
+        summary=f"Updated role {target.name}.",
+        details={
+            "before": before,
+            "after": {"name": target.name, "description": target.description},
+        },
+    )
     try:
         await session.commit()
     except IntegrityError as error:
@@ -178,6 +207,15 @@ async def delete_role(session: AsyncSession, *, actor: User, target: Role) -> No
     )
     if int(assigned or 0) > 0:
         raise RoleInUse(int(assigned or 0))
+    await audit.record(
+        session,
+        actor=actor,
+        action="role.delete",
+        entity_type="role",
+        entity_id=target.id,
+        summary=f"Deleted role {target.name}.",
+        details={"name": target.name},
+    )
     await session.delete(target)
     await session.commit()
 
@@ -195,7 +233,7 @@ async def save_matrix(
     rollback tests true statements rather than hopes: by the time the first
     row changes, no entry can fail.
     """
-    resolved: list[tuple[Role, list[Permission]]] = []
+    resolved: list[tuple[Role, list[Permission], list[str]]] = []
     for index, (role_id, codes) in enumerate(entries):
         # `get_role`, not `session.get`: the assignment below needs the *old*
         # collection loaded to compute the secondary-table diff, and an
@@ -226,12 +264,30 @@ async def save_matrix(
         # Read from SQL rather than the ORM collection: the collection's load
         # state is the identity map's business, the grant rows are the truth.
         ensure_codes_assignable(actor, current_codes)
-        resolved.append((role, permissions))
+        resolved.append((role, permissions, current_codes))
 
-    for role, permissions in resolved:
+    # The sanitized before/after, changed columns only (F043/§6.3) — the
+    # matrix diff is the audit story of this endpoint.
+    changes: dict[str, object] = {}
+    for role, permissions, current_codes in resolved:
+        after_codes = sorted(permission.code for permission in permissions)
+        if after_codes != current_codes:
+            changes[role.name] = {"before": current_codes, "after": after_codes}
+
+    for role, permissions, _ in resolved:
         role.permissions = list(permissions)
+    if changes:
+        await audit.record(
+            session,
+            actor=actor,
+            action="role.matrix_save",
+            entity_type="role",
+            entity_id=None,
+            summary=f"Saved the permission matrix ({len(changes)} role(s) changed).",
+            details={"changes": changes},
+        )
     # One commit for every replacement — there is no path here that writes
-    # half the matrix.
+    # half the matrix (or half its story).
     await session.commit()
 
 

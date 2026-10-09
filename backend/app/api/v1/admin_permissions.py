@@ -105,7 +105,7 @@ async def create_permission(
     needs none of its own."""
     try:
         permission = await permissions_service.create_permission(
-            session, code=payload.code, description=payload.description
+            session, actor=context.user, code=payload.code, description=payload.description
         )
     except DOMAIN_ERRORS as exc:
         raise _to_http(exc) from exc
@@ -166,7 +166,7 @@ async def update_permission(
     try:
         target = await permissions_service.get_permission(session, permission_id)
         updated = await permissions_service.update_permission(
-            session, target=target, changes=changes
+            session, actor=context.user, target=target, changes=changes
         )
     except DOMAIN_ERRORS as exc:
         raise _to_http(exc) from exc
@@ -193,6 +193,6 @@ async def delete_permission(
 ) -> None:
     try:
         target = await permissions_service.get_permission(session, permission_id)
-        await permissions_service.delete_permission(session, target=target)
+        await permissions_service.delete_permission(session, actor=context.user, target=target)
     except DOMAIN_ERRORS as exc:
         raise _to_http(exc) from exc

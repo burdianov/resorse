@@ -598,6 +598,38 @@ cannot drift apart on inputs, guidance or 422 mapping — only the wrappers diff
 shell's session boundary is the gate), reached through the account menu, whose Profile item F032
 had deliberately left unlinked.
 
+### The audit trail (F043)
+
+`audit_logs` (migration `0007`) records the **administrative mutations** §6.3 asks to audit — role and
+permission changes, account management, settings — plus the self-service writes that pair with them.
+Four properties make the trail trustworthy rather than decorative:
+
+- **One transaction, or no story.** ``services/audit.record`` adds a row to the caller's session and
+  never commits; the mutation's commit carries the event. A failed mutation rolls its pending event
+  back with it, so "the change happened" and "the event exists" are the same fact — the acceptance
+  tests attack the property from both sides.
+- **Append-only by construction.** The table has `created_at` and no `updated_at` — there is no
+  update path — and no mutation routes exist for it; F044's viewer is read-only because there is
+  nothing else it could be.
+- **Self-contained attribution.** `user_id` is the live link (SET NULL on deletion) *and*
+  `actor_email` is a frozen snapshot: "who" survives the account. (The snapshot also proved its
+  worth inside the suite — it was the exact handle that cleaned up audit rows a restart test had
+  genuinely committed; §12.)
+- **Redacted at the door.** `record` refuses credential-shaped keys recursively (case-insensitive;
+  the password/token/secret family) with the transaction's failure, not a leaked row; callers write
+  minimal changed-only diffs on top of that floor. Matrix and settings saves are *one event per
+  save* (the atomic unit), preference events carry the key and never the personal value, and the
+  reset-password event never carries the temporary.
+
+`RequestContextMiddleware` (`app/core/request_context.py`) gives every request an id: a well-formed
+`X-Request-Id` is accepted (constrained — it is echoed and stored), anything else is replaced by a
+generated UUID, the response carries it back in the same header (the one `lib/errors.ts` already
+surfaces on `ApiError`), and the contextvar is what `record` stores as `correlation_id` — NULL
+outside a request, because "no request" is a fact. F060's structured logging adopts the same id.
+
+Session lifecycle events are deliberately absent: the sessions table is its own append-by-reason
+record (F025/F029), and a second copy could disagree with it.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1214,6 +1246,18 @@ dotted, the wire stays flat via an explicit payload builder, and `applyServerErr
 on the same nested field paths RHF uses. The general rule: when field names carry structure, make the
 schema carry the same structure — mixed representations fail quietly, not loudly.
 
+### A test that genuinely commits owns everything it commits (F043)
+
+The F039 restart test writes through its **own connection** (the point: a real commit, a real
+reopen) and cleans up after itself. F043's audit backfill then taught it a new obligation: the
+mutation now also commits an **audit row**, and a cleanup that removed only the setting and the
+actor left that row behind — where the next suite's `SELECT * FROM audit_logs` found it and failed
+on "too many values to unpack". Two lessons, one entry: a test with real commits must enumerate
+*everything* its flow writes (a mutation's event is part of the mutation now, C32), and the frozen
+`actor_email` is what makes such cleanup exact even after the user row is gone. The general rule:
+rolled-back fixtures make cleanup free; the rare own-connection test pays for that realism by
+owning every row it touches.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -1253,4 +1297,6 @@ schema carry the same structure — mixed representations fail quietly, not loud
   owned-fields PATCH with `extra="forbid"`, the free-form preference vocabulary under structural
   session-scoped isolation, idempotent preference deletes, the gating split — C30, §5), and **F042
   the profile pages** (the two-route/one-form split, the read-only email with its reason, the
-  truthful Active badge, view-only grouped permissions, the menu wiring — C31, §5).
+  truthful Active badge, view-only grouped permissions, the menu wiring — C31, §5), and **F043 the
+  audit trail** (record-within-the-transaction atomicity, append-only by construction, frozen
+  attribution, the door-level redaction, the request-id middleware — C32, §5).

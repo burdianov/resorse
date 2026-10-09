@@ -22,11 +22,13 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.identity import User
 from app.models.preferences import (
     MAX_PREFERENCE_KEY_LENGTH,
     PREFERENCE_KEY_PATTERN,
     UserPreference,
 )
+from app.services import audit
 
 _KEY_RE = re.compile(PREFERENCE_KEY_PATTERN)
 
@@ -57,9 +59,10 @@ async def list_preferences(session: AsyncSession, user_id: uuid.UUID) -> list[Us
 
 
 async def put_preference(
-    session: AsyncSession, *, user_id: uuid.UUID, key: str, value: Any
+    session: AsyncSession, *, user: User, key: str, value: Any
 ) -> UserPreference:
-    """Upsert one preference for one user; one commit."""
+    """Upsert one preference for the session's user; one commit."""
+    user_id = user.id
     cleaned = validate_key(key)
     statement = pg_insert(UserPreference).values(user_id=user_id, key=cleaned, value=value)
     await session.execute(
@@ -73,6 +76,17 @@ async def put_preference(
             },
         )
     )
+    # Key only — the value is the user's personal display data; the trail
+    # records that the preference changed, not what they chose (F043).
+    await audit.record(
+        session,
+        actor=user,
+        action="preference.set",
+        entity_type="preference",
+        entity_id=None,
+        summary=f"Set preference {cleaned}.",
+        details={"key": cleaned},
+    )
     await session.commit()
     row = await session.scalar(
         select(UserPreference).where(
@@ -83,15 +97,30 @@ async def put_preference(
     return row
 
 
-async def delete_preference(session: AsyncSession, *, user_id: uuid.UUID, key: str) -> None:
+async def delete_preference(session: AsyncSession, *, user: User, key: str) -> None:
     """Delete one preference; **idempotent** — a well-formed key that has no
-    row is "no preference", the goal state already achieved."""
+    row is "no preference", the goal state already achieved (and then there
+    was no change, so the trail stays silent — F043)."""
     cleaned = validate_key(key)
-    await session.execute(
-        delete(UserPreference).where(
-            UserPreference.user_id == user_id, UserPreference.key == cleaned
+    # RETURNING rather than rowcount: the type is honest and the value doubles
+    # as the "was there anything to delete?" answer the trail needs.
+    removed = (
+        await session.scalars(
+            delete(UserPreference)
+            .where(UserPreference.user_id == user.id, UserPreference.key == cleaned)
+            .returning(UserPreference.id)
         )
-    )
+    ).all()
+    if removed:
+        await audit.record(
+            session,
+            actor=user,
+            action="preference.delete",
+            entity_type="preference",
+            entity_id=None,
+            summary=f"Removed preference {cleaned}.",
+            details={"key": cleaned},
+        )
     await session.commit()
 
 
