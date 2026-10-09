@@ -7,6 +7,11 @@ import type { RouteObject } from 'react-router'
 import { RouteError } from '@/components/layout/route-error'
 import { RouteGuard } from '@/components/layout/route-guard'
 
+// The access model lives in a leaf module — see its header for the cycle that
+// moving it here would close. Re-exporting it from this file would restore
+// that cycle, so consumers import it from `@/config/access` directly.
+import { hasAdministrationAccess, meetsAccess } from './access'
+import type { AccessRequirement, NavigationAccess } from './access'
 import { APP_MODULES } from './modules'
 import type { AppModule } from './modules'
 
@@ -28,7 +33,8 @@ import type { AppModule } from './modules'
  * tells us never to show.
  */
 
-export interface RouteDefinition {
+/** Access metadata (`requiredPermissions`, `adminOnly`, `featureFlag`) comes from `AccessRequirement`. */
+export interface RouteDefinition extends AccessRequirement {
   id: string
   /** Absolute path, as it appears in the URL. */
   path: string
@@ -36,14 +42,8 @@ export interface RouteDefinition {
   icon: LucideIcon
   /** Id of the owning group in `NAV_GROUPS` (or a module group). */
   group: string
-  /** Every code must be held (the union across roles is resolved upstream). */
-  requiredPermissions?: readonly string[]
-  /** Additionally requires administrative authority — see `hasAdministrationAccess`. */
-  adminOnly?: boolean
   /** Defaults to true; false keeps the route mounted but out of the nav. */
   showInNavigation?: boolean
-  /** Visible only while this flag is enabled for the caller. */
-  featureFlag?: string
   /** Label for the current breadcrumb; params come from `:segment` path parts. */
   breadcrumb?: (params: Readonly<Record<string, string>>) => string
   component: ComponentType
@@ -71,59 +71,6 @@ export interface NavGroupView {
   id: string
   label: string
   items: NavItemView[]
-}
-
-/** What the caller may see. Resolved once per session and supplied downstream. */
-export interface NavigationAccess {
-  /** Union of the roles' permission codes (ARCHITECTURE §6). */
-  permissions: ReadonlySet<string>
-  /** Explicit super-admin handling: everything passes except disabled flags. */
-  isSuperuser: boolean
-  /** Enabled feature flags; anything absent is disabled (fail closed). */
-  features?: ReadonlySet<string>
-}
-
-/** No session exists yet — and an anonymous caller correctly sees almost nothing. */
-export const ANONYMOUS_ACCESS: NavigationAccess = {
-  permissions: new Set(),
-  isSuperuser: false,
-}
-
-/**
- * Permission namespaces that make a caller "administrative" for the coarse
- * `adminOnly` gate. The authoritative codes live in ARCHITECTURE §6; F031
- * resolves the effective set and F036 refines the admin screens.
- */
-const ADMINISTRATION_NAMESPACES: readonly string[] = [
-  'users',
-  'roles',
-  'permissions',
-  'settings',
-  'audit',
-]
-
-export function hasAdministrationAccess(access: NavigationAccess): boolean {
-  if (access.isSuperuser) return true
-  for (const permission of access.permissions) {
-    const separator = permission.indexOf('.')
-    if (separator <= 0) continue
-    if (ADMINISTRATION_NAMESPACES.includes(permission.slice(0, separator))) return true
-  }
-  return false
-}
-
-/**
- * The single visibility rule, shared by the registry and `PermissionGate`
- * (BIG-PROMPT §6.3d: same registry, never the security boundary).
- */
-export function meetsAccess(
-  requirement: Pick<RouteDefinition, 'requiredPermissions' | 'adminOnly' | 'featureFlag'>,
-  access: NavigationAccess,
-): boolean {
-  if (requirement.featureFlag && !access.features?.has(requirement.featureFlag)) return false
-  if (requirement.adminOnly && !hasAdministrationAccess(access)) return false
-  if (access.isSuperuser) return true
-  return (requirement.requiredPermissions ?? []).every((code) => access.permissions.has(code))
 }
 
 /** Built-in groups; modules add theirs through `AppModule.navigation`. */

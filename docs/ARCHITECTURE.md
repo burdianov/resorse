@@ -139,7 +139,7 @@ frontend/src/
   main.tsx  App.tsx
   app/            router.tsx, providers.tsx
   styles/         globals.css (Tailwind 4 tokens)
-  config/         navigation.ts, permissions.ts, branding.ts
+  config/         navigation.ts, access.ts (leaf access model), permissions.ts, branding.ts
   components/     ui/ (29 primitives), layout/, data-table/, form/, loaders/, common/, providers/
   features/       <feature>/{api,hooks,schemas,components}   — auth, admin/*, profile, notifications, reports
   pages/          route components
@@ -414,6 +414,37 @@ for exactly this reason. Put extra UI inside a route element.
 - **Axios' XHR adapter and MSW work together in jsdom** without forcing an adapter or a fetch shim; a request made
   through the shared client is intercepted by `setupServer` as-is. The trap is elsewhere: unmatched requests must
   be configured to *fail* (`onUnhandledFrame: 'error'`), or a test that forgot its handler just hangs or warns.
+
+### A circular import is invisible to every check except a browser (found after F017)
+
+F017 added `RouteGuard` to the registry's `buildRouteObjects` and thereby closed a cycle:
+`config/navigation.ts → layout/route-guard.tsx → providers/access-provider.tsx → config/navigation.ts`. The
+provider reads `ANONYMOUS_ACCESS` at module scope (`createContext(ANONYMOUS_ACCESS)`), so evaluation order
+decided the outcome: enter via `navigation.ts` and the binding is still in its temporal dead zone —
+`ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — and the page is blank.
+
+What made it survive the task's own checks: **`tsc`, the Vite build and Vitest all tolerate the cycle.** F017's
+"checks run" were green; its dev-server smoke test was HTTP fetches (module *serving*, not evaluation); the
+operator had not yet opened the app. It surfaced the first time a real browser loaded it, and was reproduced
+outside the tests with headless Chrome:
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu `
+  --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 `
+  --enable-logging=stderr --dump-dom http://localhost:5173/
+```
+
+An empty `<div id="root">` plus a `CONSOLE` line naming the module *is* the failure; the rendered shell is the
+pass. Two rules and one guard came out of it:
+
+- **A module-scope read is what turns a cycle into a crash.** Function-body reads survive cycles; reads in the
+  module body itself (`createContext`, constant tables, decorators) do not.
+- **The access model is a leaf.** It lives in `config/access.ts`, imports nothing, and `navigation.ts`
+  deliberately does not re-export it (a re-export would re-close the cycle). `RouteDefinition extends
+  AccessRequirement` rather than restating the three fields.
+- **`tests/lib/module-graph.test.ts` fails on any import cycle in `src/`** — it walks the static graph, skips
+  `import type` (erased by `verbatimModuleSyntax`, so type-only edges cannot cycle at runtime) and dynamic
+  `import()`, and prints the cycle path. Type-checking does not catch this class of bug; this test does.
 
 ## 13. Non-goals and deferred choices
 

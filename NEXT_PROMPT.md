@@ -68,8 +68,11 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   F019 should refine for handled validation errors.
 - Git: branch `main`, one commit per completed task; the tree is clean after each commit. F018 sits on top of
   `5b828e5` (F017).
-- Last human verification: **NOT RUN** — no gate suite has been run by the operator yet. F015's three-width
-  check, F016's palette check and F017's route-state checks are the operator's visual checks (see §8).
+- Last human verification: the operator **opened the app on 2026-10-09** and hit
+  `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
+  import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
+  three-width check, F016's palette check and F017's route-state checks remain the operator's visual checks
+  (see §8) — and the headless-browser smoke row in §8 now catches "renders nothing" without a human.
 
 ## 4. Environment facts
 
@@ -97,11 +100,16 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **Navigation registry is live (F016):** `src/config/navigation.ts` is the single definition (route metadata per
   BP §4.7 + `visibleNavigation(access)` + `buildBreadcrumbs` + `buildRouteObjects`); the router's children are
   **generated from it**, and the shell filters once and hands the same list to the sidebar and the palette.
-  `src/config/modules.ts` is the compiled-in module slot (`AppModule`, empty today; F063 proves it). Access flows
-  through `components/providers/access-provider.tsx`; until F032 supplies a session the shell uses
-  `ANONYMOUS_ACCESS` (no permissions, not a superuser) — the correct answer for an anonymous caller, which is why
-  the Administration group is deliberately invisible today. `components/common/permission-gate.tsx` and
-  `secure-link.tsx` share the same `meetsAccess` rule. `docs/ROUTES_NAVIGATION.md` is the F016 artifact.
+  `src/config/modules.ts` is the compiled-in module slot (`AppModule`, empty today; F063 proves it). The **access
+  model** (`NavigationAccess`, `ANONYMOUS_ACCESS`, `meetsAccess`, `hasAdministrationAccess`) lives in
+  `src/config/access.ts` — a **leaf module that imports nothing**, and `navigation.ts` deliberately does not
+  re-export it: the registry mounts the route guard, the guard reads the access provider, the provider needs the
+  anonymous default, so keeping the model inside the registry closes a cycle that blanks the app in a browser
+  (F017's defect, fixed; `tests/lib/module-graph.test.ts` fails on any import cycle). Access flows through
+  `components/providers/access-provider.tsx`; until F032 supplies a session the shell uses `ANONYMOUS_ACCESS` (no
+  permissions, not a superuser) — the correct answer for an anonymous caller, which is why the Administration
+  group is deliberately invisible today. `components/common/permission-gate.tsx` and `secure-link.tsx` share the
+  same `meetsAccess` rule. `docs/ROUTES_NAVIGATION.md` is the F016 artifact.
 - **Command palette is live:** Ctrl/Cmd+K (or the header search trigger, which now appears because F016 passes
   `onSearchClick`) opens it; it lists exactly the filtered registry — today that is `Overview → Dashboard`,
   nothing else, because no other page is registered yet.
@@ -190,6 +198,12 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   the cache on identity change, and the key shape is the second line of defence.
 - **The toast rule is deliberate:** a cold query failure is rendered inline (F017's `ErrorState`), a background
   failure and a failed mutation toast. Do not "unify" them — see `docs/OPENAPI_CLIENT.md` §4.
+- **Import cycles are fatal in a browser and invisible everywhere else.** `tsc`, `vite build` and Vitest all
+  tolerate them; native ESM throws `Cannot access 'X' before initialization` and the page renders nothing (F017's
+  blank page). `tests/lib/module-graph.test.ts` fails on any cycle in `src/` — never make it "expected". The
+  trigger is a **module-scope read** (`createContext(ANONYMOUS_ACCESS)`); function-body reads survive cycles. The
+  access model is the worked example: it lives in the leaf `config/access.ts` and is imported from there, never
+  re-exported through `navigation.ts`.
 - **`RouterProvider` renders the route tree only** — `<RouterProvider>{extra}</RouterProvider>` silently drops
   `extra`; put extra UI inside a route element (`ARCHITECTURE.md` §12, learned in F016).
 - **The 403 page is not the login redirect.** Route guards deny with the 403 UI; the anonymous → `/login`
@@ -210,6 +224,19 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F018 follow-up — the blank page, fixed (F017 regression).** The operator opened the app and got
+  `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` with an empty `#root`. Cause: F017's
+  `buildRouteObjects` made `navigation.ts` import `RouteGuard`, closing the cycle
+  `navigation → route-guard → access-provider → navigation`; `access-provider.tsx` reads `ANONYMOUS_ACCESS` at
+  module scope, so whenever evaluation entered through `navigation.ts` the binding was still in its TDZ. Every
+  F017 check was green — `tsc`, `vite build` and Vitest all tolerate the cycle, and the "smoke test" was HTTP
+  fetches (module *serving*, not evaluation). Reproduced in headless Chrome against the dev server, fixed by
+  moving the access model into a leaf `config/access.ts` (imported from there by the provider, the guard, the
+  gate, the shell and the tests; **not** re-exported through `navigation.ts`, which would re-close the cycle), and
+  guarded by a new `tests/lib/module-graph.test.ts` that fails on any static-import cycle in `src/` (verified red
+  on the old graph, green after). Verified again the same way afterwards: dev server **and** production build
+  both render the shell in headless Chrome with a clean console; `/admin` still shows the 403. §8 gained the
+  headless-browser row so "renders nothing" can be caught without a human.
 - **F018 — API client foundation.** The whole request path now exists, in one shape. `lib/api.ts` is the only
   Axios instance: empty `baseURL`, so the paths the OpenAPI schema uses (`/api/v1/...`) resolve against whatever
   served the SPA — Vite proxy in dev, Caddy in prod — with `VITE_API_URL` kept as an origin-only escape hatch.
@@ -336,12 +363,13 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F018)** | `cd D:\resors\frontend; pnpm run test:run` | **290 passing** across 37 files |
+| **Frontend tests (F011–F018)** | `cd D:\resors\frontend; pnpm run test:run` | **291 passing** across 38 files |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
-| **API client tests (F018)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib` | **28 passing** in 2 files (MSW; no network) |
+| **API client tests (F018)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib` | **29 passing** in 3 files (MSW; no network) |
+| **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"`, removes reinstated dependencies (run after every `shadcn add`) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **290 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **291 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
 | **Sidebar preference (F015)** | click the round chevron on the sidebar edge, then press **F5** | it stays collapsed after reload; console: `localStorage.getItem('app.sidebar')` → `"collapsed"` |

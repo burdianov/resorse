@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { Activity } from 'lucide-react'
 
 import {
-  ANONYMOUS_ACCESS,
   allNavGroups,
   allRoutes,
   buildBreadcrumbs,
   buildRouteObjects,
   firstPermittedAdminPath,
   matchRoute,
-  meetsAccess,
   visibleNavigation,
 } from '@/config/navigation'
-import type { NavGroup, NavigationAccess, RouteDefinition } from '@/config/navigation'
+import { ANONYMOUS_ACCESS, meetsAccess } from '@/config/access'
+import type { NavigationAccess } from '@/config/access'
+import type { NavGroup, RouteDefinition } from '@/config/navigation'
 import type { AppModule } from '@/config/modules'
 
 /**

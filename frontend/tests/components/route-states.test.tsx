@@ -9,7 +9,8 @@ import { buildAppRoutes } from '@/app/router'
 import { AccessProvider } from '@/components/providers/access-provider'
 import { RouteGuard } from '@/components/layout/route-guard'
 import { ThemeProvider } from '@/components/providers/theme-provider'
-import type { NavigationAccess, RouteDefinition } from '@/config/navigation'
+import type { NavigationAccess } from '@/config/access'
+import type { RouteDefinition } from '@/config/navigation'
 
 /**
  * The F017 route states, exercised through the **real** route table (`appRoutes`)

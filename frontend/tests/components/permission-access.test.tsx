@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest'
 import { PermissionGate } from '@/components/common/permission-gate'
 import { SecureLink } from '@/components/common/secure-link'
 import { AccessProvider } from '@/components/providers/access-provider'
-import { ANONYMOUS_ACCESS } from '@/config/navigation'
-import type { NavigationAccess } from '@/config/navigation'
+import { ANONYMOUS_ACCESS } from '@/config/access'
+import type { NavigationAccess } from '@/config/access'
 
 /**
  * `PermissionGate` and `SecureLink` (BIG-PROMPT §5.2b) — UX only, never the

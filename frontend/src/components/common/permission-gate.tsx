@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { meetsAccess } from '@/config/navigation'
+import { meetsAccess } from '@/config/access'
 import { useAccess } from '@/components/providers/access-provider'
 
 /**

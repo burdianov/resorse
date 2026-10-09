@@ -44,6 +44,13 @@ invisible today, before its pages exist.
 
 ## 3. Access model
 
+The model lives in `frontend/src/config/access.ts` — a **leaf module that imports nothing**. It cannot live in
+`navigation.ts`: the registry mounts the route guard, the guard reads the access provider, and the provider needs
+the anonymous default, so the chain `navigation → route-guard → access-provider → navigation` would close and
+native ESM would evaluate it before `ANONYMOUS_ACCESS` exists (a blank page — this was F017's defect, fixed after
+it; `tests/lib/module-graph.test.ts` now fails on any cycle). Consumers import it from `@/config/access`
+directly; `navigation.ts` deliberately does **not** re-export it, because a re-export would restore the cycle.
+
 `NavigationAccess` carries `{ permissions, isSuperuser, features }`:
 
 - `permissions` — the union of the caller's roles' permission codes, resolved server-side (F031).

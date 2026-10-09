@@ -1,8 +1,8 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 
-import { ANONYMOUS_ACCESS } from '@/config/navigation'
-import type { NavigationAccess } from '@/config/navigation'
+import { ANONYMOUS_ACCESS } from '@/config/access'
+import type { NavigationAccess } from '@/config/access'
 
 /**
  * Carries the caller's resolved access (permission union, super-admin flag,
