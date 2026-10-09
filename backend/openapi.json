@@ -423,6 +423,55 @@
         "title": "MeResponse",
         "type": "object"
       },
+      "PermissionItem": {
+        "description": "One permission code, as the dictionary and the matrix show it.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "description"
+        ],
+        "title": "PermissionItem",
+        "type": "object"
+      },
+      "PermissionListResponse": {
+        "description": "The whole dictionary, sorted by code.\n\nUnpaginated on purpose: the vocabulary is bounded (§6: \"add granular\nvariants only as needed\"), the matrix renders every row by definition,\nand F037 will paginate the management table if and when the list earns\nit — not the matrix now.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PermissionListResponse",
+        "type": "object"
+      },
       "ResetPasswordResponse": {
         "properties": {
           "temporary_password": {
@@ -717,6 +766,34 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/permissions": {
+      "get": {
+        "description": "Every code with its description, sorted — namespace grouping is the\nclient's presentation concern, the sort order is the contract.",
+        "operationId": "list_permissions_api_v1_admin_permissions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the permissions.read permission."
+          }
+        },
+        "summary": "List the permission dictionary",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/roles": {
       "get": {
         "description": "Every role with its grant codes, sorted by name — the picker's options,\nthe management list, and the matrix's columns all read this one answer.",

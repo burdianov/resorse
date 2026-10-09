@@ -1,6 +1,6 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { LayoutDashboard, Users } from 'lucide-react'
+import { LayoutDashboard, Shield, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
@@ -91,15 +91,21 @@ const AdminUsersPage = lazy(async () => {
   return { default: module.AdminUsersPage }
 })
 
+const AdminRolesPage = lazy(async () => {
+  const module = await import('@/pages/admin/roles')
+  return { default: module.AdminRolesPage }
+})
+
 /**
  * Built-in routes. `/dashboard` currently renders the protected placeholder
  * (F017) — F047 replaces the component, not the entry, so the navigation, the
- * palette and the route states never notice. F034 registers `/admin/users`,
- * the first administration route: `/admin` now redirects here for callers who
- * hold `users.read` instead of answering 403, and the Administration group
- * appears for exactly those callers (the filter and the guard read the same
- * `meetsAccess`, §4.10). The registry deliberately has no `/` entry: the
- * router redirects the root (§4.1), auth-aware since F032.
+ * palette and the route states never notice. F034 registered `/admin/users`
+ * and F036 adds `/admin/roles` (the permission matrix): `/admin` redirects to
+ * the first permitted administration route in registry order, and the
+ * Administration group appears for exactly the callers holding a read code in
+ * its namespaces (the filter and the guard read the same `meetsAccess`,
+ * §4.10). The registry deliberately has no `/` entry: the router redirects the
+ * root (§4.1), auth-aware since F032.
  */
 export const APP_ROUTES: readonly RouteDefinition[] = [
   {
@@ -119,6 +125,16 @@ export const APP_ROUTES: readonly RouteDefinition[] = [
     adminOnly: true,
     requiredPermissions: ['users.read'],
     component: AdminUsersPage,
+  },
+  {
+    id: 'admin-roles',
+    path: '/admin/roles',
+    label: 'Roles',
+    icon: Shield,
+    group: 'administration',
+    adminOnly: true,
+    requiredPermissions: ['roles.read'],
+    component: AdminRolesPage,
   },
 ]
 

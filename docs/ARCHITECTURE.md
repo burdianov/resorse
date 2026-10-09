@@ -478,6 +478,38 @@ Rules worth holding onto for F036/F037:
   out for an edit they may not even lose access from would be disruption without a security gain
   (C24 supersedes §3's table wording on this point).
 
+### The role matrix screen (F036)
+
+`pages/admin/roles.tsx` is the UI half of BP-7.4's atomicity, and its central
+decision is what a tick *is*: **draft state, never a request**. The matrix
+renders every permission code (grouped by namespace, from the dictionary
+endpoint F036's read slice opened) against every role (a column from the
+catalogue), and however many cells an afternoon of editing touches, the save
+bar counts them as one unsaved state — because the wire sees exactly one
+`PUT /admin/roles/matrix` (F035/C24), carrying the whole visible matrix,
+protected column included and unchanged. The reference's per-cell PATCH loop
+cannot be recreated through this screen even by accident.
+
+- **The draft seeds once** (`draft === null` gates the effect), so a
+  background refetch can never clobber edits in progress; Reset re-seeds on
+  demand, and a successful save re-seeds through `setDraft(null)` +
+  invalidation — the bar always compares the draft against the server's
+  current answer.
+- **The save bar is the one place a failure is said** (`suppressErrorToast`):
+  the server's sentence, with the field-error *entries* preferred for 422s —
+  the API normaliser deliberately hides array-shaped details behind its
+  fallback sentence, so the specific messages ride `fieldErrors` — and the
+  draft survives any failure, because a failed save that looks like a lost
+  edit teaches the wrong lesson about the system.
+- **The seed-owned column renders read-only** (disabled checkboxes, lock,
+  disabled menu items, all driven by `is_system`) — mirrors of the server's
+  rule, which refuses regardless (§6.3d).
+- **Role CRUD never touches grants.** Create/rename/delete live in column
+  menus and dialogs; the permission set has exactly one write path (the
+  matrix save), which is what keeps "atomic" a property of the system rather
+  than of one endpoint.
+- **Unsaved edits block navigation** through F019's `UnsavedChangesGuard`.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1051,6 +1083,17 @@ service is about to mutate is fetched through a `populate_existing` getter (`get
 is loaded *before* anything assigns to it. The general rule is the F031/F033 one, sharpened: before
 writing a relationship, make sure reading it is free — or do the reading in SQL.
 
+### The normaliser's fallback is not the only carrier (F036)
+
+`lib/errors.ts` (F018) hides array-shaped 422 details from `ApiError.detail`
+on purpose — a validation *array* is not a sentence — substituting "Some of
+the submitted values need attention." The specifics live in `fieldErrors`,
+and a surface that shows only `detail` (a banner, a save bar) ends up telling
+the user less than the server did. The matrix's save bar therefore prefers
+the field-error messages when they exist and falls back to the detail string
+(403s carry one). The general rule: when a surface is not a form, read
+`fieldErrors` yourself before settling for the fallback.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -1076,6 +1119,7 @@ writing a relationship, make sure reading it is free — or do the reading in SQ
   the admin user directory** (the six guarded endpoints with their privilege rules, soft deletion, and
   the SQL-filtered paginated list — C22, §6), **F034 the users screen** (the first server-mode
   DataTable, the row-actions kit component, the one-time password notice, the permission mirrors —
-  C23, §5), and **F035 the role API** (the CRUD with the two-way subset rule, the seed-owned
+  C23, §5), **F035 the role API** (the CRUD with the two-way subset rule, the seed-owned
   `is_system` column, deletion refused while assigned, and the validate-everything-then-one-commit
-  matrix save — C24, §6).
+  matrix save — C24, §6), and **F036 the matrix screen** (the draft-not-a-form model, the save bar
+  as the single failure voice, the read-only protected column, one grant-write path — C25, §5).

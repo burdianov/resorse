@@ -291,6 +291,43 @@ export type MeResponse = {
 };
 
 /**
+ * PermissionItem
+ *
+ * One permission code, as the dictionary and the matrix show it.
+ */
+export type PermissionItem = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Id
+     */
+    id: string;
+};
+
+/**
+ * PermissionListResponse
+ *
+ * The whole dictionary, sorted by code.
+ *
+ * Unpaginated on purpose: the vocabulary is bounded (§6: "add granular
+ * variants only as needed"), the matrix renders every row by definition,
+ * and F037 will paginate the management table if and when the list earns
+ * it — not the matrix now.
+ */
+export type PermissionListResponse = {
+    /**
+     * Items
+     */
+    items: Array<PermissionItem>;
+};
+
+/**
  * ResetPasswordResponse
  */
 export type ResetPasswordResponse = {
@@ -472,6 +509,33 @@ export type ValidationError = {
      */
     type: string;
 };
+
+export type ListPermissionsApiV1AdminPermissionsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/permissions';
+};
+
+export type ListPermissionsApiV1AdminPermissionsGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the permissions.read permission.
+     */
+    403: unknown;
+};
+
+export type ListPermissionsApiV1AdminPermissionsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PermissionListResponse;
+};
+
+export type ListPermissionsApiV1AdminPermissionsGetResponse = ListPermissionsApiV1AdminPermissionsGetResponses[keyof ListPermissionsApiV1AdminPermissionsGetResponses];
 
 export type ListRolesApiV1AdminRolesGetData = {
     body?: never;

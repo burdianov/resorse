@@ -38,5 +38,7 @@ export const queryKeys = {
     users: (params: AdminUsersParams) => [...adminUsersRoot, params] as const,
     /** The role catalogue (F034's picker; F035 extends the surface). */
     roles: ['admin', 'roles'] as const,
+    /** The permission dictionary (F036's matrix rows; F037's CRUD later). */
+    permissions: ['admin', 'permissions'] as const,
   },
 }
