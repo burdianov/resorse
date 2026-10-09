@@ -9,8 +9,8 @@ Every migration must apply to an **empty** database and come back down again
 """
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 ${imports if imports else ""}
 
 revision: str = ${repr(up_revision)}
