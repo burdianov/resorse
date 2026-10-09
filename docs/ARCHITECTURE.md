@@ -416,6 +416,36 @@ for exactly this reason. Put extra UI inside a route element.
   through the shared client is intercepted by `setupServer` as-is. The trap is elsewhere: unmatched requests must
   be configured to *fail* (`onUnhandledFrame: 'error'`), or a test that forgot its handler just hangs or warns.
 
+### TanStack Table v9 is not v8 (F020)
+
+The reference uses v8; this project is on **v9**, and the API moved. None of it is discoverable from v8
+tutorials, so the shape is recorded here:
+
+- **Features are declared, not switched on.** There is no `getCoreRowModel: getCoreRowModel()` option block.
+  `tableFeatures({ rowSortingFeature, … })` is the one value a table is built from, and `useTable(options)` is
+  the hook (`useReactTable` is gone).
+- **Row models come from feature *slots*.** A feature on its own gives state and APIs but no pipeline stage:
+  sorting needs `sortedRowModel: createSortedRowModel()`, pagination `paginatedRowModel:
+  createPaginatedRowModel()`, filtering `filteredRowModel: createFilteredRowModel()`, faceting
+  `facetedRowModel`/`facetedUniqueValues`. Only the core model has a default, so a missing slot fails
+  *silently* — the stage is skipped and the table quietly stops sorting. `ValidateFeatureSlots` catches a slot
+  without its feature, not a feature without its slot.
+- **Filter and sort functions are registered by name.** `globalFilterFn: 'includesString'` and
+  `filterFn: 'facetIncludes'` only type-check when the name is present in the features' `filterFns`/`sortFns`
+  record — the kit registers the built-ins plus its own facet function.
+- **`getVisibleCells()` is part of the visibility feature**, as are `getVisibleLeafColumns()` — rendering a
+  table without `columnVisibilityFeature` fails to compile on the first cell loop.
+- **`arrIncludesSome` is array-only.** Given a scalar column value it returns false for every row, i.e. a filter
+  that looks wired and does nothing. The kit registers `facetIncludes` for scalar-or-array columns, which is
+  what `DataTableFacetedFilter` expects.
+- **`state` lives on the React table, not the core one.** The instance type is `ReactTable` (which adds
+  `state`, `Subscribe` and `FlexRender`); `Table` from `table-core` has none of them.
+- **A sort-index badge in a header button renames the button.** "Name" becomes "Name 1" (the same accessible-name
+  trap F019 hit with a loading spinner) — the badge is `aria-hidden`, and `aria-sort` on the `<th>` carries the
+  state.
+- **`useDataTable` lives in `data-table-context.tsx`** for the cycle reason above: the table renders the toolbar
+  and footer, and both need the table back.
+
 ### The form kit's own traps (F019)
 
 - **The `base-nova` registry has no `form` item, and the CLI says nothing.** `shadcn add form` prints
