@@ -419,6 +419,32 @@ The SPA's understanding of the session lives in exactly one place (`src/lib/auth
   the server's own sentences (the uniform 401 verbatim; 422s mapped onto inputs — the API's field names
   equal the form's by design; 429 with the throttle message).
 
+### The admin users screen (F034)
+
+`pages/admin/users.tsx` is the first **server-mode** DataTable consumer — F020 built the mode and this
+screen proves it: page, sort, search and the status filter are request parameters held in one state
+record, `total` comes from the server (the footer counts rows the client never loaded), and
+`placeholderData` keeps the previous page on screen while the next one arrives.
+
+Three shapes worth keeping for F035+:
+
+- **Server mode does not use the faceted filter.** Facet counts are computed from *loaded* rows; against a
+  server page they would be quietly, confidently wrong. The status filter is a controlled `Select` in the
+  toolbar, and the table's own column-filter slice stays out of the server path entirely.
+- **Sorting is single-column and always on.** The API accepts one allowlisted field with an `id`
+  tiebreaker; a "cleared" sort state would show an order the server never chose, so clearing keeps the
+  current order (the header button cycles asc↔desc). Multi-sort (shift-click) is therefore not wired.
+- **The UI mirrors the rules it can see, and defers the ones it cannot.** Controls disappear without their
+  codes (§6.3d — the server is still the boundary), the self row's deactivate/delete are disabled with the
+  reason attached (C22's self rules), and the last-super-admin 409 is *not* mirrored — it needs a count the
+  list does not carry, so the server's sentence is the honest interface. The one-time password notice is
+  one component because C22 made create's and reset's contracts identical, and `DataTableRowActions`
+  (F034's contribution to the kit) owns the trigger and menu surface every later list reuses.
+
+The route (`/admin/users`) is registered with `adminOnly` + `users.read`: `/admin` now redirects to the
+first permitted administration route instead of answering 403, and the Administration group appears for
+exactly the callers who hold a code in its namespaces.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -970,6 +996,16 @@ Two more async-ORM traps, both found while serialising the admin API's responses
   repeats one level up: capture ids before a request that may roll back, and re-read rows with
   `populate_existing` (or `expunge_all`) instead of trusting in-memory state across it.
 
+### A facet count and a server page disagree by construction (F034)
+
+`DataTableFacetedFilter` counts what it can see — the loaded rows. Exact in client mode; a quiet lie in
+server mode, where "Active (3)" means three rows on *this page*. The users screen therefore uses the kit's
+faceted filter where it belongs (client tables) and a controlled select where the truth lives on the
+server. The related test-level lesson, same family as §12's oldest rule (assert the artefact, not the
+expectation): Base UI's checkbox renders `<span role="checkbox">` with `aria-disabled`, so jest-dom's
+`toBeDisabled()` is false and `toHaveAttribute('aria-disabled', 'true')` is the assertion that means what
+it says.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -991,6 +1027,8 @@ Two more async-ORM traps, both found while serialising the admin API's responses
   the `is_superuser` expansion as break-glass, the fail-closed dependency defaulting with the auth
   router as the staged exemption list, `require_permission`, `/auth/me` — C20, §6), **F032 the
   session layer in the SPA** (the four-status session provider, the 401 re-resolution handler, the
-  CSRF interceptor, the login/forced-change standalone routes and the account menu — C21, §5), and
-  **F033 the admin user directory** (the six guarded endpoints with their privilege rules, soft
-  deletion, and the SQL-filtered paginated list — C22, §6).
+  CSRF interceptor, the login/forced-change standalone routes and the account menu — C21, §5), **F033
+  the admin user directory** (the six guarded endpoints with their privilege rules, soft deletion, and
+  the SQL-filtered paginated list — C22, §6), and **F034 the users screen** (the first server-mode
+  DataTable, the row-actions kit component, the one-time password notice, the permission mirrors —
+  C23, §5).

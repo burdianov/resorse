@@ -1,6 +1,6 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutDashboard, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
@@ -86,12 +86,20 @@ const DashboardPlaceholder = lazy(async () => {
   return { default: module.DashboardPlaceholder }
 })
 
+const AdminUsersPage = lazy(async () => {
+  const module = await import('@/pages/admin/users')
+  return { default: module.AdminUsersPage }
+})
+
 /**
  * Built-in routes. `/dashboard` currently renders the protected placeholder
  * (F017) — F047 replaces the component, not the entry, so the navigation, the
- * palette and the route states never notice. The registry deliberately has no
- * `/` entry: the router redirects the root (§4.1) and F032 makes that redirect
- * auth-aware.
+ * palette and the route states never notice. F034 registers `/admin/users`,
+ * the first administration route: `/admin` now redirects here for callers who
+ * hold `users.read` instead of answering 403, and the Administration group
+ * appears for exactly those callers (the filter and the guard read the same
+ * `meetsAccess`, §4.10). The registry deliberately has no `/` entry: the
+ * router redirects the root (§4.1), auth-aware since F032.
  */
 export const APP_ROUTES: readonly RouteDefinition[] = [
   {
@@ -101,6 +109,16 @@ export const APP_ROUTES: readonly RouteDefinition[] = [
     icon: LayoutDashboard,
     group: 'overview',
     component: DashboardPlaceholder,
+  },
+  {
+    id: 'admin-users',
+    path: '/admin/users',
+    label: 'Users',
+    icon: Users,
+    group: 'administration',
+    adminOnly: true,
+    requiredPermissions: ['users.read'],
+    component: AdminUsersPage,
   },
 ]
 

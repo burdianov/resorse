@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F033.
+> Last updated: 2026-10-10 — after task F034.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F034 in
-claude_code_pack/TASKS.md. Implement F034 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F035 in
+claude_code_pack/TASKS.md. Implement F035 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F034` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F035` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,33 +67,32 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F033 — Admin user API** (six endpoints under `/api/v1/admin/users` — list/get/patch/
-  create/reset/delete — each behind one F031 guard, with the privilege rules owned by
-  `app/services/users.py`: superusers managed by superusers only; **role grants ⊆ the caller's own
-  effective permissions** (a plain `admin` can grant `admin`; only a superuser can grant `super_admin`);
-  no self-changes to roles/active (own profile fields stay editable); own deletion refused; **the last
-  active super-admin cannot be deactivated or deleted** (409, checked before the self rules and after
-  the target rule); deletion is **soft** — row kept for audit, sessions revoked `admin`, GET 404, email
-  stays occupied; create/reset install temporary credentials shown **once** (`must_change_password`
-  always true); the list filters in SQL (`search` with escaped wildcards, `is_active`, sort allowlist
-  with an `id` tiebreaker, `total` from the same criteria); DECISIONS C22; 20 new tests, **181
-  passing**; no migration; `openapi.json` + frontend types regenerated).
-- **Next task: F034 — Admin users UI.** "Users table dialogs multi-role editing and reset."
-  Accept: "UI/API integration tests". The whole API contract is live and typed (`lib/generated/api`),
-  and BIG-PROMPT §7.3 fixes the screen: compact header + add-user action; DataTable with
-  server-pagination/search/sort; create dialog (initial temporary password shown **once** after the
-  201); edit dialog (full name/email/active); **reset in its own confirmation dialog** showing the
-  temporary once; deactivate/soft-delete with prompt; the server's rule 403s, 409s and 422s rendered
-  as-is; loading/skeleton and no-users empty states. Register `/admin/users` in `APP_ROUTES` (group
-  `administration`, `adminOnly`, `requiredPermissions: ['users.read']`) — the first admin route, so
-  `/admin` begins redirecting instead of showing 403, and the F017 route-state row changes with it.
-  Every mutation goes through `lib/api.ts` (CSRF header automatic) and the form kit (422s → fields,
-  409s → root alert). **Known sequencing point for the operator:** the role multiselect (§7.3) needs a
-  role-options source, and `GET /admin/roles` is F035's — so either F034 ships the screen with role
-  editing arriving alongside F035 (nothing fake in the meantime), or the operator reorders F034/F035.
-  Do not invent a roles list.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F033 sits on top of
-  `ff4a7b3` (F032).
+- Last completed: **F034 — Admin users UI** (`/admin/users` is real: the first **server-mode DataTable**
+  — page/sort/search/status are query parameters, `total` from the server drives the footer, previous
+  page stays visible during refetches — plus the create/edit/reset dialogs with the shared one-time
+  password notice (generated vs admin-supplied distinguished per C22), the destructive confirms for
+  deactivate/delete, the permission mirrors (controls vanish without their codes; the self row's
+  deactivate/delete disabled with the reason; the last-super-admin 409 left to the server), the
+  `DataTableRowActions` kit component, and the route registered (`/admin` now redirects here, the
+  Administration group appears — for exactly the callers holding `users.read`). The role picker reads a
+  **pulled-forward read slice** of F035's surface: `GET /api/v1/admin/roles` (guard `roles.read`,
+  sorted, `{id, name, description, is_system}` — C23 records why). New: `pages/admin/users.tsx`,
+  `pages/admin/user-dialogs.tsx`, `components/data-table/data-table-row-actions.tsx`,
+  `schemas/admin_roles.py`, `api/v1/admin_roles.py`; DECISIONS C23; +14 frontend tests
+  (**444 passing**), +2 backend (**183**); `openapi.json` + types regenerated).
+- **Next task: F035 — Role API.** "Role CRUD and protected atomic permission matrix."
+  Accept: "Rollback and escalation tests". The router already exists as F034's read slice
+  (`app/api/v1/admin_roles.py` — extend it, do not create a second); the escalation guard to reuse is
+  `services/users.py::_ensure_roles_assignable` (the subset rule — F035's matrix edit answers to the
+  same rule C22 recorded); the vocabulary is `app/core/permissions.py`; `super_admin` is `is_system`
+  and its matrix column is **read-only** (C16 — the seed re-asserts it; F035 refuses edits/deletes of
+  system roles). The "atomic" in the task name is the acceptance's heart: one save endpoint that
+  replaces the whole grant set in ONE transaction (BP §7.4: no sequential PATCH partial-success), with
+  rollback tests; role deletion refused while assigned (BP-6.3); a normal admin must not be able to
+  grant itself elevated rights (routes/handlers guarded by `roles.manage`, which the seeded `admin`
+  deliberately lacks). The frontend matrix is F036's — register no route now.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F034 sits on top of
+  `d6b37b6` (F033).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -214,6 +213,26 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **The users screen is live (F034):** `/admin/users` (`pages/admin/users.tsx` +
+  `pages/admin/user-dialogs.tsx`) — the first **server-mode DataTable** consumer: page/sort/search/status
+  are query parameters (one state record feeds the query key), `total` drives the footer, `placeholderData`
+  keeps the old page while the next loads; **no faceted filter for status** (facet counts are loaded rows —
+  quietly wrong against a server page; a controlled `Select` carries it instead); **sorting is
+  single-column and always on** (a cleared sort keeps the current order — the server never chose "unsorted").
+  Dialogs: **create** (role checkboxes from the catalogue, empty password = generate; the one-time notice
+  distinguishes generated vs admin-supplied per C22), **edit** (complete editable set on save; roles/active
+  disabled when editing yourself — C22's self rule), **reset** (confirm → the same one-time notice);
+  deactivate/delete behind destructive confirms. **Permission mirrors**: Add-user/reset/deactivate/delete
+  items render only with their codes; the self row's deactivate/delete are disabled with the reason; the
+  last-super-admin rule is deliberately NOT mirrored (needs a count the list lacks — the server's 409 is
+  the interface). New kit component **`DataTableRowActions`** (trigger + surface; items by the page).
+  The route registered (`/admin/users`, `adminOnly` + `users.read`) → **`/admin` now redirects here** for
+  permitted callers and the **Administration group appears** for exactly them. The role picker reads
+  **`GET /api/v1/admin/roles`** — a deliberate pull-forward of F035's read slice (sorted
+  `{id, name, description, is_system}`, guard `roles.read`; C23 records why and F035 extends the router).
+  Checks run: `pnpm run typecheck` clean; `pnpm exec vitest run` **444 passed** (14 new in
+  `tests/admin/users.test.tsx`); `pnpm run build` OK (pre-existing chunk warning); backend `pytest`
+  **183 passed** (2 new roles-slice tests); `openapi.json` + generated types regenerated.
 - **The admin user directory is live (F033):** `/api/v1/admin/users` — `GET ""` (list: `page`,
   `page_size` ≤100 default 25, `search` over name+email with `%`/`_` **escaped**, `is_active`, `sort` ∈
   {`full_name`,`email`,`created_at` **desc default**,`last_login_at`} with an `id` tiebreaker, response
@@ -440,6 +459,11 @@ the archive original — `sha256sum` both to check):
   soft deletion with the email staying occupied; temp credentials shown once; SQL-filtered paginated
   list with the `id` tiebreaker and `total` from the same criteria; guard-403 vs rule-403; the F043
   audit gap recorded), same date and same basis; rationale in ARCHITECTURE §6/§12.
+- **C23** — F034's users screen (the deliberate pull-forward of `GET /admin/roles` as F035's read
+  slice; the server-mode table rules — no faceted filter, single always-on sort, `total` from the
+  server; `DataTableRowActions`; the shared one-time password notice; permission mirrors with the self
+  row disabling and the last-super-admin 409 left to the server; the route registration that makes
+  `/admin` redirect), same date and same basis; rationale in ARCHITECTURE §5/§12.
 - **C12's fallout is reconciled** — F025/F029/F032 were amended in `TASKS.md` to match.
 - **All seven F002 gaps are closed** (`docs/REQUIREMENT_TRACEABILITY.md` §14, now a resolution table):
   G-1 `input-group`→F011; G-2 the 21 enhanced generics distributed across F009/F011–F013/F016/F017/F019/F020/
@@ -518,6 +542,11 @@ the archive original — `sha256sum` both to check):
   the frontend nav until F034 registers them (a registered route is a rendered link); when F033 adds
   `/admin/*` endpoints, the frontend keeps consuming them through `lib/api.ts` + generated types only.
   `MeResponse.is_superuser` is real data now — do not re-derive authority from grant-list length.
+- **Server-mode tables follow F034's shape (C23):** request parameters in one page-level state
+  record, the server's `total` for the footer, `placeholderData` over skeletons on refetch, no faceted
+  filter (its counts are loaded rows), one always-on server sort, and row actions through
+  `DataTableRowActions`. Permission mirrors hide controls the caller cannot use; they never replace the
+  server's check. Preferences keys are per screen (`admin-users` today).
 - **The admin API's rules are the security surface (F033, C22) — F035/F037 reuse them:** the subset
   rule for grants (`_ensure_roles_assignable`) is the escalation guard every future role/permission
   mutation must also apply (F035's matrix edit and F033's role assignment answer to the same rule);
@@ -642,6 +671,35 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F034 — Admin users UI.** `/admin/users` — the first real consumer of two kits (F020's server mode,
+  F021's preferences) and the first administration screen. The page (`pages/admin/users.tsx`) holds one
+  state record for page/sort/search/status; all four feed the query key, the server's `total` drives
+  the footer, and `placeholderData` keeps the previous page visible while the next arrives. Three
+  deliberate shapes (C23): **no faceted filter** for the status column (facet counts are computed from
+  *loaded* rows — the component is used where that is exact, client tables; a controlled `Select` carries
+  the server filter), **single-column always-on sorting** (the API sorts by one allowlisted field with an
+  id tiebreaker; a cleared sort keeps the current order rather than showing an order the server never
+  chose), and **rules mirrored only where visible**: Add-user/reset/deactivate/delete controls render
+  only with their codes (§6.3d — the server stays the boundary), the self row disables
+  deactivate/delete with the reason (C22's self rules), and the last-super-admin rule is *not* mirrored
+  — it needs a count the list does not carry, so the server's 409 is the honest interface. The dialogs
+  (`pages/admin/user-dialogs.tsx`): create (role checkboxes from the catalogue; empty password =
+  generate), edit (the complete editable set on save; roles/active disabled when editing yourself), and
+  reset behind its own confirmation — create and reset share the **one-time password notice** ("shown
+  once", Copy) because C22 made their contracts identical, and the create dialog distinguishes generated
+  (shown) from admin-supplied (not echoed) exactly as the API does. One kit addition:
+  **`DataTableRowActions`** — the component the data-table index had promised for F034 (trigger +
+  surface owned by the kit, items by the page, nothing rendered for an empty menu). The route is
+  registered with `adminOnly` + `users.read`, so **`/admin` now redirects to `/admin/users`** for
+  permitted callers and the Administration group appears for exactly them. The role picker reads
+  **`GET /api/v1/admin/roles`** — a deliberate pull-forward of F035's read slice (C23): the picker's
+  options must be the real catalogue, and neither an invented list nor an inert multiselect is
+  acceptable; F035 extends that router with CRUD and the matrix. Checks run: `pnpm run typecheck` clean;
+  `pnpm exec vitest run` **444 passed** (14 new in `tests/admin/users.test.tsx` — rendered through the
+  real route table, providers and `api.ts`, MSW the only stand-in: server params per control, the
+  one-time contract, the 409 in the dialog, both confirm flows, the self/permission mirrors, the empty
+  state); `pnpm run build` succeeds; backend `pytest` **183 passed** (2 new roles-slice tests);
+  `openapi.json` + generated frontend types regenerated and committed.
 - **F033 — Admin user API.** The user directory, with the acceptance's privilege half doing the real
   work. Six endpoints under `/api/v1/admin/users`, each behind one F031 guard, with every business rule
   in `app/services/users.py` (endpoints translate; the service decides): **superusers are managed by
@@ -1143,13 +1201,14 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F033 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
-| **Backend tests (F023–F033)** | `cd D:\resors\backend; uv run pytest` | **181 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 20 admin-users tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F034 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
+| **Backend tests (F023–F034)** | `cd D:\resors\backend; uv run pytest` | **183 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 2 admin-roles + 20 admin-users tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Login tests (F028)** | `cd D:\resors\backend; uv run pytest tests/test_auth_login.py` | **11 passed** — six credential-failure causes answered with the *same* 401 body, the unknown-email path proven to run a real Argon2 verification against the decoy (whose parameters are pinned current), both throttle buckets (per account and per address) incl. the identical 429 for a non-existent email, `hit_count == 5` persisted after five failures (commit-on-failure), the account-bucket reset on success, rehash-on-login, the exact cookie attributes, and 422 for malformed bodies |
 | **Session lifecycle tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_auth_sessions.py` | **13 passed** — resolution returns the user, the idle slide (committed by the resolver, capped at the absolute deadline, which never moves), expiry refused without a write, disabled users refused and left for the admin flow, rotation (same family, `rotated` + `replaced_by_id`, absolute deadline inherited), the replay killing exactly its own family as `theft_detected` while the presented row keeps `rotated`, logout (204, both cookies cleared, revoked `logout`, idempotent for junk/already-ended cookies), logout-all (401 without a session; every live row of *one* user revoked `logout_all`, others untouched), and a replay through logout still killing the family |
 | **CSRF tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_csrf_protection.py` | **11 passed** — the double-submit enforced whenever the session cookie is present (four refusal shapes, each changing nothing) and passing with no origin for scripted clients, the origin matrix refused even with a perfect double-submit (`https://evil.example`, `null`, scheme mismatch, lookalike host), the `Referer` fallback (and Origin winning when both are present), safe methods never checked, a latin-1 hostile header earning 403 not 500, login refusing a cross-site origin, and the carve-out: a dead session cookie does not lock the login form |
 | **Password-lifecycle tests (F030)** | `cd D:\resors\backend; uv run pytest tests/test_password_change.py` | **14 passed** — wrong current password refused with nothing changed; policy evaluated with the user's own email and never echoing the candidate; new-equals-current refused; the core: rotation of the asking session (absolute deadline inherited) + every other session `password_change` + hash/flags/reset-stamp in one commit; the forced-change flag cleared; the throttle (6th attempt denied before verification, `hit_count == 6` persisted, a verified password forgiving the failures *through* a policy refusal); the reset end-to-end (policy-passing temporary, all sessions `admin`, bystander untouched, temporary signs in with the flag surfaced); and over HTTP: 204 with a fresh cookie pair, the sibling session dead, 401 without a session, 403 without the CSRF header, the wrong-current-password **422 field error (not 401) with the session still alive**, multiple policy entries on `new_password`, and the 429 with `Retry-After: 900` |
 | **Authorization tests (F031)** | `cd D:\resors\backend; uv run pytest tests/test_authorization.py` | **9 passed** — `/auth/me` returns identity + sorted roles + the deduped sorted union, and stays reachable during a forced change; the superuser expansion lists every code by name with no roles; access granted by *either* of two roles against a scratch app, denied with the generic 403 (and the guarded body never runs); re-evaluation proven with `expunge_all` — the same cookie gets 403 after a DB-level revoke and 200 after re-granting, no re-login; no session → 401 everywhere; a deactivated user → 401 everywhere; and the forced-change gate: 403 with the flag detail (before the permission check), nothing executed, then the real change-password flow lifts it on the very next request |
+| **Admin-role tests (F034)** | `cd D:\resors\backend; uv run pytest tests/test_admin_roles.py` | **2 passed** — the catalogue answers 401 without a session, 403 with the generic message without `roles.read`, and lists every role sorted by name with exactly `{id, name, description, is_system}` |
 | **Admin-user tests (F033)** | `cd D:\resors\backend; uv run pytest tests/test_admin_users.py` | **20 passed** — 401 on all six endpoints without a session and the exact code each needs (generic 403, target untouched); generated temporary (verifies, forced change, shown once, never repeated in listings) and explicit-password policy refusals as field 422s; canonical email + 409 duplicates; unknown role ids 422; pagination/search/`%`-escape/`is_active`/sort all against the real database with exact totals; PATCH trims, canonicalises and *replaces* roles; empty edit 400; the `is_active` toggle requiring `users.deactivate`; deactivation revoking sessions (`admin`) and blocking sign-in until reactivation; soft-delete keeping the row, hiding it (404), blocking sign-in and keeping the email taken (409); self-changes limited to profile fields; superuser targets 403 for non-supers (update/delete/reset/create); last-super-admin 409 for deactivate and delete; grant-subset escalation 403 vs an in-set grant 200 (and a superuser granting the same role 201); reset returning a temporary that forces change and kills sessions; no response ever carrying `argon2`/`hashed_password` |
 | **Session model tests (F025)** | `cd D:\resors\backend; uv run pytest tests/test_session_model.py tests/test_session_tokens.py` | **18 passed** — the token-hash shape and uniqueness, both deadlines and their ordering, all-or-nothing revocation over a closed vocabulary, user FK + cascade, the unique replacement chain and `SET NULL`, the family-revocation rehearsal, the `is_active` matrix, and the token/lifetime contract |
 | **Password & rate-limit tests (F026)** | `cd D:\resors\backend; uv run pytest tests/test_password_hashing.py tests/test_rate_limit.py` | **34 passed** — Argon2id parameters and the no-plaintext contract (hash content, the `User` repr, message echo), every policy rule and the confirmed defaults, the generated-password properties (F027), window alignment/`Retry-After` math, the DB counter (limit, rollover, per-key budgets, `peek` without counting, `clear`), and the twelve-connection concurrency race |
@@ -1165,7 +1224,7 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Renders, not just compiles (F018 fix; updated by F032)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | with no session, the DOM is the **login card** — `<h1>Sign in</h1>`, the email/password inputs, the theme toggle (the shell is behind the session boundary now; the sidebar + `Dashboard` appear once signed in). Add `2>&1 \| Select-String "CONSOLE"` to see console output; an empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss. If the card never appears and `CONSOLE` shows a failed `/api/v1/auth/me` fetch, check the backend is running — that request is the first thing the app makes |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"`, removes reinstated dependencies (run after every `shadcn add`) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **430 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **444 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | **Frontend auth-flow tests (F032)** | `cd D:\resors\frontend; pnpm exec vitest run tests/auth/auth-flows.test.tsx` | **14 passed** — the session boundary (anonymous redirect with intended-path return; network failure → Retry, **not** login), sign-in failures shown verbatim, local validation without a request, the forced-change landing/bounce/completion with the CSRF header asserted on the wire, 422 field mapping, mismatch refusal, both sign-out flows, the registered 401 re-resolution (one retry), and `readCsrfToken` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
@@ -1173,8 +1232,9 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Nav behaviour (F015)** | inside the collapsed rail, hover the **Dashboard** row; click the **Overview** group label | the label appears as a tooltip in the rail; the group collapses/expands and the choice survives **F5** (`app.sidebar.groups`) |
 | **Context slot is off (F015)** | look at the header on desktop | **no** context selector is rendered — the slot is disabled by default (BIG-PROMPT §3.2a); it appears only when a module injects an enabled adapter |
 | **Command palette (F016)** | press **Ctrl+K** (or Cmd+K), or click the **Search anything** box in the header | the palette opens listing `Overview → Dashboard`; typing filters; **Enter** jumps to the highlighted page; **Escape** closes and focus returns to where it was |
-| **Route states (F017; session-footnote by F032)** | **signed in**, visit **`/`**, **`/admin`**, **`/nonexistent`**, **`/403`**, **`/404`** in turn (anonymous, every one of these lands on `/login` with the path remembered — that is F032's boundary working) | `/` lands on `/dashboard` — the protected placeholder, which says plainly that the real screen is F047; `/admin` shows the **403** page (no admin route is registered yet, so there is nothing to redirect to); any unknown path shows **404 inside the shell** (navigation still usable); `/403` and `/404` render those pages directly |
-| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — today only **Dashboard**. The Administration group is **absent, not empty**: its pages arrive in F034–F044; an anonymous visitor never reaches the shell at all (F032 sends them to `/login`), and a signed-in caller without administration codes sees no Administration group |
+| **Route states (F017; updated by F032/F034)** | **signed in**, visit **`/`**, **`/admin`**, **`/nonexistent`**, **`/403`**, **`/404`** in turn (anonymous, every one of these lands on `/login` with the path remembered — that is F032's boundary working) | `/` lands on `/dashboard` — the protected placeholder, which says plainly that the real screen is F047; **`/admin` now redirects to `/admin/users`** when the caller holds `users.read` (F034 registered the first administration route) and shows the **403** page otherwise; any unknown path shows **404 inside the shell** (navigation still usable); `/403` and `/404` render those pages directly |
+| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — **Dashboard**, plus **Users** for callers holding `users.read` (the Administration group appears for them, and only them: absent, not empty, for everyone else). The remaining administration pages arrive in F036–F044; an anonymous visitor never reaches the shell at all (F032 sends them to `/login`) |
+| **Admin users screen smoke (F034)** | open http://localhost:5173, sign in with the bootstrap account, and look for the **Users** entry under Administration | the sidebar gains **Administration → Users**; the table lists accounts with role badges, status and created date; typing in search updates the URL-less query (watch the network tab: `search=…`); the **Status** select sends `is_active=false`; clicking a column header sends `sort`/`order`; **Add user** opens the dialog — create one and the **temporary password appears once** with a Copy button (record it, then sign in with it to see the forced-change flow); the row menu offers Edit / Reset password / Activate–Deactivate / Delete, each behind its confirmation where destructive — and on **your own row** Deactivate/Delete are disabled (the server would refuse them, C22) |
 | **Auth smoke (F032)** — the full round trip | backend + frontend running; open http://localhost:5173 in a browser | anonymous → the **Sign in** card (no shell). Sign in with the bootstrap account (`LOCAL_CREDENTIALS.md`): it has `must_change_password=true`, so the app lands on **Choose a new password** — try `/dashboard` and get bounced back; complete the change (**204**, cookies rotate) and the dashboard appears with your name in the header menu. Open the account menu: **Sign out** → login card; sign in again with the **new** password (update `LOCAL_CREDENTIALS.md` the moment you change it). Wrong password shows `Invalid email or password.`; five wrong ones → the 429 sentence. **Sign out everywhere…** asks for confirmation, then ends every session |
 | **Typed client, end to end (F018)** | with the backend running, open http://localhost:5173 and paste into the devtools console: `const { api } = await import('/src/lib/api.ts'); await api.get('/api/v1/health')` | the health JSON straight from FastAPI (`{"status":"ok","name":"Application Platform",…}`) — the SPA reached the API through the Vite proxy with the generated types. Then `await api.get('/api/v1/nope').catch(e => e.detail)` → **`The requested item was not found.`** — the normalised `ApiError`, not an Axios error. The app itself now makes exactly **one** API call on load — `GET /api/v1/auth/me` (F032; watch it in the network tab) — and no page fabricates data; F047's dashboard is the first real data consumer |
 | **Theme persists (F010)** | open the app, click the **sun/moon button in the header**, choose **Light / Dark / System**, then press **F5** | the chosen theme is still applied after reload, with **no flash** of the other theme first |

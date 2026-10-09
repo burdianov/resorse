@@ -379,6 +379,60 @@
         "title": "ResetPasswordResponse",
         "type": "object"
       },
+      "RoleItem": {
+        "description": "One role, as the catalogue lists it.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_system": {
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "is_system"
+        ],
+        "title": "RoleItem",
+        "type": "object"
+      },
+      "RoleListResponse": {
+        "description": "The whole catalogue, sorted by name — small and unpaginated on purpose:\na role matrix with more roles than a screen can show is a different\nproblem, and F036 will meet it then, not this picker now.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RoleItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RoleListResponse",
+        "type": "object"
+      },
       "RoleRef": {
         "description": "A role as the directory shows it: what to display and what to submit.",
         "properties": {
@@ -549,6 +603,34 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/roles": {
+      "get": {
+        "description": "Every role, sorted by name — the picker's options and the future\nmanagement list read the same answer.",
+        "operationId": "list_roles_api_v1_admin_roles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the roles.read permission."
+          }
+        },
+        "summary": "List the role catalogue",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/users": {
       "get": {
         "description": "One page of accounts, newest first by default.\n\nSoft-deleted accounts never appear — they are audit material (F024), not\ndirectory entries. ``total`` counts everything the filters match, so the\ntable footer can count without lying (ARCHITECTURE §10).",

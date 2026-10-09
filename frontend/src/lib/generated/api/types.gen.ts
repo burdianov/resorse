@@ -267,6 +267,44 @@ export type ResetPasswordResponse = {
 };
 
 /**
+ * RoleItem
+ *
+ * One role, as the catalogue lists it.
+ */
+export type RoleItem = {
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is System
+     */
+    is_system: boolean;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * RoleListResponse
+ *
+ * The whole catalogue, sorted by name — small and unpaginated on purpose:
+ * a role matrix with more roles than a screen can show is a different
+ * problem, and F036 will meet it then, not this picker now.
+ */
+export type RoleListResponse = {
+    /**
+     * Items
+     */
+    items: Array<RoleItem>;
+};
+
+/**
  * RoleRef
  *
  * A role as the directory shows it: what to display and what to submit.
@@ -364,6 +402,33 @@ export type ValidationError = {
      */
     type: string;
 };
+
+export type ListRolesApiV1AdminRolesGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/roles';
+};
+
+export type ListRolesApiV1AdminRolesGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the roles.read permission.
+     */
+    403: unknown;
+};
+
+export type ListRolesApiV1AdminRolesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RoleListResponse;
+};
+
+export type ListRolesApiV1AdminRolesGetResponse = ListRolesApiV1AdminRolesGetResponses[keyof ListRolesApiV1AdminRolesGetResponses];
 
 export type ListUsersApiV1AdminUsersGetData = {
     body?: never;
