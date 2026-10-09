@@ -94,8 +94,11 @@ function CommandList({
   return (
     <CommandPrimitive.List
       data-slot="command-list"
+      // `no-scrollbar` (registry default) is defined by shadcn/tailwind.css,
+      // which this project does not import — it styled nothing here. The global
+      // thin themed scrollbar applies instead (same fix as the sidebar, F015).
       className={cn(
-        "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
+        "max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
         className
       )}
       {...props}

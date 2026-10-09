@@ -1,20 +1,20 @@
 import { createBrowserRouter } from 'react-router'
 
 import { AppShell } from '@/components/layout/app-shell'
-import { FoundationStatus } from '@/pages/foundation-status'
+import { buildRouteObjects } from '@/config/navigation'
 
 /**
  * Route table — data-router mode (ARCHITECTURE §5).
  *
- * F006 proved the routing mode end to end; F015 turned the root into a layout
- * route so every page renders inside the sidebar/header shell. The shared
- * navigation registry and its route metadata arrive with F016, and the route
- * states (root and /admin redirects, 403, 404, error boundary) with F017.
+ * The children are **generated from the navigation registry** (F016), so a page
+ * is mounted exactly when it is registered and described there once. The shell
+ * is the layout route; F017 adds the root and `/admin` redirects, the 403/404
+ * routes and the error boundary around this table.
  */
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppShell />,
-    children: [{ index: true, element: <FoundationStatus /> }],
+    children: buildRouteObjects(),
   },
 ])

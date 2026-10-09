@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { ChevronDown, ChevronLeft } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 
 import { APP_MARK, APP_NAME } from '@/config/branding'
+import type { NavGroupView, NavItemView } from '@/config/navigation'
 import { cn } from '@/lib/utils'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -29,24 +29,19 @@ import { readStoredGroupState, writeStoredGroupState } from './sidebar-preferenc
  * collapsible groups, an icon-only rail with tooltips, and a round collapse
  * chevron on the outside edge.
  *
- * The **items are fed in** as `groups`, so this file owns the navigation
- * *mechanics* while the command palette, breadcrumbs and permission filtering
- * arrive with the shared registry in F016 — the shell is wired to a temporary
- * list until then (see `app-shell.tsx`). Group open state persists per group id
+ * The **items are fed in** as `groups`: the shell passes
+ * `visibleNavigation(access)`, the same filtered value the command palette
+ * receives, so this file owns the navigation *mechanics* and the registry owns
+ * what exists and who may see it. Group open state persists per group id
  * (§4.9: "persistent group/sidebar state").
  */
-export interface SidebarNavItem {
-  id: string
-  label: string
-  path: string
-  icon?: LucideIcon
-}
 
-export interface SidebarNavGroup {
-  id: string
-  label: string
-  items: SidebarNavItem[]
-}
+/**
+ * Presentation aliases of the shared registry view types (`config/navigation.ts`),
+ * so the sidebar renders whatever the registry filtered and nothing else.
+ */
+export type SidebarNavItem = NavItemView
+export type SidebarNavGroup = NavGroupView
 
 /**
  * Exact match, plus descendant matches for section paths — `/admin/users`
@@ -61,7 +56,8 @@ export function AppSidebar({
   groups,
   footer,
 }: {
-  groups: SidebarNavGroup[]
+  /** Already filtered for the caller: produce with `visibleNavigation(access)`. */
+  groups: readonly SidebarNavGroup[]
   /** Pinned-bottom slot; F032 puts the profile menu here. */
   footer?: ReactNode
 }) {

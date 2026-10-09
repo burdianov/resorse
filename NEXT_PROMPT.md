@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-09 — after task F015.
+> Last updated: 2026-10-09 — after task F016.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -26,13 +26,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F016 in
-claude_code_pack/TASKS.md. Implement F016 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F017 in
+claude_code_pack/TASKS.md. Implement F017 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F016` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F017` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -41,7 +41,7 @@ re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/R
 |---|---|
 | Project root (repo) | `D:\resors` |
 | Instruction pack | `claude_code_pack\` — `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md`, `TASKS.md`, `DECISIONS.md`, `OPERATOR_GUIDE.md` (operator runbook incl. the test-command table), `STATE.md` (pointer only) |
-| Task artifacts | `docs\` — `REPOSITORY_AUDIT.md` (F001), `REQUIREMENT_TRACEABILITY.md` (F002), `STACK_VERSIONS.md` (F003), `ARCHITECTURE.md` + `REFERENCE_PARITY.md` (F004) |
+| Task artifacts | `docs\` — `REPOSITORY_AUDIT.md` (F001), `REQUIREMENT_TRACEABILITY.md` (F002), `STACK_VERSIONS.md` (F003), `ARCHITECTURE.md` + `REFERENCE_PARITY.md` (F004), `ROUTES_NAVIGATION.md` (F016) |
 | Frontend (F006) | `frontend\` — `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src\{main.tsx,vite-env.d.ts,app\router.tsx}` |
 | Backend (F007) | `backend\` — `pyproject.toml`, `uv.lock`, `.python-version`, `app\{main.py,core\config.py,api\v1\{router,health}.py}`; `models\`, `schemas\`, `services\`, `migrations\versions\`, `tests\` still empty |
 | Reference material (**outside the project folder**) | `D:\RESORS_REFERENCE\qtc360-main.zip`, `D:\RESORS_REFERENCE\BIG-PROMPT.txt` |
@@ -55,17 +55,18 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F015 — layout shell** (64px header, 260/64px sidebar, mobile drawer, context-switcher slot;
-  the app now renders inside the shell at `/`).
-- **Next task: F016 — navigation registry.** Permission-ready declarative nav, breadcrumbs and the command
-  palette (Ctrl/Cmd+K). It replaces the temporary `FOUNDATION_NAVIGATION` constant in `components/layout/app-shell.tsx`
-  with the shared `config/navigation.ts` registry, and passes `onSearchClick` to `AppHeader` so the header's
-  search trigger appears. The sidebar already consumes a `groups` prop of the right shape, and
-  `context-switcher-slot.tsx` shows the adapter pattern F063 will prove.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F015 sits on top of
-  `0011dd6` (docs, lessons F009–F014).
+- Last completed: **F016 — navigation registry** (shared `config/navigation.ts` drives sidebar, palette and
+  breadcrumbs; Ctrl/Cmd+K palette live; `docs/ROUTES_NAVIGATION.md` written).
+- **Next task: F017 — error and route states.** Root (`/`) and `/admin` redirects, 403, 404, error boundary,
+  offline retry and the protected placeholder. It must also **retire the registered `/` index route**: the
+  registry currently mounts the foundation status page at `/` (`config/navigation.ts`, entry `status`), and the
+  auth-aware redirect replaces it. The placeholder page is where the still-unregistered routes of §4
+  (`/dashboard` etc.) can be mounted and then registered — one entry per page, never a dead link.
+  Error boundary/offline retry belong around the router (`app/router.tsx`) and inside the shell's content area.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F016 sits on top of
+  `90997b5` (F015).
 - Last human verification: **NOT RUN** — no gate suite has been run by the operator yet. F015's three-width
-  check is the operator's first visual check of the shell (see §8).
+  check and F016's palette check are the operator's visual checks (see §8).
 
 ## 4. Environment facts
 
@@ -89,9 +90,19 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   a first load in the 768–1023px band starts collapsed. The theme control moved from the page into the header
   (sun/moon menu with Light/Dark/System). `src/pages/foundation-status.tsx` is the temporary page; `src/config/`
   and `src/hooks/` are no longer empty (`branding.ts`, `use-mobile.ts`).
-- **The header shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons, so the
-  search trigger renders only once F016 passes `onSearchClick`, and notifications/profile arrive with F046/F032.
-  An empty right-hand cluster today is expected, not a bug (`ARCHITECTURE.md` §12).
+- **Navigation registry is live (F016):** `src/config/navigation.ts` is the single definition (route metadata per
+  BP §4.7 + `visibleNavigation(access)` + `buildBreadcrumbs` + `buildRouteObjects`); the router's children are
+  **generated from it**, and the shell filters once and hands the same list to the sidebar and the palette.
+  `src/config/modules.ts` is the compiled-in module slot (`AppModule`, empty today; F063 proves it). Access flows
+  through `components/providers/access-provider.tsx`; until F032 supplies a session the shell uses
+  `ANONYMOUS_ACCESS` (no permissions, not a superuser) — the correct answer for an anonymous caller, which is why
+  the Administration group is deliberately invisible today. `components/common/permission-gate.tsx` and
+  `secure-link.tsx` share the same `meetsAccess` rule. `docs/ROUTES_NAVIGATION.md` is the F016 artifact.
+- **Command palette is live:** Ctrl/Cmd+K (or the header search trigger, which now appears because F016 passes
+  `onSearchClick`) opens it; it lists exactly the filtered registry — today that is `Overview → Status`, nothing
+  else, because no other page is registered yet.
+- **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
+  notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
 - **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
   `app`. Credentials are in the git-ignored `.env`. Verified working end to end: asyncpg 0.32.0 and SQLAlchemy
   2.1.4 both connect to **PostgreSQL 18.6** (this closed the compatibility check F003 had to defer).
@@ -137,11 +148,15 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   arrives in **F057** and fix or dismiss it there.
 - **`pnpm run fix:ui` after every `shadcn add`** — it restores components the generator reverted, remaps `cn`,
   strips `"use client"` and drops the `cn` package. **Commit before generating**: it restores from `HEAD`.
-- **F016 owns the seam the shell left open.** `FOUNDATION_NAVIGATION` in `app-shell.tsx` is temporary and holds
-  the only route that exists today; the registry replaces it and maps its entries onto `SidebarNavGroup` /
-  `SidebarNavItem` (`components/layout/app-sidebar.tsx` — `id`, `label`, `path`, optional Lucide `icon`).
-  `AppHeader` renders its search trigger only when given `onSearchClick`; until F016 passes it, the trigger's
-  absence is by design (no inert controls).
+- **Adding a page is one registry entry.** Create the page under `src/pages/`, then add a `RouteDefinition` to
+  `APP_ROUTES` in `config/navigation.ts` (lazy `component`, `group`, permissions). The router mounts it, the
+  sidebar and palette list it, breadcrumbs resolve it — no other file changes. **Never register a page that does
+  not exist**: a registered route is a rendered link (BIG-PROMPT §1.2, no dead links).
+- **`RouterProvider` renders the route tree only** — `<RouterProvider>{extra}</RouterProvider>` silently drops
+  `extra`; put extra UI inside a route element (`ARCHITECTURE.md` §12, learned in F016).
+- **F017 owns the route states** and must retire the `/` entry: the registry's `status` route (foundation status
+  page) is scaffolding that the auth-aware root redirect replaces, and the "protected placeholder" is the natural
+  component for the §4 pages until F034–F047 build them.
 - **Two source behaviours were deliberately not copied in F015** (recorded in `ARCHITECTURE.md` §12): the
   reference re-forces its viewport default on every load and resize, discarding the stored collapse preference —
   here the viewport only decides the first load with nothing stored; and the reference's edge chevron is anchored
@@ -155,6 +170,20 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F016 — navigation registry.** `config/navigation.ts` now holds the whole navigation contract: `RouteDefinition`
+  with the §4.7 metadata (including a `:param`-aware breadcrumb factory), `NavigationAccess` + `meetsAccess` as the
+  single visibility rule, `visibleNavigation()` (drops empty groups — §4.8), `buildBreadcrumbs()` and
+  `buildRouteObjects()`. The router's children are generated from it, pages load lazily (the built bundle splits:
+  `foundation-status-*.js`), and the shell filters **once** and passes the same list to the sidebar and palette
+  (§4.10). New: `config/modules.ts` (compiled-in `AppModule` slot), `providers/access-provider.tsx` (fail-closed
+  anonymous default; F031/F032 supply the real value), `common/permission-gate.tsx` + `secure-link.tsx` (UX only,
+  §6.3d), `layout/command-palette.tsx` (Ctrl/Cmd+K; header trigger now renders), `layout/app-breadcrumbs.tsx`
+  (finished and tested, **not mounted** — §5.2b gives PageHeader a breadcrumbs slot, so F017 places it).
+  `docs/ROUTES_NAVIGATION.md` records the model, the registered route, the access rules and every planned page with
+  its owning task. Also dropped one more dead `no-scrollbar` in `ui/command.tsx` (same reason as F015's sidebar).
+  Test-round lesson: `<RouterProvider>{extra}</RouterProvider>` silently renders nothing — the extra UI must be
+  inside a route element; recorded in `ARCHITECTURE.md` §12. Checks run: **233 tests across 32 files, all
+  passing**; typecheck exit 0; build exit 0.
 - **F015 — layout shell.** `ui/sidebar.tsx` came from the registry and took four corrections (all in its header
   comment): the §1.2 geometry (260px expanded / 64px rail / 260px drawer — generated defaults were 16rem/3rem),
   no cookie (the preference is the app's, in localStorage; nothing here is server-rendered), `no-scrollbar`
@@ -199,7 +228,7 @@ The fuller table (including future suites) lives in `claude_code_pack/OPERATOR_G
 | What | Command | What you should see |
 |---|---|---|
 | **Database** (F008) | `cd D:\resors; docker compose up -d --wait` | `resors-postgres  ... Healthy`, published on **5432** |
-| **Frontend** (F006) | `cd D:\resors\frontend; pnpm run dev` | `VITE v8.3.4 ready` → open **http://localhost:5173**: the page renders **inside the shell** (sidebar + 64px header) since F015 |
+| **Frontend** (F006) | `cd D:\resors\frontend; pnpm run dev` | `VITE v8.3.4 ready` → open **http://localhost:5173**: the page renders **inside the shell** (sidebar + 64px header since F015) and **Ctrl+K** opens the palette (F016) |
 | **Backend API** (F007) | `cd D:\resors\backend; uv run uvicorn app.main:app --reload --port 8000` | `Application startup complete` → open **http://localhost:8000/docs** |
 | **Frontend production build** (F006) | `cd D:\resors\frontend; pnpm run build; pnpm run preview` | serves the built app on **http://localhost:4173** |
 
@@ -225,15 +254,17 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F015)** | `cd D:\resors\frontend; pnpm run test:run` | **196 passing** across 29 files |
+| **Frontend tests (F011–F016)** | `cd D:\resors\frontend; pnpm run test:run` | **233 passing** across 32 files |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"` (run after every `shadcn add`) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **196 tests passing**, ~86% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **233 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
 | **Sidebar preference (F015)** | click the round chevron on the sidebar edge, then press **F5** | it stays collapsed after reload; console: `localStorage.getItem('app.sidebar')` → `"collapsed"` |
 | **Nav behaviour (F015)** | inside the collapsed rail, hover the **Status** row; click the **Foundation** group label | the label appears as a tooltip in the rail; the group collapses/expands and the choice survives **F5** (`app.sidebar.groups`) |
 | **Context slot is off (F015)** | look at the header on desktop | **no** context selector is rendered — the slot is disabled by default (BIG-PROMPT §3.2a); it appears only when a module injects an enabled adapter |
+| **Command palette (F016)** | press **Ctrl+K** (or Cmd+K), or click the **Search anything** box in the header | the palette opens listing `Overview → Status`; typing filters; **Enter** jumps to the highlighted page; **Escape** closes and focus returns to where it was |
+| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — today only **Status**. The Administration group is **absent, not empty**: its pages arrive in F034–F044, and an anonymous caller (no session until F032) may see none of them |
 | **Theme persists (F010)** | open the app, click the **sun/moon button in the header**, choose **Light / Dark / System**, then press **F5** | the chosen theme is still applied after reload, with **no flash** of the other theme first |
 | Inspect the stored theme (F010) | browser console: `localStorage.getItem('app.theme')` | `"light"`, `"dark"` or `"system"` |
 | Force a theme by hand (F009) | browser console: `document.documentElement.classList.add('dark')` / `.remove('dark')` | page repaints; a dark scrollbar on a light page would mean the token theme is broken |

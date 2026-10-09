@@ -388,6 +388,12 @@ the search trigger appears when F016 passes `onSearchClick`, the context slot wh
 adapter (F015), the profile menu when F032 supplies a user. A shell that looks emptier than the reference for a
 few tasks is the intended state, not a defect — do not "fix" it by rendering dead controls.
 
+### `RouterProvider` renders the route tree only
+
+`<RouterProvider router={router}>{extra}</RouterProvider>` silently drops `extra`: the provider has no children
+slot, so UI passed there is never rendered. F016 lost a test round to a command palette that "rendered nothing"
+for exactly this reason. Put extra UI inside a route element.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not

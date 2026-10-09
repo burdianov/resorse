@@ -13,13 +13,14 @@ import type { ContextSwitcherAdapter } from './context-switcher-slot'
  * desktop search trigger, theme control, and the optional context-selector slot.
  *
  * Only controls whose backing feature exists are rendered. The search trigger
- * appears when a real `onSearchClick` is supplied — the command palette that
- * handler opens is F016. Notifications (F046) and the profile menu (F032) are
- * **absent rather than inert**: CLAUDE_MASTER forbids placeholder controls, and
- * a bell with no inbox behind it is exactly that. Their owners add them here.
+ * appears when a real `onSearchClick` is supplied — the shell passes one and
+ * owns the palette it opens (F016). Notifications (F046) and the profile menu
+ * (F032) are **absent rather than inert**: CLAUDE_MASTER forbids placeholder
+ * controls, and a bell with no inbox behind it is exactly that. Their owners
+ * add them here.
  */
 export interface AppHeaderProps {
-  /** Supplied by the command palette owner (F016); without it no trigger renders. */
+  /** Supplied by the shell, which owns the palette (F016). */
   onSearchClick?: () => void
   /** Workspace-context slot (BIG-PROMPT §3.2a). A disabled adapter renders nothing. */
   contextAdapter?: ContextSwitcherAdapter<unknown>
