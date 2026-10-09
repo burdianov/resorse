@@ -1,12 +1,16 @@
-"""The password contract, without a database (F026).
+"""The password contract, without a database (F026; the generator is F027).
 
 "Unit tests no plaintext" is the acceptance, so the assertions are literal:
 nothing that leaves ``hash_password`` contains the password, a model's repr
 cannot print it, and a policy message cannot repeat it. The rest pins what a
 later change must not silently move — the reviewed Argon2 parameters, every
-policy rule, the malformed-row behaviour that verification depends on, and the
-confirmed default bounds (the same pattern F025 used for session lifetimes).
+policy rule, the malformed-row behaviour that verification depends on, the
+confirmed default bounds (the same pattern F025 used for session lifetimes),
+and the properties of ``generate_password``, the shown-once credential the
+bootstrap CLI and F033's account creation both hand out.
 """
+
+import string
 
 import pytest
 
@@ -14,8 +18,11 @@ from app.core.config import Settings
 from app.core.security import (
     ARGON2_PARAMETERS,
     COMMON_PASSWORDS,
+    GENERATED_PASSWORD_ALPHABET,
+    GENERATED_PASSWORD_LENGTH,
     Argon2Parameters,
     build_password_hasher,
+    generate_password,
     hash_password,
     password_needs_rehash,
     password_policy_violations,
@@ -193,3 +200,27 @@ def test_rule_defaults_come_from_settings() -> None:
     assert password_policy_violations("x" * 11) == password_policy_violations(
         "x" * 11, min_length=settings.password_min_length
     )
+
+
+def test_generated_passwords_are_random_and_transcribable() -> None:
+    passwords = [generate_password() for _ in range(50)]
+
+    assert all(len(password) == GENERATED_PASSWORD_LENGTH for password in passwords)
+    assert len(set(passwords)) == 50  # `secrets`, not a wordlist
+    # Human-transcribable alphabet: alphanumerics, minus the characters that
+    # are ambiguous in the fonts a console tends to use.
+    assert set(GENERATED_PASSWORD_ALPHABET) <= set(string.ascii_letters + string.digits)
+    assert not set("Il1O0") & set(GENERATED_PASSWORD_ALPHABET)
+
+
+def test_generated_passwords_pass_the_policy_they_will_be_checked_against() -> None:
+    # The bootstrap CLI runs the policy on the generated value like any other
+    # password (the uniform path is the rule); this is the proof it always will.
+    for _ in range(20):
+        assert password_policy_violations(generate_password(), email="ada@example.com") == []
+
+
+def test_generate_password_takes_a_length_and_refuses_a_silly_one() -> None:
+    assert len(generate_password(length=32)) == 32
+    with pytest.raises(ValueError):
+        generate_password(length=0)

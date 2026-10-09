@@ -9,6 +9,10 @@ dependencies = [
     "uvicorn[standard]==0.54.0",
     "pydantic==2.14.0",
     "pydantic-settings==2.15.0",
+    # .env reading for Settings *and* the bootstrap CLI, which reads its
+    # one-time credentials itself so they never load into the API process
+    # (DECISIONS C15).
+    "python-dotenv==1.2.4",
     # Persistence (used from F023 onward)
     "sqlalchemy[asyncio]==2.1.4",
     "asyncpg==0.32.0",

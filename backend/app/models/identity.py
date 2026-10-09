@@ -121,6 +121,10 @@ class Role(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str | None] = mapped_column(String(255))
+    # F027 defines the semantics (DECISIONS C16): `super_admin` is the one
+    # seeded role that is `is_system=True` — its permission set is owned by
+    # the seed, and F035 refuses to edit or delete it. The other seeded roles
+    # (`admin`, `viewer`) are editable defaults on purpose.
     is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
     permissions: Mapped[list[Permission]] = relationship(

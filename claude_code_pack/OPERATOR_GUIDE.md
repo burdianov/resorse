@@ -37,7 +37,7 @@ until its owning task lands — the agent must say so rather than hand you a com
 | Frontend coverage | `cd frontend && pnpm run coverage` | F055 |
 | Backend lint / format (Ruff) | `cd backend && uv run ruff check . && uv run ruff format --check .` | F056 |
 | Backend types | `cd backend && uv run mypy app` | F056 |
-| Backend unit tests | `cd backend && uv run pytest -q` | first tests F026; suite F056 |
+| Backend unit tests | `cd backend && uv run pytest -q` | first tests F023; suite F056 |
 | Backend integration (real Postgres) | `docker compose up -d postgres && cd backend && uv run pytest tests/integration -q` | F008 + F056 |
 | Migration smoke | `cd backend && uv run alembic upgrade head` then `alembic downgrade base` | F023 |
 | Browser E2E (Playwright) | `cd frontend && pnpm exec playwright test` | F057 |

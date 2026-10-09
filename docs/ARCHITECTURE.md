@@ -113,6 +113,36 @@ Throttling is DB-backed (no Redis, §8): one generic `rate_limit_buckets` row pe
 atomic upsert in `app/core/rate_limit.py` — §12 records why the statement, not a lock, is the concurrency
 story.
 
+### First run — the seed and the admin bootstrap (F027)
+
+There is **no default account and no default credential** (BP-0.7; `DECISIONS.md` C15). Two idempotent
+CLIs stand between a fresh database and a usable platform:
+
+- **`python -m app.seed`** creates the 17 permission codes — `app/core/permissions.py` holds the one
+  machine copy (`PermissionCode`), consumed by the seed, F031's guards and F037's dictionary alike — and
+  the three default roles (C16): `super_admin` (every code; `is_system=true` — the protected role, whose
+  grant set the seed re-asserts on every run, safe because F035 keeps its matrix column read-only),
+  `admin` (every code except `roles.manage`/`permissions.manage` — the authority dictionaries stay with
+  the protected role, BP-6.3e), and `viewer` (an explicit read set, §6 — never the source's "block if
+  viewer" shortcut). Creation is create-if-missing: existing permission rows and non-system roles are
+  never modified, because F036's matrix and F037's dictionary own edits after creation. The seed never
+  creates or modifies users — a seed that provisioned accounts would be a credentials-by-deployment
+  backdoor.
+- **`python -m app.bootstrap_admin`** creates the one super-admin: `is_superuser=true` (the explicit
+  super-admin handling §6 relies on) **and** holding the `super_admin` role (visible and revocable in the
+  matrix), with `must_change_password=true` — the operator's password is a temporary credential
+  (BP-6.1b). The password comes from `--generate-password` (printed exactly once), the
+  `BOOTSTRAP_ADMIN_PASSWORD` variable, or a hidden prompt; with no source the command **refuses and
+  writes nothing**. That refusal is the "no default credentials" acceptance, and the tests prove it
+  structurally: a session factory that raises if it is ever called. The CLI reads its two `BOOTSTRAP_*`
+  variables itself (via `python-dotenv`, a now-declared dependency) — **never through `Settings`**, so no
+  bootstrap secret ever loads into the API process. It refuses when an active superuser exists or the
+  email is taken — never resetting or escalating an existing account — while an inactive or deleted
+  superuser does not block, because fail-closed login would otherwise strand the operator with no
+  recovery path. Concurrent first runs serialise on a transaction advisory lock; the hard invariants stay
+  the database's. The email is validated with the same `EmailStr` validator F033's API will use and
+  canonicalised to lowercase before insert.
+
 ### Consequences to carry into dependent tasks
 
 Choosing opaque sessions removes three things the requirements assumed. None is silently dropped:
@@ -243,7 +273,10 @@ exception. This is that exception, recorded here and in `docs/STACK_VERSIONS.md`
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
-  with explicit super-admin handling. A user may hold several roles.
+  with explicit super-admin handling. A user may hold several roles. The seeded catalog (F027, C16):
+  `super_admin` = every code, protected (`is_system`); `admin` = every code except `roles.manage`/
+  `permissions.manage`; `viewer` = an explicit read set. The machine copy of the vocabulary is
+  `app/core/permissions.py` (`PermissionCode`).
 - **Permission codes are machine-stable and server-registered**, namespaced `resource.action`:
   `users.read|create|update|deactivate|reset_password`, `roles.read|manage`, `permissions.read|manage`,
   `settings.read|manage`, `audit.read`, `notifications.read|manage_own`, `files.read|create`,
@@ -613,6 +646,19 @@ reason.
   window — a caller can spend the full budget before a boundary and again after — is accepted and documented
   in the module rather than engineered away.
 
+### A prompting CLI keeps its refusal paths drivable (F027)
+
+- **`main` is async, and `__main__` wraps it in `asyncio.run`.** A sync `main` running its own loop cannot
+  be driven from an async test (`asyncio.run` inside a running loop raises), and the point of these tests is
+  the *refusal* paths — so the tests `await main(...)` on the fixture's loop with an injected
+  `session_factory`, and the refusal tests inject one that raises if it is ever called. "Nothing was
+  created" is then structural, not a row count after the fact.
+- **`isatty()` can lie about a redirected stdin.** Under Git Bash (MSYS2) a pty reports
+  `sys.stdin.isatty() == True` even with `< /dev/null`, so a live CLI run enters the interactive branch and
+  `getpass` blocks on the console with no human. A live no-TTY smoke run therefore drives the
+  `interactive=False` seam (the same one the tests use); `--help` and the seed CLI still prove the real
+  entry point and the real database path.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -622,5 +668,6 @@ reason.
   outbox (§8.4e).
 - Session timeouts and password-policy parameters are **initial defaults** here; the concrete values are
   confirmed rather than invented now — **F025 confirmed the session lifetimes**
-  (`Settings.session_idle_timeout_minutes` = 720, `session_absolute_lifetime_days` = 30) and **F026 the
-  password policy** (12–128 characters, denylist, 5 login attempts / 15 minutes — §3).
+  (`Settings.session_idle_timeout_minutes` = 720, `session_absolute_lifetime_days` = 30), **F026 the
+  password policy** (12–128 characters, denylist, 5 login attempts / 15 minutes — §3), and **F027 the
+  bootstrap credential policy and the default role catalog** (C15/C16 — §3, §6).

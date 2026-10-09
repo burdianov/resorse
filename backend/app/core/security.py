@@ -26,6 +26,12 @@ Three rules here are easy to get wrong, so each is tested as a rule:
 - Policy messages never echo the password. A violation list is rendered to the
   user and written to logs; the value itself must not appear in either.
 
+``generate_password`` (F027) is the third kind of value: a *shown-once*
+credential the operator (bootstrap CLI) or an admin (F033) hands over, which
+the recipient replaces at first login. It comes from ``secrets`` like a session
+token, but unlike a token it is transcribed by humans, so ambiguous characters
+are excluded.
+
 Password hashing and policy are separate on purpose: ``hash_password`` accepts
 anything, policy decides what is admissible, and the API boundary (F033, F042)
 runs the policy *before* hashing. F028 equalises login timing for unknown
@@ -35,6 +41,7 @@ primitives, not an opinion about login flow.
 
 import hashlib
 import secrets
+import string
 from dataclasses import dataclass
 
 from argon2 import PasswordHasher, Type
@@ -69,6 +76,33 @@ def hash_session_token(token: str) -> str:
     two encodings are identical.
     """
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+# --- Generated passwords (F027) ----------------------------------------------
+
+# Unambiguous alphanumerics: 0/O and 1/l/I are excluded because these values
+# are read off a console and typed again somewhere. 58 symbols over 20
+# characters is ~117 bits — far past anything guessable, so the shown-once
+# lifetime is about process, not entropy.
+GENERATED_PASSWORD_ALPHABET = "".join(
+    character for character in string.ascii_letters + string.digits if character not in "Il1O0"
+)
+GENERATED_PASSWORD_LENGTH = 20
+
+
+def generate_password(length: int = GENERATED_PASSWORD_LENGTH) -> str:
+    """A fresh random password for an operator- or admin-provisioned account.
+
+    Used with ``hash_password`` and shown to the operator **once** (F027's
+    bootstrap CLI and F033's temporary passwords — BP-6.1b): the recipient is
+    required to change it at first login (``must_change_password``), so the
+    value that travels is temporary by design. Callers still run
+    ``password_policy_violations`` on it; the length guarantees that passes,
+    but the uniform path is the rule.
+    """
+    if length < 1:
+        raise ValueError("A generated password needs a positive length.")
+    return "".join(secrets.choice(GENERATED_PASSWORD_ALPHABET) for _ in range(length))
 
 
 # --- Password hashing (F026) -------------------------------------------------

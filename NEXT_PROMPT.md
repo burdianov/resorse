@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F026.
+> Last updated: 2026-10-10 — after task F027.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F027 in
-claude_code_pack/TASKS.md. Implement F027 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F028 in
+claude_code_pack/TASKS.md. Implement F028 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F027` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F028` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -46,7 +46,7 @@ re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/R
 | Instruction pack | `claude_code_pack\` — `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md`, `TASKS.md`, `DECISIONS.md`, `OPERATOR_GUIDE.md` (operator runbook incl. the test-command table), `STATE.md` (pointer only) |
 | Task artifacts | `docs\` — `REPOSITORY_AUDIT.md` (F001), `REQUIREMENT_TRACEABILITY.md` (F002), `STACK_VERSIONS.md` (F003), `ARCHITECTURE.md` + `REFERENCE_PARITY.md` (F004), `ROUTES_NAVIGATION.md` (F016), `OPENAPI_CLIENT.md` (F018) |
 | Frontend (F006) | `frontend\` — `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `openapi-ts.config.ts`, `index.html`, `src\{main.tsx,vite-env.d.ts,app\{router,providers\}.tsx,lib\{api,errors,query-keys\}.ts,lib\generated\api\}` |
-| Backend (F007) | `backend\` — `pyproject.toml`, `uv.lock`, `.python-version`, `openapi.json` (generated, committed), `scripts\export_openapi.py`, `app\{main.py,core\config.py,api\v1\{router,health}.py}`; `models\`, `schemas\`, `services\`, `migrations\versions\`, `tests\` still empty |
+| Backend (F007) | `backend\` — `pyproject.toml`, `uv.lock`, `.python-version`, `openapi.json` (generated, committed), `scripts\export_openapi.py`, `alembic.ini`, `migrations\versions\`, and `app\` (`main.py`, `seed.py`, `bootstrap_admin.py`, `core\`, `models\`, `api\v1\`, `tests\`) |
 | Reference material (**outside the project folder**) | `D:\RESORS_REFERENCE\qtc360-main.zip`, `D:\RESORS_REFERENCE\BIG-PROMPT.txt` |
 | Unrelated — do not touch | `D:\QTC360\` (a separate QTC360 working area) |
 
@@ -58,21 +58,23 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F026 — Password security** (Argon2id hashing at a reviewed profile, the configurable
-  policy — length/denylist/email — with message-echo and repr leak guards, and the DB-backed rate-limit
-  primitives over migration `0004`'s `rate_limit_buckets`; 31 new tests, 72 total).
-- **Next task: F027 — Admin bootstrap.** "One-time safe CLI super-admin and idempotent role seed", with
-  "no default credentials tests" as acceptance. Everything it needs exists: `roles.is_system` (F024) marks
-  the roles the seed creates so F035 can protect them; `hash_password` (F026) hashes the supplied password;
-  `.env.example` already sketches a commented `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD` — and is
-  explicit that there is **no default account**. ARCHITECTURE §4's layout names the landing sites:
-  `app/bootstrap_admin.py` (the one-time CLI) and `app/seed.py` (idempotent role/permission seed — §6.3
-  fixes the permission code vocabulary; the default roles are `super_admin`, `admin`, `viewer`, with
-  `viewer` read-only through explicit grants, never the source's block-if-only-viewer shortcut). The
-  password must be supplied or generated, never defaulted; per the §9 rule, the value the operator sets is
-  recorded in the git-ignored `LOCAL_CREDENTIALS.md`, never in NEXT_PROMPT.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F026 sits on top of
-  `eee37c3` (F025).
+- Last completed: **F027 — Admin bootstrap** (the one-time `python -m app.bootstrap_admin` CLI with no
+  default credential by construction, the idempotent `python -m app.seed` role/permission seed, and
+  `PermissionCode` as the single vocabulary; 31 new tests, 103 total; no migration — the identity tables
+  already existed).
+- **Next task: F028 — Authentication login.** "Login endpoint and session issuance", with "real DB
+  integration tests" as acceptance. Everything it needs exists: `generate_session_token` /
+  `hash_session_token` and the `sessions` table (F025) to issue and store the session;
+  `verify_password` + `password_needs_rehash` (F026) for the credential check (a successful login rotates
+  the hash forward when needed); `hit`/`peek`/`clear` with `account_key`/`ip_key` (F026) for throttling —
+  a denied hit becomes the 429 with the **same body whether or not the account exists**, and the login
+  must equalise timing for unknown accounts (BP-6.2g, no user enumeration). ARCHITECTURE §3 fixes the
+  cookie (`__Host-session`, HttpOnly, Secure, SameSite=Lax, no Domain) and the CSRF companion token
+  issued at login — F029 owns the enforcement policy. The seeded catalog (F027) provides the roles; a
+  fresh database needs `python -m app.seed` first (the bootstrap CLI runs it for you). `must_change_password`
+  is set on admin-provisioned accounts and is enforced on regular endpoints from F031.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F027 sits on top of
+  `ecb2bdc` (F026).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -193,6 +195,19 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **Seed and bootstrap CLIs are live (F027):** `app/seed.py` — the idempotent role/permission seed over
+  `app/core/permissions.py`'s `PermissionCode` (17 codes; the single vocabulary F031/F037 will consume):
+  `super_admin` (every code, and the **only** `is_system` role — its grant set is re-asserted on every run
+  because F035 keeps its matrix read-only), `admin` (all except `roles.manage`/`permissions.manage`) and
+  `viewer` (an explicit read set). Create-if-missing: existing permission rows and non-system roles are
+  never modified; no user is ever created. `app/bootstrap_admin.py` — the one-time super-admin CLI: **no
+  default credential** (password from `--generate-password`, shown exactly once, `BOOTSTRAP_ADMIN_PASSWORD`,
+  or a hidden prompt; with no source it refuses, exit 2, having touched nothing); `must_change_password=True`;
+  `is_superuser` **and** the `super_admin` role; refuses when an active superuser or the email already
+  exists (never resets/escalates). `python-dotenv` is now a **declared dependency**: the CLI reads its two
+  `BOOTSTRAP_*` variables itself, never through `Settings`. `app_dev` is already seeded (17 permissions,
+  3 roles, 41 grants, **0 users** — the operator runs the bootstrap once; the accounts table §9 records it).
+  **Tests:** 31 new (11 seed + 17 bootstrap + 3 generator) — `uv run pytest` is now **103 passed**.
 - **Password security and throttling are live (F026):** `app/core/security.py` — Argon2id with **reviewed
   constants** (`ARGON2_PARAMETERS`: 19 MiB, t=2, p=1, the OWASP profile — deliberately *not* settings, so no
   deployment can quietly weaken hashing), `hash_password`/`verify_password`/`password_needs_rehash` (an
@@ -228,8 +243,8 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   domain-shaped. The **database holds the invariants**: `ix_users_email` is unique and
   `ck_users_email_is_canonical` forces lowercase (so uniqueness means what it says), permission codes must match
   `resource.action` (`ck_permissions_code_is_resource_dot_action`), join-table composite primary keys are the
-  "no duplicate grant" rule, and both FKs are `ON DELETE CASCADE`. `roles.is_system` marks the roles F027 seeds
-  so F035 can protect them. **Tests:** `backend/tests/conftest.py` runs the suite against a separate `app_test`
+  "no duplicate grant" rule, and both FKs are `ON DELETE CASCADE`. `roles.is_system` marks the one role
+  F035 must protect — since F027 that is exactly `super_admin` (C16). **Tests:** `backend/tests/conftest.py` runs the suite against a separate `app_test`
   database (created and migrated once per session, with `DATABASE_URL` re-pointed for the whole session so no
   test can reach development data) and rolls every test back through a savepoint — `uv run pytest` is now
   **23 passed** (5 conventions + 18 database constraints).
@@ -263,6 +278,9 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 - **C11** pnpm · **C12** opaque rotating HttpOnly session cookies (no JWT/refresh) · **C13** agent commits each
   task · **C14** operator runs all suites, agent supplies the commands.
+- **C15/C16** — F027's own decisions (bootstrap credential policy; default role catalog and seed semantics),
+  solved 2026-10-10 on the operator's instruction to resolve them per best practice before implementing; the
+  register rows carry the rules, ARCHITECTURE §3/§6 the rationale. Override any of it by amending the row.
 - **C12's fallout is reconciled** — F025/F029/F032 were amended in `TASKS.md` to match.
 - **All seven F002 gaps are closed** (`docs/REQUIREMENT_TRACEABILITY.md` §14, now a resolution table):
   G-1 `input-group`→F011; G-2 the 21 enhanced generics distributed across F009/F011–F013/F016/F017/F019/F020/
@@ -340,6 +358,20 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   goes through `hit()`/`peek()`/`clear()` and `account_key()`/`ip_key()`; never hand-roll counting, and never
   build bucket keys outside the helpers (one account must not silently get two budgets). A denied hit is
   F028's to turn into a 429 — with the same body whether or not the account exists (BP-6.2g).
+- **The bootstrap is one-time and credential-free by construction** (F027): never add a `--password` flag, a
+  default password, or a fallback account — with no password source the CLI refuses (exit 2) and writes
+  nothing. The policy runs before hashing on every path, the generated one included. The two `BOOTSTRAP_*`
+  variables are read by the CLI alone (python-dotenv); **do not add them to `Settings`** — no bootstrap
+  secret may load into the API process. The bootstrap account carries `is_superuser`, the `super_admin`
+  role, and `must_change_password=True`; re-running never resets or escalates an existing account, and a
+  retired (inactive/deleted) superuser deliberately does not block a re-bootstrap (fail-closed login would
+  otherwise strand the operator).
+- **The seed owns only what it created** (F027): `seed(session)` is idempotent create-if-missing — never
+  update an existing permission row or a non-system role (F036/F037 own edits after creation); only
+  `super_admin` is re-asserted (every registered code + `is_system=true`), because F035 keeps its column
+  read-only. The vocabulary is `app/core/permissions.py`'s `PermissionCode` — never hand-write permission
+  strings; F031's guards and F037's dictionary consume the same enum. `python -m app.seed` is safe to run
+  at any time; a caller of `seed()` owns the transaction.
 - **Invariants belong in the database** (F024): uniqueness, canonical form and code shape are CHECKs/indexes, not
   conventions in service code. When a new rule can be expressed in DDL, express it there and test the
   `IntegrityError` — the API validates first for a readable message, the constraint is what makes it true.
@@ -385,6 +417,33 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F027 — Admin bootstrap.** The platform's first account and the seeds that make it grantable, with the
+  acceptance being what the CLI *refuses* to do. `app/bootstrap_admin.py`: the password comes from
+  `--generate-password` (shown in the console **exactly once** — it is a temporary credential),
+  `BOOTSTRAP_ADMIN_PASSWORD`, or a hidden prompt; with no source the CLI exits 2 having touched nothing —
+  the "no default credentials" tests prove that structurally by injecting a session factory that raises if
+  it is ever called. Every password runs the F026 policy before hashing (generated ones included, because
+  the uniform path is the rule); the email is validated with the same `EmailStr` validator F033's API will
+  use — which is why `.env.example`'s placeholder moved to `admin@example.com`: `.invalid` is a special-use
+  domain the validator rightly rejects — and canonicalised to lowercase before insert. The account is
+  `is_superuser=True` **and** holds `super_admin` (the flag is the bypass the access model evaluates; the
+  role is the visible, revocable grant in F036's matrix) with `must_change_password=True` (BP-6.1b: the
+  operator's password is temporary). One-time semantics: refuses when an active superuser exists or the
+  email is taken (never resetting or escalating an existing row); a retired superuser deliberately does
+  not block; racing first runs serialise on a transaction advisory lock. The CLI reads its `BOOTSTRAP_*`
+  variables itself via `python-dotenv` (now a declared dependency) — never through `Settings`, so no
+  bootstrap secret loads into the API process. `app/seed.py` + `app/core/permissions.py`: `PermissionCode`
+  (the 17 codes ARCHITECTURE §6 fixes, with descriptions) and the three-role catalog — `super_admin`
+  (every code, `is_system=True`, re-asserted each run so codes registered later flow to it), `admin` (all
+  except `roles.manage`/`permissions.manage`) and `viewer` (the explicit read set) — create-if-missing,
+  never touching existing permission rows, non-system roles or users. `main` is async (`__main__` wraps
+  it in `asyncio.run`) so tests drive it on the fixture's loop; ARCHITECTURE §12 records that design and
+  the Git Bash `isatty()` trap it sidesteps. Checks run: `uv run pytest` **103 passed** (31 new: 11 seed +
+  17 bootstrap + 3 generator); `ruff check`/`format --check` clean; `mypy app migrations` clean (23 files);
+  **no migration** — the identity tables already existed (`0004` remains head); `python -m app.seed` run
+  twice against `app_dev` (17 permissions, 3 roles, 41 grants; second run reports nothing to do); the
+  bootstrap refusal path verified live (exit 2, `Nothing was created.`), `app_dev` users still 0, and
+  `app_test` is left empty after the suite.
 - **F026 — Password security.** `app/core/security.py` grew the password half it was written to hold.
   **Argon2id at a reviewed profile** (19 MiB, t=2, p=1 — the first OWASP-listed parameter set), kept as
   constants rather than settings: the configurable parts are the ones users experience (12–128 characters,
@@ -681,10 +740,13 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`**; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
-| **Backend tests (F023–F026)** | `cd D:\resors\backend; uv run pytest` | **72 passed** — 5 schema conventions (no database needed) + 19 password/policy + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
+| **Backend tests (F023–F027)** | `cd D:\resors\backend; uv run pytest` | **103 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Session model tests (F025)** | `cd D:\resors\backend; uv run pytest tests/test_session_model.py tests/test_session_tokens.py` | **18 passed** — the token-hash shape and uniqueness, both deadlines and their ordering, all-or-nothing revocation over a closed vocabulary, user FK + cascade, the unique replacement chain and `SET NULL`, the family-revocation rehearsal, the `is_active` matrix, and the token/lifetime contract |
-| **Password & rate-limit tests (F026)** | `cd D:\resors\backend; uv run pytest tests/test_password_hashing.py tests/test_rate_limit.py` | **31 passed** — Argon2id parameters and the no-plaintext contract (hash content, the `User` repr, message echo), every policy rule and the confirmed defaults, window alignment/`Retry-After` math, the DB counter (limit, rollover, per-key budgets, `peek` without counting, `clear`), and the twelve-connection concurrency race |
+| **Password & rate-limit tests (F026)** | `cd D:\resors\backend; uv run pytest tests/test_password_hashing.py tests/test_rate_limit.py` | **34 passed** — Argon2id parameters and the no-plaintext contract (hash content, the `User` repr, message echo), every policy rule and the confirmed defaults, the generated-password properties (F027), window alignment/`Retry-After` math, the DB counter (limit, rollover, per-key budgets, `peek` without counting, `clear`), and the twelve-connection concurrency race |
+| **Seed & bootstrap tests (F027)** | `cd D:\resors\backend; uv run pytest tests/test_seed.py tests/test_bootstrap_admin.py` | **28 passed** — the vocabulary's shape and descriptions, the three roles and exactly their documented grant sets, idempotent re-runs, operator edits and non-system roles surviving, the super-admin invariant being *restored* (including codes registered later), and every bootstrap refusal path — proven with a session factory that raises if it is reached, so "refused before the database" is structural |
+| **Seed the roles and permissions (F027)** | `cd D:\resors\backend; uv run python -m app.seed` | first run prints `permissions created: 17`, `roles created: 3`, `grants added: 41`; a second run prints `Seed: nothing to do — roles and permissions are up to date.` (already done for `app_dev` — this is the fresh-database command, and it is safe at any time) |
+| **Create the super-admin (F027)** | `cd D:\resors\backend; uv run python -m app.bootstrap_admin --generate-password` | prompts for the email (`--email` or `BOOTSTRAP_ADMIN_EMAIL` skip the prompt), prints the generated password **exactly once** — record it in `LOCAL_CREDENTIALS.md` at that moment — and creates the account with a forced first-login change. With no password source: `There is no default password.` / `Nothing was created.`, exit 2. A second run refuses: `A super-admin already exists (…)` |
 | Backend lint and types (F023) | `cd D:\resors\backend; uv run ruff check .; uv run ruff format --check .; uv run mypy app migrations` | clean. The CI gate that *enforces* this is F056's; these commands work today |
 | **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |
@@ -728,12 +790,12 @@ Nothing in this table works yet — do not run it. Each row moves up into the se
 
 ## 9. Accounts and credentials
 
-**No application accounts exist yet** — authentication arrives with F027 (bootstrap admin) and F033 (admin-created
-users). This table is filled in from then on.
+The first account arrives when **you** run the F027 bootstrap CLI (§8) — there is no default account; later
+accounts are created in the admin UI (F033). Fill the email into the row below when you bootstrap.
 
 | Account | Email | Role(s) | Created by | Purpose |
 |---|---|---|---|---|
-| _(none yet)_ | | | | |
+| Super-admin (bootstrap) | _your choice — `--email`, `BOOTSTRAP_ADMIN_EMAIL`, or the CLI prompt_ | `super_admin` (+ `is_superuser`) | F027 CLI: `uv run python -m app.bootstrap_admin` | The one-time first account; must change its password at first login |
 
 **Passwords are never written here** — this file is committed. The values live in the git-ignored
 `D:\resors\LOCAL_CREDENTIALS.md`, which also explains how each account is created. Local database credentials
