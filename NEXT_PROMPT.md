@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F039.
+> Last updated: 2026-10-10 — after task F040.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F040 in
-claude_code_pack/TASKS.md. Implement F040 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F041 in
+claude_code_pack/TASKS.md. Implement F041 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F040` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F041` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,34 +67,32 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F039 — Settings backend** (`app/core/settings_registry.py` — four typed specs with
-  defaults and validators (app name 3–64, description 0–200, the source's five date formats, IANA
-  timezone via `zoneinfo`; **`tzdata` added** because Windows ships no tz database) — over the new
-  `app_settings` table (**migration `0005`**, applied to `app_dev`; round-trip verified against
-  `app_test`): unique key, JSONB value validated **before any write**, `updated_by` FK **SET NULL**
-  (attribution, not ownership), unwritten keys read as defaults. `GET /admin/settings` (`settings.read`)
-  serves the snapshot; **bare-map `PUT`** (`settings.manage`) validates everything then upserts in one
-  commit and returns the fresh snapshot — refusals address as `loc ["body","<key>"]`, which is why
-  F040's form fields must be named after the registry keys. No DELETE verb (PUT-to-default is the
-  reset). Deliberately not settings: Argon2 parameters, session lifetimes/throttles, secrets; F045 adds
-  notification keys when their behaviour exists. DECISIONS C28; +8 backend tests (**212 passing**);
-  frontend unchanged (466); `openapi.json` + types regenerated).
-- **Next task: F040 — Settings UI.** "Card sections name/date/timezone settings." Accept (TASKS.md):
-  "Validation/reload tests". BP-7.5 fixes the shape: a page of **Card sections** (not one giant form) —
-  application display name/description, date display format (the five options as a select), timezone
-  (IANA input or select), plus (per BP optional) notification defaults — persisted via the F039 API,
-  saving state/toasts, and **re-read across reload** (the acceptance). The form's field names ARE the
-  registry keys (`branding.app_name`, `display.date_format`, …) so `applyServerErrors` maps the
-  server's per-key 422s straight onto the inputs; a whole-form Save sends one bare-map PUT; the
-  response snapshot re-seeds the form. **Decide and record (C29)**: how `branding.app_name` flows into
-  the shell — the sidebar/header/login read `config/branding.ts` (build-time); the honest options are
-  (a) a small `useAppSettings` query consumed by the shell (with the static constants as pre-load
-  fallback), or (b) deferring consumption to a later task and shipping F040 as an editor only against
-  the existing name — pick (a) if it stays small, and keep the anti-flash/no-fabrication rules in
-  mind. Route registration: `/admin/settings` (`settings.read` + `adminOnly`, Settings icon). Audit
-  gap continues (F043).
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F039 sits on top of
-  `5bea508` (the F038 byte repair).
+- Last completed: **F040 — Settings UI** (`/admin/settings` — Card sections under ONE form/save because
+  the wire is one bare-map PUT (C29); the form is **nested where the wire is flat** (RHF reads dotted
+  field names as paths while `reset` stores verbatim — the flat-schema first draft validated seeds and
+  ignored typing; ARCHITECTURE §12 records the trap) with `toRegistryPayload` rebuilding the flat map at
+  submit; timezone suggests real IANA zones via `Intl.supportedValuesOf`; read-only without
+  `settings.manage`; **consumption deferred** to F047/F048 with the record in C29 — the shell keeps
+  `config/branding.ts` for now). Route registered (fourth admin route). +6 frontend tests (**472
+  passing**); backend unchanged (212).
+- **Next task: F041 — Profile API.** "Own profile and preferences API with isolation." Accept
+  (TASKS.md): "Cross-user access denied". BP-7.6 fixes the surface: `/auth/me`'s `PATCH` (self fields
+  constrained by policy — full name, phone; email is admin-managed per §7.3) and the **preferences**
+  API (`user_preferences` JSONB keyed by (`user_id`,`key`) with a unique constraint — §8.2's data
+  model; themes/table prefs/rows-per-page/date format/notification display prefs are F048's UI
+  consumers). F041 owns: the `user_preferences` model + **migration `0006`**, the endpoints
+  (`PATCH /auth/me` extending F031's `/auth/me` router file; `GET/PUT/DELETE /auth/me/preferences`
+  per §8.3's `GET /auth/me/preferences`, `PUT /auth/me/preferences/{key}`, `DELETE
+  /auth/me/preferences/{key}` — decide per-key shape vs bulk in C30), **self-only isolation at the SQL
+  level** (the acceptance: every query filters by the session's user id — never a cross-user fetch
+  filtered in Python, BP-8.2), value types per key (JSONB is permissive — decide whether a registry
+  like F039's governs preference keys or free-form keys with a size/shape cap; recommend a cap +
+  reserved-key namespace), and the forced-change gate note (these endpoints use `current_session` —
+  gated by default per F031 — decide whether profile edits should be reachable mid-forced-change;
+  recommend NO, they are regular endpoints). Also decide whether preference keys echo F039's display
+  keys (theme etc. have local-only lives until F048 reconciles them per ARCHITECTURE §5's theme note).
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F040 sits on top of
+  `defbda1` (F039).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -215,6 +213,15 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **The settings editor is live (F040):** `/admin/settings` — Branding + Display **Card sections**
+  under **one** form and one Save (the wire is one bare-map PUT; per-card saves would be partial
+  success in costume). The form is **nested where the wire is flat** (C29): RHF reads dotted field
+  names as paths, `reset` stores verbatim — the §12 trap — with `toRegistryPayload` rebuilding the
+  flat map; server 422s land on the matching nested field. Timezone input suggests real zones
+  (`Intl.supportedValuesOf('timeZone')`, server still the validator); date format is a select over
+  the five; no `settings.manage` → a read-only view. **Consumption deferred** (C29): the shell still
+  reads `config/branding.ts`; F047/F048 design the shared read with its first consumer. **Tests:** 6
+  new in `tests/admin/settings.test.tsx`, `pnpm exec vitest run` is now **472 passed**.
 - **Settings are live (F039):** `app_settings` (**migration `0005`**) over the code registry
   (`app/core/settings_registry.py`): typed specs with defaults — unwritten keys read as their defaults,
   a new key later just starts there. `GET /admin/settings` (`settings.read`) → `{values: {...}}`;
@@ -532,6 +539,11 @@ the archive original — `sha256sum` both to check):
   `app_settings` table with `updated_by` SET NULL; the bare-map PUT validated entirely before the
   first upsert; no DELETE verb; the deliberately-not-settings list; `tzdata` added for IANA
   validation), same date and same basis; rationale in ARCHITECTURE §5/§9/§13.
+- **C29** — F040's settings editor (Card sections over one atomic save; the nested-form/flat-wire
+  split with the RHF dotted-name trap recorded in §12; the browser's own IANA list as suggestions
+  while the server validates; read-only without `settings.manage`; consumption deferred to F047/F048
+  with its reason — a non-admin cannot read the admin settings endpoint), same date and same basis;
+  rationale in ARCHITECTURE §5/§12.
 - **C26** — F037's permission dictionary (the in-use freeze — rename and delete both 409 while granted;
   descriptions free; refused-not-normalised codes against the model's own pattern; duplicates via the
   unique index's 409; **no subset rule by design** — grants are where escalation lives; seed
@@ -632,6 +644,9 @@ the archive original — `sha256sum` both to check):
   filter (its counts are loaded rows), one always-on server sort, and row actions through
   `DataTableRowActions`. Permission mirrors hide controls the caller cannot use; they never replace the
   server's check. Preferences keys are per screen (`admin-users` today).
+- **The settings-editor pattern is F041+'s canvas (F040, C29):** nested form where the schema's
+  names are dotted, flat payload at the wire; one form per atomic write; read-only without the
+  manage code; suggestions come from real sources (browser lists), never hand-kept tables.
 - **Settings contracts for F040/F045 (F039, C28):** the registry key strings ARE the form field
   names and the 422 `loc` paths — do not rename them in the UI; write through the bare-map PUT
   (per-key PATCH does not exist); unwritten keys are defaults, so a form must render the snapshot, not
@@ -782,6 +797,28 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F040 — Settings UI.** `/admin/settings` — the editor for F039's registry, shaped by what the wire
+  actually is. **Card sections, one form, one save**: Branding (name, description) and Display (date
+  format, timezone) render as separate cards but share a single `<form>`, because the API's write is
+  one bare-map `PUT` — per-card saves would be partial success in a new costume. The form is
+  **nested where the wire is flat** (C29): React Hook Form reads a dotted field name as a path while
+  `form.reset` stores its argument verbatim, so the first flat-schema draft validated the *seeded*
+  values and silently ignored every *typed* one — ARCHITECTURE §12 now records the trap. The schema
+  mirrors the registry keys as nested objects, `toRegistryPayload` rebuilds the flat map at submit,
+  and the server's dotted 422s land straight on the matching field through `applyServerErrors`. The
+  timezone input suggests real IANA zones via `Intl.supportedValuesOf('timeZone')` — the browser's
+  own list, no hand-kept table — while the server remains the validator; the date format is a select
+  over the source's five; without `settings.manage` the page is a read-only view. **Consumption is
+  deliberately deferred** (C29): the shell still shows `config/branding.ts`, nothing consumes
+  `display.date_format` yet, and F047/F048 will design that shared read surface together with its
+  first real consumer — a non-admin cannot read the admin settings endpoint anyway, so a display-read
+  needs its own guarded design rather than a convenience shortcut. Route registered
+  (`/admin/settings`, `settings.read`, `adminOnly`, Settings icon) — the fourth admin route. Checks
+  run: `pnpm run typecheck` clean; `pnpm exec vitest run` **472 passed** (6 new in
+  `tests/admin/settings.test.tsx`: seeding/reload from the snapshot, re-seed from the save response,
+  local validation without a request, the server's per-key 422 on the named field, one bare-map PUT
+  with all four keys, and the read-only mirror); `pnpm run build` succeeds; backend re-run confirmed
+  at 212.
 - **F039 — Settings backend.** The application's runtime settings, and the first migration since
   `0004`. The design is the **registry as allowlist** (BP-7.5): `app/core/settings_registry.py`
   declares four typed specs — `branding.app_name` (3–64), `branding.app_description` (0–200),
@@ -1466,10 +1503,11 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"`, removes reinstated dependencies (run after every `shadcn add`) |
 | **Matrix UI tests (F036)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/roles.test.tsx` | **13 passed** — the grid renders from the dictionary (namespace groups, codes, descriptions) with ticks matching the catalogue; the seed column is read-only (aria-disabled + lock, menu items disabled); a tick is unsaved state with **zero requests**, one Save puts the whole matrix (protected unchanged) and re-reads the catalogue; Reset and untick-to-clean both clear the bar; the 422's entry message shows in the bar with the draft intact; the rule 403 the same; navigation with a dirty draft hits the discard confirm; create/duplicate-conflict/rename/delete flows |
 | **Permissions smoke (F037)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): create: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/admin/permissions -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"code":"reports.export","description":"Export reports."}'` | **201**; the list (`GET /api/v1/admin/permissions`) shows it sorted. The guardrails worth seeing: the same create again → **409**; `"Users.Read"` → **422** on `code` (never normalised); `DELETE` on a seeded code (e.g. `users.read`, which `super_admin` holds) → **409** `cannot be renamed or deleted`; on the just-created unused code → **204** |
+| **Settings UI tests (F040)** | `cd D:esorsrontend; pnpm exec vitest run tests/admin/settings.test.tsx` | **6 passed** — the form seeds from the snapshot (persisted values + defaults), re-seeds from the save response, refuses a too-short name locally with **no request**, maps the server's timezone 422 onto the field named after the registry key, sends one bare-map PUT with all four keys, and renders read-only without `settings.manage` |
 | **Settings tests (F039)** | `cd D:\resors\backend; uv run pytest tests/test_admin_settings.py` | **8 passed** — guards (401/403, read-only callers can read); the snapshot serves registry defaults with zero rows; a failed payload (unknown key, bad format, wrong JSON type) writes **nothing**; overrides stored trimmed with `updated_by`; partial updates leave other overrides alone; `updated_by` → NULL when the author is deleted; and the two restart proofs (expunge-and-reread through the API; write-close-reopen on its own connection) |
 | **Permissions UI tests (F038)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/permissions.test.tsx` | **9 passed** — the table renders and sorts/searches in the browser; no management controls without `permissions.manage`; create posts the dialog and closes; a malformed code is refused locally with **no request**; server 422/409 refusals render in the right surfaces (field, dialog root alert, confirmation-then-toast) with the draft intact |
 | **Settings smoke (F039)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): read: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/admin/settings`; write: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PUT http://localhost:8000/api/v1/admin/settings -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"branding.app_name":"Resors","display.date_format":"YYYY-MM-DD"}'` | read: **200** with all four registry keys at their defaults. write: **200** echoing the fresh snapshot; re-read returns the new values — and they **survive an API restart** (stop/start uvicorn; the row is in PostgreSQL). Refusals: `{"nope.key":"x"}` → **422** at `nope.key`; `{"display.date_format":"31/12/2026"}` → **422** at that key |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **466 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **472 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | **Frontend auth-flow tests (F032)** | `cd D:\resors\frontend; pnpm exec vitest run tests/auth/auth-flows.test.tsx` | **14 passed** — the session boundary (anonymous redirect with intended-path return; network failure → Retry, **not** login), sign-in failures shown verbatim, local validation without a request, the forced-change landing/bounce/completion with the CSRF header asserted on the wire, 422 field mapping, mismatch refusal, both sign-out flows, the registered 401 re-resolution (one retry), and `readCsrfToken` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |

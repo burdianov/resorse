@@ -1167,6 +1167,19 @@ the field-error messages when they exist and falls back to the detail string
 (403s carry one). The general rule: when a surface is not a form, read
 `fieldErrors` yourself before settling for the fallback.
 
+### A dot in a form field name is a path — and `reset` stores verbatim (F040)
+
+The settings form's field names are the registry keys (`branding.app_name`), which is what makes the
+server's dotted 422s land without a translation table. The first shape of that form declared a *flat*
+zod schema with literal dotted keys — and it validated the **seeded** values while silently ignoring
+every **typed** one: React Hook Form resolves a dotted `name` through its path utilities (writes go to
+`branding → app_name` on a nested object), while `form.reset(obj)` stores its argument exactly as
+given. Two representations, one store, and the symptom was a controlled-looking input whose typing
+reached nothing. The fix is to let both sides agree: the schema is **nested** where the names are
+dotted, the wire stays flat via an explicit payload builder, and `applyServerErrors`' dotted paths land
+on the same nested field paths RHF uses. The general rule: when field names carry structure, make the
+schema carry the same structure — mixed representations fail quietly, not loudly.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -1198,6 +1211,8 @@ the field-error messages when they exist and falls back to the detail string
   as the single failure voice, the read-only protected column, one grant-write path — C25, §5), and
   **F037 the permission dictionary** (the in-use freeze, refused-not-normalised codes, no subset rule
   by design — C26, §5), and **F038 the dictionary screen** (client-mode on the unpaginated list,
-  server-sentence refusals, mirrors behind `permissions.manage` — C27, §5), and **F039 the settings
+  server-sentence refusals, mirrors behind `permissions.manage` — C27, §5), **F039 the settings
   registry** (typed allowlist, defaults for unwritten keys, validate-then-upsert in one commit, SET
-  NULL attribution, the deliberately-not-settings list — C28, §5).
+  NULL attribution, the deliberately-not-settings list — C28, §5), and **F040 the settings editor**
+  (card sections over one atomic save, nested-form-versus-flat-wire, the real-zones datalist,
+  consumption deferred with its record — C29, §5/§12).

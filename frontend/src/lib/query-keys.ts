@@ -40,5 +40,7 @@ export const queryKeys = {
     roles: ['admin', 'roles'] as const,
     /** The permission dictionary (F036's matrix rows; F037's CRUD later). */
     permissions: ['admin', 'permissions'] as const,
+    /** The effective application settings (F039's snapshot; F040 edits). */
+    settings: ['admin', 'settings'] as const,
   },
 }

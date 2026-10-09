@@ -1,6 +1,6 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { LayoutDashboard, Lock, Shield, Users } from 'lucide-react'
+import { LayoutDashboard, Lock, Settings, Shield, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
@@ -101,6 +101,11 @@ const AdminPermissionsPage = lazy(async () => {
   return { default: module.AdminPermissionsPage }
 })
 
+const AdminSettingsPage = lazy(async () => {
+  const module = await import('@/pages/admin/settings')
+  return { default: module.AdminSettingsPage }
+})
+
 /**
  * Built-in routes. `/dashboard` currently renders the protected placeholder
  * (F017) — F047 replaces the component, not the entry, so the navigation, the
@@ -150,6 +155,16 @@ export const APP_ROUTES: readonly RouteDefinition[] = [
     adminOnly: true,
     requiredPermissions: ['permissions.read'],
     component: AdminPermissionsPage,
+  },
+  {
+    id: 'admin-settings',
+    path: '/admin/settings',
+    label: 'Settings',
+    icon: Settings,
+    group: 'administration',
+    adminOnly: true,
+    requiredPermissions: ['settings.read'],
+    component: AdminSettingsPage,
   },
 ]
 
