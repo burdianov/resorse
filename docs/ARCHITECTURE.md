@@ -445,6 +445,39 @@ The route (`/admin/users`) is registered with `adminOnly` + `users.read`: `/admi
 first permitted administration route instead of answering 403, and the Administration group appears for
 exactly the callers who hold a code in its namespaces.
 
+### The role API and the atomic matrix (F035)
+
+`app/api/v1/admin_roles.py` (over `app/services/roles.py`) completes the surface F034's read slice
+opened: list/get under `roles.read`; create, patch, delete and one matrix save under `roles.manage` —
+the code the seeded `admin` deliberately lacks (C16), because editing the authority dictionaries *is*
+escalation.
+
+The matrix save is the point. BP-7.4 rejects the reference's per-intersection PATCH loop for the obvious
+reason: a loop can half-succeed. `PUT /admin/roles/matrix` carries the roles a client wants saved with
+their **complete** code sets — and the service makes "one atomic save" structural, not aspirational:
+every entry is validated (role exists, `is_system` rule, the subset rule applied to the *old* set as
+well as the new, every code exists) **before the first write**, then one commit applies all the
+replacements. The rollback test's shape is the proof: entry zero is perfectly valid — and stays unsaved
+because entry one was not.
+
+Rules worth holding onto for F036/F037:
+
+- **Grants, not ids.** Payloads name permissions by code — the machine vocabulary the seed writes and
+  the frontend registry mirrors. The service resolves them; unknown codes are 422 addressed at
+  `roles.<i>.permission_codes`, the path a matrix cell can highlight.
+- **`is_system` is the seed's column.** No rename, delete or re-grant — but a matrix payload may
+  *include* the protected column unchanged (a UI sends its whole visible matrix; it should not have to
+  special-case one column). Only an actual change is refused.
+- **The subset rule runs both ways.** You may grant only what you hold — and you may edit only roles
+  whose current grants you hold, because stripping a column you cannot see is authority you were not
+  given. One primitive (`ensure_codes_assignable`, born in F033) serves both surfaces.
+- **Deletion refuses while assigned** — `user_roles` cascades, and a cascade that silently strips
+  authority is exactly what a safeguard exists to prevent.
+- **Role edits do not revoke sessions.** Effective permissions re-evaluate every request (C20,
+  BP-6.3f's chosen half), so a grant change lands on each holder's next request; signing every holder
+  out for an edit they may not even lose access from would be disruption without a security gain
+  (C24 supersedes §3's table wording on this point).
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1006,6 +1039,18 @@ expectation): Base UI's checkbox renders `<span role="checkbox">` with `aria-dis
 `toBeDisabled()` is false and `toHaveAttribute('aria-disabled', 'true')` is the assertion that means what
 it says.
 
+### Assigning a collection reads it first (F035)
+
+`role.permissions = [...]` looks like a pure write. It is not: replacing a *secondary* relationship's
+collection requires the old contents — SQLAlchemy loads them to compute the association-table diff. If
+the instance came from an identity-map hit whose collection was never loaded, that load happens *inside
+the assignment* — a lazy load in async code, which is a `MissingGreenlet`, three frames away from the
+line that "only assigns". F035 met both halves of this: the grant-set reads in the matrix save come from
+SQL (`_current_codes` — the association table is the truth, the map's memory is not), and every role a
+service is about to mutate is fetched through a `populate_existing` getter (`get_role`) so its collection
+is loaded *before* anything assigns to it. The general rule is the F031/F033 one, sharpened: before
+writing a relationship, make sure reading it is free — or do the reading in SQL.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -1029,6 +1074,8 @@ it says.
   session layer in the SPA** (the four-status session provider, the 401 re-resolution handler, the
   CSRF interceptor, the login/forced-change standalone routes and the account menu — C21, §5), **F033
   the admin user directory** (the six guarded endpoints with their privilege rules, soft deletion, and
-  the SQL-filtered paginated list — C22, §6), and **F034 the users screen** (the first server-mode
+  the SQL-filtered paginated list — C22, §6), **F034 the users screen** (the first server-mode
   DataTable, the row-actions kit component, the one-time password notice, the permission mirrors —
-  C23, §5).
+  C23, §5), and **F035 the role API** (the CRUD with the two-way subset rule, the seed-owned
+  `is_system` column, deletion refused while assigned, and the validate-everything-then-one-commit
+  matrix save — C24, §6).

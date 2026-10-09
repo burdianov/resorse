@@ -107,6 +107,24 @@ export type ChangePasswordRequest = {
 };
 
 /**
+ * CreateRoleRequest
+ */
+export type CreateRoleRequest = {
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Permission Codes
+     */
+    permission_codes?: Array<string>;
+};
+
+/**
  * CreateUserRequest
  */
 export type CreateUserRequest = {
@@ -201,6 +219,22 @@ export type LoginResponse = {
 };
 
 /**
+ * MatrixRoleEntry
+ *
+ * One column of the matrix save: this role, exactly these codes.
+ */
+export type MatrixRoleEntry = {
+    /**
+     * Permission Codes
+     */
+    permission_codes: Array<string>;
+    /**
+     * Role Id
+     */
+    role_id: string;
+};
+
+/**
  * MeResponse
  *
  * ``/auth/me`` — identity plus the effective access set (F031).
@@ -269,7 +303,7 @@ export type ResetPasswordResponse = {
 /**
  * RoleItem
  *
- * One role, as the catalogue lists it.
+ * One role, as the catalogue and the matrix show it.
  */
 export type RoleItem = {
     /**
@@ -288,6 +322,10 @@ export type RoleItem = {
      * Name
      */
     name: string;
+    /**
+     * Permission Codes
+     */
+    permission_codes: Array<string>;
 };
 
 /**
@@ -295,7 +333,7 @@ export type RoleItem = {
  *
  * The whole catalogue, sorted by name — small and unpaginated on purpose:
  * a role matrix with more roles than a screen can show is a different
- * problem, and F036 will meet it then, not this picker now.
+ * problem, and F036 will meet it then, not the picker now.
  */
 export type RoleListResponse = {
     /**
@@ -318,6 +356,38 @@ export type RoleRef = {
      * Name
      */
     name: string;
+};
+
+/**
+ * SaveMatrixRequest
+ *
+ * The atomic save (BP-7.4): every listed role's grant set is replaced in
+ * one transaction. A UI that sends its whole visible matrix includes the
+ * protected `super_admin` column unchanged — the service accepts that and
+ * refuses any actual change to it.
+ */
+export type SaveMatrixRequest = {
+    /**
+     * Roles
+     */
+    roles: Array<MatrixRoleEntry>;
+};
+
+/**
+ * UpdateRoleRequest
+ *
+ * Partial edit with fields-set semantics: absent is untouched, and there
+ * is no way to change grants here — that is the matrix save's job.
+ */
+export type UpdateRoleRequest = {
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
 };
 
 /**
@@ -429,6 +499,210 @@ export type ListRolesApiV1AdminRolesGetResponses = {
 };
 
 export type ListRolesApiV1AdminRolesGetResponse = ListRolesApiV1AdminRolesGetResponses[keyof ListRolesApiV1AdminRolesGetResponses];
+
+export type CreateRoleApiV1AdminRolesPostData = {
+    body: CreateRoleRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/roles';
+};
+
+export type CreateRoleApiV1AdminRolesPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing roles.manage, or an escalation beyond the caller's codes.
+     */
+    403: unknown;
+    /**
+     * A role with this name already exists.
+     */
+    409: unknown;
+    /**
+     * Shape errors or unknown permission codes.
+     */
+    422: unknown;
+};
+
+export type CreateRoleApiV1AdminRolesPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: RoleItem;
+};
+
+export type CreateRoleApiV1AdminRolesPostResponse = CreateRoleApiV1AdminRolesPostResponses[keyof CreateRoleApiV1AdminRolesPostResponses];
+
+export type SaveMatrixApiV1AdminRolesMatrixPutData = {
+    body: SaveMatrixRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/roles/matrix';
+};
+
+export type SaveMatrixApiV1AdminRolesMatrixPutErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing roles.manage, a change to the seed-owned super-admin role, or an edit escaping the caller's own codes.
+     */
+    403: unknown;
+    /**
+     * Field-addressable per entry: roles.<i>.role_id / roles.<i>.permission_codes.
+     */
+    422: unknown;
+};
+
+export type SaveMatrixApiV1AdminRolesMatrixPutResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type SaveMatrixApiV1AdminRolesMatrixPutResponse = SaveMatrixApiV1AdminRolesMatrixPutResponses[keyof SaveMatrixApiV1AdminRolesMatrixPutResponses];
+
+export type DeleteRoleApiV1AdminRolesRoleIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Role Id
+         */
+        role_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/roles/{role_id}';
+};
+
+export type DeleteRoleApiV1AdminRolesRoleIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing roles.manage, or the seed-owned super-admin role.
+     */
+    403: unknown;
+    /**
+     * No such role.
+     */
+    404: unknown;
+    /**
+     * The role is assigned to users.
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteRoleApiV1AdminRolesRoleIdDeleteError = DeleteRoleApiV1AdminRolesRoleIdDeleteErrors[keyof DeleteRoleApiV1AdminRolesRoleIdDeleteErrors];
+
+export type DeleteRoleApiV1AdminRolesRoleIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteRoleApiV1AdminRolesRoleIdDeleteResponse = DeleteRoleApiV1AdminRolesRoleIdDeleteResponses[keyof DeleteRoleApiV1AdminRolesRoleIdDeleteResponses];
+
+export type GetRoleApiV1AdminRolesRoleIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Role Id
+         */
+        role_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/roles/{role_id}';
+};
+
+export type GetRoleApiV1AdminRolesRoleIdGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the roles.read permission.
+     */
+    403: unknown;
+    /**
+     * No such role.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetRoleApiV1AdminRolesRoleIdGetError = GetRoleApiV1AdminRolesRoleIdGetErrors[keyof GetRoleApiV1AdminRolesRoleIdGetErrors];
+
+export type GetRoleApiV1AdminRolesRoleIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RoleItem;
+};
+
+export type GetRoleApiV1AdminRolesRoleIdGetResponse = GetRoleApiV1AdminRolesRoleIdGetResponses[keyof GetRoleApiV1AdminRolesRoleIdGetResponses];
+
+export type UpdateRoleApiV1AdminRolesRoleIdPatchData = {
+    body: UpdateRoleRequest;
+    path: {
+        /**
+         * Role Id
+         */
+        role_id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/roles/{role_id}';
+};
+
+export type UpdateRoleApiV1AdminRolesRoleIdPatchErrors = {
+    /**
+     * An empty edit (no fields set).
+     */
+    400: unknown;
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing roles.manage, or the seed-owned super-admin role.
+     */
+    403: unknown;
+    /**
+     * No such role.
+     */
+    404: unknown;
+    /**
+     * A role with this name already exists.
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateRoleApiV1AdminRolesRoleIdPatchError = UpdateRoleApiV1AdminRolesRoleIdPatchErrors[keyof UpdateRoleApiV1AdminRolesRoleIdPatchErrors];
+
+export type UpdateRoleApiV1AdminRolesRoleIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: RoleItem;
+};
+
+export type UpdateRoleApiV1AdminRolesRoleIdPatchResponse = UpdateRoleApiV1AdminRolesRoleIdPatchResponses[keyof UpdateRoleApiV1AdminRolesRoleIdPatchResponses];
 
 export type ListUsersApiV1AdminUsersGetData = {
     body?: never;

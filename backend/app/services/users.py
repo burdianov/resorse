@@ -38,6 +38,7 @@ beyond the superuser rule* (the endpoint's permission check is the guard).
 """
 
 import uuid
+from collections.abc import Iterable
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -344,13 +345,24 @@ async def _resolve_roles(session: AsyncSession, role_ids: list[uuid.UUID]) -> li
     return roles
 
 
-def _ensure_roles_assignable(actor: User, roles: list[Role]) -> None:
-    """The subset rule: you may grant only what you hold. A superuser holds
-    every code (C20), so the same check lets them grant anything."""
+def ensure_codes_assignable(actor: User, codes: Iterable[str]) -> None:
+    """The subset rule: ``actor`` may grant only codes they hold.
+
+    A superuser holds every code (C20), so the check passes everything for
+    them. Lives here because F033 implemented it first; F035's matrix save
+    imports it — the escalation guard is one rule with one spelling, not one
+    per surface (C22's note made this explicit).
+    """
     if actor.is_superuser:
         return
     held = effective_permissions(actor)
-    for role in roles:
-        for permission in role.permissions:
-            if permission.code not in held:
-                raise PrivilegeEscalation
+    for code in codes:
+        if code not in held:
+            raise PrivilegeEscalation
+
+
+def _ensure_roles_assignable(actor: User, roles: list[Role]) -> None:
+    """The subset rule, applied to whole roles (F033's call site)."""
+    ensure_codes_assignable(
+        actor, (permission.code for role in roles for permission in role.permissions)
+    )

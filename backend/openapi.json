@@ -144,6 +144,40 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "CreateRoleRequest": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "permission_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permission Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateRoleRequest",
+        "type": "object"
+      },
       "CreateUserRequest": {
         "properties": {
           "email": {
@@ -303,6 +337,29 @@
         "title": "LoginResponse",
         "type": "object"
       },
+      "MatrixRoleEntry": {
+        "description": "One column of the matrix save: this role, exactly these codes.",
+        "properties": {
+          "permission_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permission Codes",
+            "type": "array"
+          },
+          "role_id": {
+            "format": "uuid",
+            "title": "Role Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role_id",
+          "permission_codes"
+        ],
+        "title": "MatrixRoleEntry",
+        "type": "object"
+      },
       "MeResponse": {
         "description": "``/auth/me`` — identity plus the effective access set (F031).\n\nExtends the login response rather than restating it: the identity fields\nare the same four, and one definition of \"who is this\" beats two that\nalmost match. ``roles`` are names (the UI displays them; ids belong to the\nadmin editor, F033), and ``permissions`` is the **expanded union** — a\nsuperuser sees every code's name, never a wildcard, so the frontend checks\nset membership and never special-cases a flag. Both lists are sorted, so\nresponses are deterministic and diffable.\n\n``is_active``/``is_deleted`` are deliberately absent: a session belonging\nto a disabled account does not resolve at all (F029), so fields that could\nonly ever read \"true\" would be decoration. ``is_superuser`` is served —\nthe SPA's access model carries an explicit super-admin flag\n(``src/config/access.ts``, ARCHITECTURE §6's \"explicit super-admin\nhandling\"), and one truthful boolean beats a client that hardcodes\n``false`` and re-derives authority from grant-list length.",
         "properties": {
@@ -380,7 +437,7 @@
         "type": "object"
       },
       "RoleItem": {
-        "description": "One role, as the catalogue lists it.",
+        "description": "One role, as the catalogue and the matrix show it.",
         "properties": {
           "description": {
             "anyOf": [
@@ -405,19 +462,27 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "permission_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permission Codes",
+            "type": "array"
           }
         },
         "required": [
           "id",
           "name",
           "description",
-          "is_system"
+          "is_system",
+          "permission_codes"
         ],
         "title": "RoleItem",
         "type": "object"
       },
       "RoleListResponse": {
-        "description": "The whole catalogue, sorted by name — small and unpaginated on purpose:\na role matrix with more roles than a screen can show is a different\nproblem, and F036 will meet it then, not this picker now.",
+        "description": "The whole catalogue, sorted by name — small and unpaginated on purpose:\na role matrix with more roles than a screen can show is a different\nproblem, and F036 will meet it then, not the picker now.",
         "properties": {
           "items": {
             "items": {
@@ -451,6 +516,55 @@
           "name"
         ],
         "title": "RoleRef",
+        "type": "object"
+      },
+      "SaveMatrixRequest": {
+        "description": "The atomic save (BP-7.4): every listed role's grant set is replaced in\none transaction. A UI that sends its whole visible matrix includes the\nprotected `super_admin` column unchanged — the service accepts that and\nrefuses any actual change to it.",
+        "properties": {
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/MatrixRoleEntry"
+            },
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "roles"
+        ],
+        "title": "SaveMatrixRequest",
+        "type": "object"
+      },
+      "UpdateRoleRequest": {
+        "description": "Partial edit with fields-set semantics: absent is untouched, and there\nis no way to change grants here — that is the matrix save's job.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateRoleRequest",
         "type": "object"
       },
       "UpdateUserRequest": {
@@ -605,7 +719,7 @@
   "paths": {
     "/api/v1/admin/roles": {
       "get": {
-        "description": "Every role, sorted by name — the picker's options and the future\nmanagement list read the same answer.",
+        "description": "Every role with its grant codes, sorted by name — the picker's options,\nthe management list, and the matrix's columns all read this one answer.",
         "operationId": "list_roles_api_v1_admin_roles_get",
         "responses": {
           "200": {
@@ -626,6 +740,245 @@
           }
         },
         "summary": "List the role catalogue",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "create_role_api_v1_admin_roles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing roles.manage, or an escalation beyond the caller's codes."
+          },
+          "409": {
+            "description": "A role with this name already exists."
+          },
+          "422": {
+            "description": "Shape errors or unknown permission codes."
+          }
+        },
+        "summary": "Create a role",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/roles/matrix": {
+      "put": {
+        "description": "Replace every listed role's grant set in **one transaction**.\n\nValidated before the first write; committed once. There is no ordering of\nthe payload that can leave half the matrix saved, which is the whole\ndifference from the reference's per-cell PATCH loop (BP-7.4).",
+        "operationId": "save_matrix_api_v1_admin_roles_matrix_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMatrixRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing roles.manage, a change to the seed-owned super-admin role, or an edit escaping the caller's own codes."
+          },
+          "422": {
+            "description": "Field-addressable per entry: roles.<i>.role_id / roles.<i>.permission_codes."
+          }
+        },
+        "summary": "Save the permission matrix atomically",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/roles/{role_id}": {
+      "delete": {
+        "operationId": "delete_role_api_v1_admin_roles__role_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing roles.manage, or the seed-owned super-admin role."
+          },
+          "404": {
+            "description": "No such role."
+          },
+          "409": {
+            "description": "The role is assigned to users."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete an unassigned role",
+        "tags": [
+          "admin"
+        ]
+      },
+      "get": {
+        "operationId": "get_role_api_v1_admin_roles__role_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the roles.read permission."
+          },
+          "404": {
+            "description": "No such role."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One role",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "update_role_api_v1_admin_roles__role_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "An empty edit (no fields set)."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing roles.manage, or the seed-owned super-admin role."
+          },
+          "404": {
+            "description": "No such role."
+          },
+          "409": {
+            "description": "A role with this name already exists."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename or re-describe a role",
         "tags": [
           "admin"
         ]

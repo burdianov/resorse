@@ -44,12 +44,14 @@ const VIEWER_ROLE: RoleItem = {
   name: 'viewer',
   description: 'Read-only access.',
   is_system: false,
+  permission_codes: ['reports.generate'],
 }
 const ADMIN_ROLE: RoleItem = {
   id: '10000000-0000-7000-8000-000000000002',
   name: 'admin',
   description: null,
   is_system: false,
+  permission_codes: [],
 }
 
 function me(overrides: Partial<MeResponse> = {}): MeResponse {

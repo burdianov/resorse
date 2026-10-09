@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F034.
+> Last updated: 2026-10-10 — after task F035.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F035 in
-claude_code_pack/TASKS.md. Implement F035 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F036 in
+claude_code_pack/TASKS.md. Implement F036 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F035` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F036` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,32 +67,36 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F034 — Admin users UI** (`/admin/users` is real: the first **server-mode DataTable**
-  — page/sort/search/status are query parameters, `total` from the server drives the footer, previous
-  page stays visible during refetches — plus the create/edit/reset dialogs with the shared one-time
-  password notice (generated vs admin-supplied distinguished per C22), the destructive confirms for
-  deactivate/delete, the permission mirrors (controls vanish without their codes; the self row's
-  deactivate/delete disabled with the reason; the last-super-admin 409 left to the server), the
-  `DataTableRowActions` kit component, and the route registered (`/admin` now redirects here, the
-  Administration group appears — for exactly the callers holding `users.read`). The role picker reads a
-  **pulled-forward read slice** of F035's surface: `GET /api/v1/admin/roles` (guard `roles.read`,
-  sorted, `{id, name, description, is_system}` — C23 records why). New: `pages/admin/users.tsx`,
-  `pages/admin/user-dialogs.tsx`, `components/data-table/data-table-row-actions.tsx`,
-  `schemas/admin_roles.py`, `api/v1/admin_roles.py`; DECISIONS C23; +14 frontend tests
-  (**444 passing**), +2 backend (**183**); `openapi.json` + types regenerated).
-- **Next task: F035 — Role API.** "Role CRUD and protected atomic permission matrix."
-  Accept: "Rollback and escalation tests". The router already exists as F034's read slice
-  (`app/api/v1/admin_roles.py` — extend it, do not create a second); the escalation guard to reuse is
-  `services/users.py::_ensure_roles_assignable` (the subset rule — F035's matrix edit answers to the
-  same rule C22 recorded); the vocabulary is `app/core/permissions.py`; `super_admin` is `is_system`
-  and its matrix column is **read-only** (C16 — the seed re-asserts it; F035 refuses edits/deletes of
-  system roles). The "atomic" in the task name is the acceptance's heart: one save endpoint that
-  replaces the whole grant set in ONE transaction (BP §7.4: no sequential PATCH partial-success), with
-  rollback tests; role deletion refused while assigned (BP-6.3); a normal admin must not be able to
-  grant itself elevated rights (routes/handlers guarded by `roles.manage`, which the seeded `admin`
-  deliberately lacks). The frontend matrix is F036's — register no route now.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F034 sits on top of
-  `d6b37b6` (F033).
+- Last completed: **F035 — Role API** (the `/admin/roles` router completed: create/patch/delete under
+  `roles.manage` — the code the seeded `admin` deliberately lacks (C16) — and **`PUT /admin/roles/matrix`,
+  the atomic save** BP-7.4 demands: every entry validated (role exists, `is_system` rule, the subset rule
+  on the **old and new** grant sets, every code exists) **before the first write**, one commit applying
+  all replacements; the rollback test proves a valid first entry stays unsaved when a later one fails.
+  `super_admin` is the seed's: no rename/delete/re-grant, but an **unchanged** matrix entry is accepted
+  (a UI submits its whole visible matrix). Deletion refused while assigned (409, with the count). Payloads
+  name permissions **by code**; unknown codes are 422 at `roles.<i>.permission_codes`. Sessions are
+  deliberately **not** revoked for role edits (C24 supersedes §3's table wording — re-evaluation per
+  request is the guarantee). New: `services/roles.py`; `schemas/admin_roles.py` + `api/v1/admin_roles.py`
+  extended (`RoleItem` gained sorted `permission_codes`); `ensure_codes_assignable` extracted in
+  `services/users.py` (the one subset-rule spelling, shared with F033); DECISIONS C24; +12 backend tests
+  (**195 passing**), frontend unchanged (**444**); `openapi.json` + types regenerated).
+- **Next task: F036 — Role matrix UI.** "Permission matrix with one atomic save."
+  Accept: "Save/reload/error tests". The API is complete and typed: `GET /api/v1/admin/roles` now carries
+  each role's `permission_codes` and `is_system`; the save is **one** `PUT /admin/roles/matrix` (never a
+  per-cell request — that is the reference's bug BP-7.4 names). §7.4 fixes the screen: codes grouped by
+  namespace, a column per role, checkboxes per intersection, the **super_admin column read-only**
+  (render from `is_system`; an unchanged entry may be included in the save, a changed one 403s), visible
+  unsaved edits, sticky headers/horizontal scroll on mobile, and the server's rule 403s / 409s / 422s
+  (`roles.<i>.permission_codes` is addressable per cell) rendered as-is. **One deliberate pull-forward,
+  same as C23's**: the matrix's row labels need the permission catalogue (`code` + `description`), and
+  `GET /api/v1/admin/permissions` does not exist yet — F037 owns the dictionary's CRUD, so either pull
+  its read slice forward (the F034/C23 precedent — record F036's own row when it lands) — do NOT
+  hardcode a catalogue the server might refuse: pull the read slice. Register `/admin/roles` in `APP_ROUTES` (`roles.read`, `adminOnly`) — the second admin route;
+  `/admin` then redirects to whichever comes first in the registry. F034's C23 rules apply (server-mode
+  only if paginated — the matrix is small, a plain fetch is fine; permission mirrors; `DataTableRowActions`
+  if the screen lists roles).
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F035 sits on top of
+  `073b31c` (F034).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -213,6 +217,18 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **The role API is complete (F035):** `/api/v1/admin/roles` — list/get (`roles.read`, items now carry
+  sorted `permission_codes`), `POST ""` (create with grant codes; unknown codes 422 on
+  `permission_codes`; duplicate name 409), `PATCH /{id}` (name/description only — grants are the
+  matrix's business), `DELETE /{id}` (204; **409 while assigned** with the count — the cascade must not
+  silently strip authority), and **`PUT /matrix`** — the atomic save: entries `{role_id,
+  permission_codes}` validated **before the first write** (role exists → `roles.<i>.role_id`; codes
+  exist → `roles.<i>.permission_codes`; subset rule on old *and* new sets → 403; `super_admin`
+  unchanged allowed, changed 403), one commit, 204. All mutations guard `roles.manage` — which the
+  seeded `admin` deliberately lacks (C16). Sessions are **not** revoked for role edits (C24 — per-request
+  re-evaluation is the guarantee). New `services/roles.py`; `ensure_codes_assignable` extracted in
+  `services/users.py` (one subset-rule spelling). **Tests:** 12 new in `tests/test_admin_roles.py`
+  (14 there now), `uv run pytest` is now **195 passed**.
 - **The users screen is live (F034):** `/admin/users` (`pages/admin/users.tsx` +
   `pages/admin/user-dialogs.tsx`) — the first **server-mode DataTable** consumer: page/sort/search/status
   are query parameters (one state record feeds the query key), `total` drives the footer, `placeholderData`
@@ -464,6 +480,11 @@ the archive original — `sha256sum` both to check):
   server; `DataTableRowActions`; the shared one-time password notice; permission mirrors with the self
   row disabling and the last-super-admin 409 left to the server; the route registration that makes
   `/admin` redirect), same date and same basis; rationale in ARCHITECTURE §5/§12.
+- **C24** — F035's role API and matrix (the atomic validate-everything-then-one-commit save; the subset
+  rule on old and new sets with one shared primitive; `is_system` seed-owned but unchanged matrix
+  entries accepted; deletion refused while assigned; codes — not ids — in payloads; role edits do not
+  revoke sessions, superseding §3's table wording), same date and same basis; rationale in
+  ARCHITECTURE §6/§12.
 - **C12's fallout is reconciled** — F025/F029/F032 were amended in `TASKS.md` to match.
 - **All seven F002 gaps are closed** (`docs/REQUIREMENT_TRACEABILITY.md` §14, now a resolution table):
   G-1 `input-group`→F011; G-2 the 21 enhanced generics distributed across F009/F011–F013/F016/F017/F019/F020/
@@ -547,6 +568,13 @@ the archive original — `sha256sum` both to check):
   filter (its counts are loaded rows), one always-on server sort, and row actions through
   `DataTableRowActions`. Permission mirrors hide controls the caller cannot use; they never replace the
   server's check. Preferences keys are per screen (`admin-users` today).
+- **The role API's rules are F036/F037's foundation (F035, C24):** the matrix save is the ONLY way
+  grants change (never a per-cell request — the rollback guarantee dies with it); `is_system` renders
+  read-only and its unchanged entry may ride the save; unknown codes/per-role errors are addressed at
+  `roles.<i>.<field>`; deletion stays refused while assigned; role edits keep no session revocation —
+  do not add one without amending C24 and §3 together. F037's permission CRUD must apply the same
+  subset rule (`ensure_codes_assignable`) in both directions and treat the code vocabulary as
+  server-registered rows (never invented client-side).
 - **The admin API's rules are the security surface (F033, C22) — F035/F037 reuse them:** the subset
   rule for grants (`_ensure_roles_assignable`) is the escalation guard every future role/permission
   mutation must also apply (F035's matrix edit and F033's role assignment answer to the same rule);
@@ -671,6 +699,34 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F035 — Role API.** The `/admin/roles` router F034 opened is complete, and the acceptance's two
+  halves — rollback and escalation — are structural rather than hoped for. **Create/patch/delete** under
+  `roles.manage`, the code the seeded `admin` deliberately lacks (C16: editing the authority
+  dictionaries is escalation by definition): names trimmed and unique (409 via the index), descriptions
+  normalised, `is_system` roles refused for rename/delete (the seed owns the row), deletion refused
+  while the role is assigned (409 with the count — `user_roles` cascades, and a cascade that silently
+  strips authority is the accident the safeguard exists to prevent). **`PUT /admin/roles/matrix` is the
+  atomic save** BP-7.4 demands in place of the reference's sequential-PATCH partial success: the payload
+  carries each role with its complete code set; every entry is validated — role exists
+  (`roles.<i>.role_id`), `is_system` rule, **the subset rule on the old *and* the new grant set**, every
+  code exists (`roles.<i>.permission_codes`) — **before the first write**, then one commit applies all
+  replacements. The rollback test is the proof of shape: entry zero is valid and stays unsaved because
+  entry one was not. The subset rule itself is one primitive now (`ensure_codes_assignable`, extracted
+  in `services/users.py` and shared with F033): you may grant only what you hold, and you may edit only
+  roles whose current grants you hold. `super_admin`'s column: an **unchanged** matrix entry is
+  accepted (a UI submits its whole visible matrix without special-casing one column), any actual change
+  is 403. Payloads name permissions by **code** (the machine vocabulary); duplicates deduplicate.
+  `RoleItem` gained sorted `permission_codes` — the matrix screen reads roles and grants in one answer.
+  One honest supersession, recorded rather than silent (C24): **role edits do not revoke sessions** —
+  per-request re-evaluation (C20/BP-6.3f) is the guarantee, and signing every holder out for an edit
+  they may not lose access from would be disruption without a security gain; §3's table wording is
+  superseded on this point. Checks run: `uv run pytest` **195 passed** (12 new in
+  `tests/test_admin_roles.py`); `ruff check`/`format --check` clean; `mypy app migrations` clean (40
+  files); **no migration** (`0004` remains head); `openapi.json` + generated frontend types regenerated
+  (frontend suite unchanged: 444). Two fresh ARCHITECTURE §12 entries earned en route: assigning a
+  secondary collection lazy-loads the old contents (a `MissingGreenlet` three frames from the
+  "assignment"), so grant reads now come from SQL (`_current_codes`) and mutable roles are fetched
+  through a `populate_existing` getter.
 - **F034 — Admin users UI.** `/admin/users` — the first real consumer of two kits (F020's server mode,
   F021's preferences) and the first administration screen. The page (`pages/admin/users.tsx`) holds one
   state record for page/sort/search/status; all four feed the query key, the server's `total` drives
@@ -1201,14 +1257,14 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F034 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
-| **Backend tests (F023–F034)** | `cd D:\resors\backend; uv run pytest` | **183 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 2 admin-roles + 20 admin-users tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F035 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
+| **Backend tests (F023–F035)** | `cd D:\resors\backend; uv run pytest` | **195 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 20 admin-users + 14 admin-roles tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Login tests (F028)** | `cd D:\resors\backend; uv run pytest tests/test_auth_login.py` | **11 passed** — six credential-failure causes answered with the *same* 401 body, the unknown-email path proven to run a real Argon2 verification against the decoy (whose parameters are pinned current), both throttle buckets (per account and per address) incl. the identical 429 for a non-existent email, `hit_count == 5` persisted after five failures (commit-on-failure), the account-bucket reset on success, rehash-on-login, the exact cookie attributes, and 422 for malformed bodies |
 | **Session lifecycle tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_auth_sessions.py` | **13 passed** — resolution returns the user, the idle slide (committed by the resolver, capped at the absolute deadline, which never moves), expiry refused without a write, disabled users refused and left for the admin flow, rotation (same family, `rotated` + `replaced_by_id`, absolute deadline inherited), the replay killing exactly its own family as `theft_detected` while the presented row keeps `rotated`, logout (204, both cookies cleared, revoked `logout`, idempotent for junk/already-ended cookies), logout-all (401 without a session; every live row of *one* user revoked `logout_all`, others untouched), and a replay through logout still killing the family |
 | **CSRF tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_csrf_protection.py` | **11 passed** — the double-submit enforced whenever the session cookie is present (four refusal shapes, each changing nothing) and passing with no origin for scripted clients, the origin matrix refused even with a perfect double-submit (`https://evil.example`, `null`, scheme mismatch, lookalike host), the `Referer` fallback (and Origin winning when both are present), safe methods never checked, a latin-1 hostile header earning 403 not 500, login refusing a cross-site origin, and the carve-out: a dead session cookie does not lock the login form |
 | **Password-lifecycle tests (F030)** | `cd D:\resors\backend; uv run pytest tests/test_password_change.py` | **14 passed** — wrong current password refused with nothing changed; policy evaluated with the user's own email and never echoing the candidate; new-equals-current refused; the core: rotation of the asking session (absolute deadline inherited) + every other session `password_change` + hash/flags/reset-stamp in one commit; the forced-change flag cleared; the throttle (6th attempt denied before verification, `hit_count == 6` persisted, a verified password forgiving the failures *through* a policy refusal); the reset end-to-end (policy-passing temporary, all sessions `admin`, bystander untouched, temporary signs in with the flag surfaced); and over HTTP: 204 with a fresh cookie pair, the sibling session dead, 401 without a session, 403 without the CSRF header, the wrong-current-password **422 field error (not 401) with the session still alive**, multiple policy entries on `new_password`, and the 429 with `Retry-After: 900` |
 | **Authorization tests (F031)** | `cd D:\resors\backend; uv run pytest tests/test_authorization.py` | **9 passed** — `/auth/me` returns identity + sorted roles + the deduped sorted union, and stays reachable during a forced change; the superuser expansion lists every code by name with no roles; access granted by *either* of two roles against a scratch app, denied with the generic 403 (and the guarded body never runs); re-evaluation proven with `expunge_all` — the same cookie gets 403 after a DB-level revoke and 200 after re-granting, no re-login; no session → 401 everywhere; a deactivated user → 401 everywhere; and the forced-change gate: 403 with the flag detail (before the permission check), nothing executed, then the real change-password flow lifts it on the very next request |
-| **Admin-role tests (F034)** | `cd D:\resors\backend; uv run pytest tests/test_admin_roles.py` | **2 passed** — the catalogue answers 401 without a session, 403 with the generic message without `roles.read`, and lists every role sorted by name with exactly `{id, name, description, is_system}` |
+| **Admin-role tests (F034/F035)** | `cd D:\resors\backend; uv run pytest tests/test_admin_roles.py` | **14 passed** — the catalogue's guard and order; every mutation 401 anonymous and 403 with the generic message for a read-only caller; create (trimmed, deduplicated codes, duplicate name 409, unknown codes 422, escalation 403, within-set 201); rename + the seed-owned refusal; deletion 204 / 409-while-assigned / 403-system; and the matrix: replace-in-one-commit, **the rollback (a valid first entry stays unsaved when a later entry fails)**, per-entry 422 paths (`roles.<i>.role_id` / `.permission_codes`), the system column unchanged-only, the subset rule on both old and new sets, and saved grants appearing in the catalogue |
 | **Admin-user tests (F033)** | `cd D:\resors\backend; uv run pytest tests/test_admin_users.py` | **20 passed** — 401 on all six endpoints without a session and the exact code each needs (generic 403, target untouched); generated temporary (verifies, forced change, shown once, never repeated in listings) and explicit-password policy refusals as field 422s; canonical email + 409 duplicates; unknown role ids 422; pagination/search/`%`-escape/`is_active`/sort all against the real database with exact totals; PATCH trims, canonicalises and *replaces* roles; empty edit 400; the `is_active` toggle requiring `users.deactivate`; deactivation revoking sessions (`admin`) and blocking sign-in until reactivation; soft-delete keeping the row, hiding it (404), blocking sign-in and keeping the email taken (409); self-changes limited to profile fields; superuser targets 403 for non-supers (update/delete/reset/create); last-super-admin 409 for deactivate and delete; grant-subset escalation 403 vs an in-set grant 200 (and a superuser granting the same role 201); reset returning a temporary that forces change and kills sessions; no response ever carrying `argon2`/`hashed_password` |
 | **Session model tests (F025)** | `cd D:\resors\backend; uv run pytest tests/test_session_model.py tests/test_session_tokens.py` | **18 passed** — the token-hash shape and uniqueness, both deadlines and their ordering, all-or-nothing revocation over a closed vocabulary, user FK + cascade, the unique replacement chain and `SET NULL`, the family-revocation rehearsal, the `is_active` matrix, and the token/lifetime contract |
 | **Password & rate-limit tests (F026)** | `cd D:\resors\backend; uv run pytest tests/test_password_hashing.py tests/test_rate_limit.py` | **34 passed** — Argon2id parameters and the no-plaintext contract (hash content, the `User` repr, message echo), every policy rule and the confirmed defaults, the generated-password properties (F027), window alignment/`Retry-After` math, the DB counter (limit, rollover, per-key budgets, `peek` without counting, `clear`), and the twelve-connection concurrency race |
@@ -1219,6 +1275,7 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Session & CSRF smoke (F029)** | step 1, with the API running and the real password: `curl.exe -s -c $env:TEMP\resors-cookies.txt -o NUL -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"you@example.com","password":"<real password>"}'`; step 2, read the CSRF value: `Select-String __Host-csrf $env:TEMP\resors-cookies.txt` (last column); step 3, **`<csrf>` = that value**: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/auth/logout -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>"` | step 3: **204**, two `Set-Cookie` lines emptying `__Host-session` and `__Host-csrf`; run step 3 again → **204** again (logout is idempotent). Without `X-CSRF-Token` → **403** `CSRF token missing or invalid.`; with `Origin: https://evil.example` → **403** `This origin is not allowed to make this request.`; `POST /api/v1/auth/logout-all` with no cookie → **401** `Not authenticated.` (curl's jar resends the Secure cookies to localhost — verified). A **rotated** cookie being presented anywhere (after F030 rotates) answers 401 *and* kills that session family as `theft_detected` — the test suite is the place to watch that, not curl |
 | **`/auth/me` smoke (F031)** | with the jar from the F029 row freshly logged in: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/auth/me` | **200** with identity (`id`, `email`, `full_name`, `phone`, `must_change_password`), `roles` — for the bootstrap account `["super_admin"]` — and **`permissions`**: the bootstrap account is `is_superuser`, so the list is **all 17 codes** sorted (`audit.read` … `users.update`) — the runtime expansion, no wildcard. Without the cookie: **401** `{"detail":"Not authenticated."}`. Sign in as a role-limited account (create one with F033 when it lands) and the list becomes exactly that role's union |
 | **Admin-users smoke (F033)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): list: `curl.exe -s -b $env:TEMP\resors-cookies.txt "http://localhost:8000/api/v1/admin/users?page_size=5"`; create: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/admin/users -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"email":"second@example.com","full_name":"Second Admin"}'` | list: **200** `{"items":[…],"total":1,"page":1,"page_size":5}` — the bootstrap account itself, `roles:["super_admin"]`, no hash anywhere. create: **201** with a `temporary_password` shown **once** (record it in `LOCAL_CREDENTIALS.md` at once); the new account appears in the list with `must_change_password:true`, and signing in with the temporary lands on the forced-change 403 until changed. Worth seeing the rules: `DELETE` on yourself → **403** `You cannot delete your own account.`; a weak `password` on create → **422** on `password`; a duplicate email → **409**; reset the second account (`POST /api/v1/admin/users/<id>/reset-password`, same headers) → **200**, a new temporary, and any session it had is dead |
+| **Roles smoke (F035)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): list: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/admin/roles`; create: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/admin/roles -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"name":"demo-role","description":"smoke","permission_codes":["audit.read"]}'` | list: **200** — every seeded role with `permission_codes` and `is_system`. create: **201**. The rules worth seeing: an unknown code → **422** at `permission_codes`; renaming or deleting `super_admin` → **403** (`managed by the seed`); deleting an assigned role → **409** (`assigned to users` — assign one first via F033). The matrix, one call: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PUT http://localhost:8000/api/v1/admin/roles/matrix -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"roles":[{"role_id":"<viewer id>","permission_codes":["reports.generate"]}]}'` → **204** and the list shows exactly that grant; adding an unknown code in a second entry → **422** and the first entry is *not* applied |
 | **Password-change smoke (F030)** — the *safe* path: no state change | with the jar from the F029 row freshly logged in (steps 1–2), **`<csrf>` = the jar's `__Host-csrf`**: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/auth/change-password -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"current_password":"definitely-wrong","new_password":"a brand new passphrase"}'` | **422** with `detail: [{"type":"value_error","loc":["body","current_password"],"msg":"Current password is incorrect."}]` — field-addressable, no `input`, and the session survives (the next command still works). Drop `X-CSRF-Token` → **403**; a `new_password` of `password123` (with the *correct* current one — this one does verify) → **422** with two entries on `new_password` (too short + common list) and nothing changed. Five wrong current passwords → the sixth is **429** + `Retry-After`. A **real** change (correct current + policy-passing new) answers **204** + a fresh cookie pair and invalidates every other session — if you smoke that, pick the new password deliberately and immediately update `LOCAL_CREDENTIALS.md`, because login will demand it from then on |
 | Backend lint and types (F023) | `cd D:\resors\backend; uv run ruff check .; uv run ruff format --check .; uv run mypy app migrations` | clean. The CI gate that *enforces* this is F056's; these commands work today |
 | **Renders, not just compiles (F018 fix; updated by F032)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | with no session, the DOM is the **login card** — `<h1>Sign in</h1>`, the email/password inputs, the theme toggle (the shell is behind the session boundary now; the sidebar + `Dashboard` appear once signed in). Add `2>&1 \| Select-String "CONSOLE"` to see console output; an empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss. If the card never appears and `CONSOLE` shows a failed `/api/v1/auth/me` fetch, check the backend is running — that request is the first thing the app makes |
