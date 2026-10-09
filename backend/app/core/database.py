@@ -119,8 +119,13 @@ async def dispose_engine() -> None:
 async def get_session() -> AsyncIterator[AsyncSession]:
     """A session per request.
 
-    Not wired to any endpoint yet: the request-scoped transaction rules arrive
-    with the auth work (F028), which is where the first endpoint needs them.
+    The request-scoped transaction rule (first needed by F028's login): **the
+    service that owns the work commits**; this dependency only guarantees the
+    session is closed. A handler that raises commits nothing — the unit of
+    work is discarded — which is the right default. The one deliberate
+    exception lives in the login service: it commits its rate-limit counters
+    *before* raising on a failed attempt, because a failed login that rolls
+    back its own count would be a throttle that never throttles.
     """
     async with get_sessionmaker()() as session:
         yield session

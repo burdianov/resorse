@@ -3,7 +3,8 @@
 Reference file → target file → status → reason. Required by `BIG-PROMPT.txt` §11.7/§14.2; F002's
 `REQUIREMENT_TRACEABILITY.md` §12 and gap G-5 assigned it to F004.
 
-Source of the reference column: the archive manifest (`D:\RESORS_REFERENCE\qtc360-main.zip`, 517 entries),
+Source of the reference column: the archive manifest (`D:\RESORS_REFERENCE\qtc360-main.zip`, 517 entries;
+the extracted tree to read is `D:\QTC360\qtc360\`),
 inspected read-only in F001 and re-listed for this task. Status meanings:
 
 | Status | Meaning |

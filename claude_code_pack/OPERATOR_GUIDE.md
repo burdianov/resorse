@@ -1,7 +1,7 @@
 # OPERATOR GUIDE — minimum-token Claude Code workflow
 
 ## Initial setup
-Place this pack at the root of your new repository alongside the original `BIG-PROMPT.txt` (optional after reference audit) and the QTC360 source ZIP if you possess it. The attached text refers to `qtc360-main(2).zip`, but its presence has **not** been verified here. Do not tell Claude to inspect a missing ZIP.
+Place this pack at the root of your new repository alongside the original `BIG-PROMPT.txt` (optional after reference audit) and the QTC360 source if you possess it. The reference source is read from the extracted tree at `D:\QTC360\qtc360\` (the archive `D:\RESORS_REFERENCE\qtc360-main.zip` is the audit record). Do not tell Claude to inspect a path that is not present.
 
 Start Claude Code in the repository root. First instruction:
 

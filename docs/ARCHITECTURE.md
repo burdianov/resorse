@@ -87,6 +87,44 @@ Cost: one indexed lookup per request. Acceptable for a single-company internal a
 micro-cache is permitted later (`BIG-PROMPT` §0.6 allows process-local caches for disposable optimisation) but
 is explicitly **not** part of this design.
 
+### Login — the first session (F028)
+
+`POST /api/v1/auth/login` (`app/api/v1/auth.py`, service in `app/services/auth.py`) is where a password
+becomes a session, and where BP-6.2g's "no user enumeration" stops being an intention and becomes the
+mechanics:
+
+- **One refusal for every cause.** Unknown email, wrong password, deactivated account, deleted account,
+  unusable stored hash — one 401, one body. "This account is disabled" is exactly the fact an enumerator
+  wants, so it is never said.
+- **Comparable timing.** An unknown email still pays one Argon2 verification, against a decoy hash generated
+  at import under the current parameters (`_DUMMY_PASSWORD_HASH`). A test asserts the decoy is
+  current-parameter — a stale decoy would be the fast path, re-opening the channel it exists to close.
+- **One throttle answer.** Both buckets (per account, per address) are counted *before* the lookup and
+  whether or not the account exists; a denied attempt raises one 429 with `Retry-After` and a body that
+  depends only on the caller's own behaviour. The throttle gates before the password check, so a throttled
+  caller cannot even burn verification work.
+- **Failures persist.** The service commits the rate-limit counters *before* raising: a failed login that
+  rolled back its own count would be a throttle that never throttles. This is the one deliberate exception
+  to the "a handler that raises commits nothing" rule recorded in `app/core/database.py`.
+- **A success resets the account budget only.** The account bucket is cleared (a legitimate user who
+  fumbled four attempts is not half-locked); the address bucket is not, or one known credential would buy
+  a fresh guessing budget for other accounts.
+- **Cookies here, enforcement in F029.** Login issues the `__Host-session` cookie (HttpOnly, Secure,
+  SameSite=Lax, Path=/, no Domain, no Max-Age — a browser-session cookie; the row's deadlines are the
+  authority) and the readable `__Host-csrf` companion for F029's double-submit check. `Secure` even in
+  development: browsers treat `http://localhost` as a secure context, and the `__Host-` prefix requires it.
+- **The throttling address is the transport's peer** (`request.client.host`). `X-Forwarded-For` is
+  deliberately not consulted — without a validated proxy it is client-controlled and its trust would be a
+  rate-limit bypass; that validation is deployment configuration (F060).
+- **A below-policy hash is upgraded on the way through** (`password_needs_rehash` → re-hash with the
+  plaintext in hand), so raising Argon2 parameters never needs a reset wave (F026's promise, kept here).
+- `token_version` is not touched: under this design the session row is the revocation unit, and F029
+  decides whether the column earns a second role.
+
+The response is identity only (`id`, `email`, `full_name`, `must_change_password`) — no roles, no
+permissions. The effective permission union is F031's dependency and will be served by `/auth/me`; one
+definition of the access set beats two that almost match.
+
 ### Password policy (F026)
 
 Argon2id (RFC 9106) with parameters **reviewed in code, not configured by the environment** —
@@ -659,6 +697,27 @@ reason.
   `interactive=False` seam (the same one the tests use); `--help` and the seed CLI still prove the real
   entry point and the real database path.
 
+### A failed login still has to write (F028)
+
+The obvious implementation of "commit only on success" makes the throttle useless: the rate-limit counters
+are rows, the refusal path raises, the session is discarded — and every failed attempt rolls back its own
+count, so the sixth guess starts from zero forever. The login service therefore **commits the counters
+before raising** `InvalidCredentials` / `LoginRateLimited`; the rule "a handler that raises commits nothing"
+(`app/core/database.py`) keeps its force for every other endpoint, with this stated exception. The
+integration test that would catch a regression is not "six attempts are denied" but the follow-on: five
+failures must leave `hit_count == 5` in the bucket row.
+
+Two smaller traps in the same file, both now pinned by tests:
+
+- **The suite's clock is frozen in the login tests (autouse patch of the service's `datetime`).** The rate
+  limiter counts in epoch-aligned fixed windows; a test that straddles a boundary flakes — once in ~1000
+  runs, which is exactly the kind of flake that costs an afternoon someday. Freezing also makes the two
+  deadline columns and `Retry-After` exact instead of approximate.
+- **SQLAlchemy 2.1 deprecates `noload()`** ("incorrect results — returns `None` for related items"). The
+  login query suppresses the eager `User.roles` load with `raiseload()` instead — which is also the better
+  statement: this path must never traverse the authorization graph, so a future edit that tries fails
+  loudly rather than quietly costing two queries.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -669,5 +728,7 @@ reason.
 - Session timeouts and password-policy parameters are **initial defaults** here; the concrete values are
   confirmed rather than invented now — **F025 confirmed the session lifetimes**
   (`Settings.session_idle_timeout_minutes` = 720, `session_absolute_lifetime_days` = 30), **F026 the
-  password policy** (12–128 characters, denylist, 5 login attempts / 15 minutes — §3), and **F027 the
-  bootstrap credential policy and the default role catalog** (C15/C16 — §3, §6).
+  password policy** (12–128 characters, denylist, 5 login attempts / 15 minutes — §3), **F027 the
+  bootstrap credential policy and the default role catalog** (C15/C16 — §3, §6), and **F028 the login
+  behaviour that consumes them** (uniform 401/429, the decoy verification, commit-before-raise, the
+  account-bucket reset — §3).

@@ -1,8 +1,9 @@
 """Liveness endpoint.
 
 Reports only what it can actually observe: that this process is up and serving.
-A separate readiness endpoint is introduced with F023, once there is a real
-dependency (PostgreSQL) whose status it can honestly report.
+A separate readiness endpoint — which will additionally check PostgreSQL — is
+part of the API contract (docs/ARCHITECTURE.md §10) but not implemented yet;
+nothing here should claim a dependency it has not measured.
 """
 
 from typing import Literal

@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F027.
+> Last updated: 2026-10-10 — after task F028.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F028 in
-claude_code_pack/TASKS.md. Implement F028 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F029 in
+claude_code_pack/TASKS.md. Implement F029 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F028` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F029` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -47,34 +47,40 @@ re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/R
 | Task artifacts | `docs\` — `REPOSITORY_AUDIT.md` (F001), `REQUIREMENT_TRACEABILITY.md` (F002), `STACK_VERSIONS.md` (F003), `ARCHITECTURE.md` + `REFERENCE_PARITY.md` (F004), `ROUTES_NAVIGATION.md` (F016), `OPENAPI_CLIENT.md` (F018) |
 | Frontend (F006) | `frontend\` — `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `openapi-ts.config.ts`, `index.html`, `src\{main.tsx,vite-env.d.ts,app\{router,providers\}.tsx,lib\{api,errors,query-keys\}.ts,lib\generated\api\}` |
 | Backend (F007) | `backend\` — `pyproject.toml`, `uv.lock`, `.python-version`, `openapi.json` (generated, committed), `scripts\export_openapi.py`, `alembic.ini`, `migrations\versions\`, and `app\` (`main.py`, `seed.py`, `bootstrap_admin.py`, `core\`, `models\`, `api\v1\`, `tests\`) |
-| Reference material (**outside the project folder**) | `D:\RESORS_REFERENCE\qtc360-main.zip`, `D:\RESORS_REFERENCE\BIG-PROMPT.txt` |
-| Unrelated — do not touch | `D:\QTC360\` (a separate QTC360 working area) |
+| Reference source (**outside the project folder**) | `D:\QTC360\qtc360\` — the **entire source tree, extracted** (backend, frontend, compose files, docs). This is the copy to read — e.g. production Docker hints come from its `docker-compose.prod.yml` |
+| Reference archives (**outside the project folder**) | `D:\RESORS_REFERENCE\qtc360-main.zip` (the original archive, kept for the audit record), `D:\RESORS_REFERENCE\BIG-PROMPT.txt` (the requirements text) |
+| Unrelated — do not touch | the rest of `D:\QTC360\` outside `qtc360\` (separate QTC360 working areas: logo/design assets, `Workshop\`, `QAQC Documents\`) |
 
 Reference inputs are outside the repo by design and `.gitignore` carries a safety net. Read them by absolute
-path; an out-of-folder read may raise a permission prompt, which is expected. Hashes:
+path; an out-of-folder read may raise a permission prompt, which is expected. `D:\QTC360\qtc360\` is the
+operator-maintained extraction of the archive; `BIG-PROMPT.txt` is the requirements text and outranks the
+source when they disagree (e.g. `BIG-PROMPT` §0.2 forbids its branding). The reference is **read-only and
+untrusted**: never run anything from it, never copy its branding, `db_dump` credentials, seed data, fonts or
+domain (construction) code into this repo — hints and patterns only. Hashes:
 `qtc360-main.zip` = `f888e940506fc270cfd69d299cd2444eab64c089389e17e88ae6facbe36bfa05`,
 `BIG-PROMPT.txt` = `7c97b4eb649317e7e23766de6e1a354101fcb05270427d5ea54afedefd91a2f2`.
 
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F027 — Admin bootstrap** (the one-time `python -m app.bootstrap_admin` CLI with no
-  default credential by construction, the idempotent `python -m app.seed` role/permission seed, and
-  `PermissionCode` as the single vocabulary; 31 new tests, 103 total; no migration — the identity tables
-  already existed).
-- **Next task: F028 — Authentication login.** "Login endpoint and session issuance", with "real DB
-  integration tests" as acceptance. Everything it needs exists: `generate_session_token` /
-  `hash_session_token` and the `sessions` table (F025) to issue and store the session;
-  `verify_password` + `password_needs_rehash` (F026) for the credential check (a successful login rotates
-  the hash forward when needed); `hit`/`peek`/`clear` with `account_key`/`ip_key` (F026) for throttling —
-  a denied hit becomes the 429 with the **same body whether or not the account exists**, and the login
-  must equalise timing for unknown accounts (BP-6.2g, no user enumeration). ARCHITECTURE §3 fixes the
-  cookie (`__Host-session`, HttpOnly, Secure, SameSite=Lax, no Domain) and the CSRF companion token
-  issued at login — F029 owns the enforcement policy. The seeded catalog (F027) provides the roles; a
-  fresh database needs `python -m app.seed` first (the bootstrap CLI runs it for you). `must_change_password`
-  is set on admin-provisioned accounts and is enforced on regular endpoints from F031.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F027 sits on top of
-  `ecb2bdc` (F026).
+- Last completed: **F028 — Authentication login** (`POST /api/v1/auth/login` issues sessions: one uniform
+  401 for every credential failure with a decoy Argon2 verification for unknown emails, one uniform 429
+  with both throttle buckets counted before the lookup and **committed by the failure path**, the stored
+  hash upgraded on the way through, `__Host-session` + readable `__Host-csrf` cookies; DECISIONS C17;
+  11 new tests, 114 total; no migration — the sessions table already existed; `openapi.json` and the
+  generated frontend types were regenerated).
+- **Next task: F029 — Session rotation and logout.** "Session rotation, superseded-session-ID replay
+  detection (revoke the family), logout and logout-all, CSRF policy. No refresh endpoint exists (C12)."
+  Everything it needs exists: `hash_session_token` + the `sessions` table's full vocabulary (`family_id`,
+  `replaced_by_id`, `revoked_at`/`revoked_reason` incl. `rotated`/`theft_detected`, F025) for rotation and
+  family revocation; the F028 login module for the cookie names and the request-scoped commit rule; the
+  bulk-UPDATE-bypasses-the-identity-map trap is recorded in ARCHITECTURE §12. F029 also owns the CSRF
+  **enforcement** (mandatory Origin/Referer check on unsafe methods + `X-CSRF-Token` header equal to the
+  `__Host-csrf` cookie F028 issues) and the request dependency that resolves a session by its cookie —
+  the thing F030's forced-change gate and F031's permission guards build on. It decides whether
+  `token_version` earns a second role.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F028 sits on top of
+  `1df1eb5` (F027).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -195,6 +201,18 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **Login is live (F028):** `POST /api/v1/auth/login` (`app/api/v1/auth.py` → `app/services/auth.py`) — the
+  first endpoint with a database dependency (the request-scoped rule is in `app/core/database.py`: the
+  service commits; the failure path commits its rate-limit counters *before* raising). One **uniform 401**
+  for every credential failure (unknown email, wrong password, deactivated, deleted, unusable hash) with a
+  decoy Argon2 verification for unknown emails; one **uniform 429** + `Retry-After` from two buckets
+  (per account, per address — counted before the lookup, whether or not the account exists; the throttle
+  gates before the password check). Success clears the account bucket only; a below-policy hash is
+  re-hashed on the way through. Cookies: `__Host-session` (HttpOnly, Secure, SameSite=Lax, no Max-Age —
+  a browser-session cookie) and the readable `__Host-csrf` companion for **F029's** double-submit check.
+  Response is identity only (no roles/permissions — `/auth/me` arrives with F030/F031). Throttling uses
+  `request.client.host`; `X-Forwarded-For` trust is F060's. No migration; `openapi.json` + generated
+  frontend types refreshed. **Tests:** 11 new; `uv run pytest` is now **114 passed**.
 - **Seed and bootstrap CLIs are live (F027):** `app/seed.py` — the idempotent role/permission seed over
   `app/core/permissions.py`'s `PermissionCode` (17 codes; the single vocabulary F031/F037 will consume):
   `super_admin` (every code, and the **only** `is_system` role — its grant set is re-asserted on every run
@@ -207,7 +225,8 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   exists (never resets/escalates). `python-dotenv` is now a **declared dependency**: the CLI reads its two
   `BOOTSTRAP_*` variables itself, never through `Settings`. `app_dev` is already seeded (17 permissions,
   3 roles, 41 grants, **0 users** — the operator runs the bootstrap once; the accounts table §9 records it).
-  **Tests:** 31 new (11 seed + 17 bootstrap + 3 generator) — `uv run pytest` is now **103 passed**.
+  **Tests:** 31 new (11 seed + 17 bootstrap + 3 generator) — `uv run pytest` went to **103 passed** at this
+  commit (114 after F028's 11).
 - **Password security and throttling are live (F026):** `app/core/security.py` — Argon2id with **reviewed
   constants** (`ARGON2_PARAMETERS`: 19 MiB, t=2, p=1, the OWASP profile — deliberately *not* settings, so no
   deployment can quietly weaken hashing), `hash_password`/`verify_password`/`password_needs_rehash` (an
@@ -281,6 +300,10 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **C15/C16** — F027's own decisions (bootstrap credential policy; default role catalog and seed semantics),
   solved 2026-10-10 on the operator's instruction to resolve them per best practice before implementing; the
   register rows carry the rules, ARCHITECTURE §3/§6 the rationale. Override any of it by amending the row.
+- **C17** — F028's login flow (uniform 401 with the decoy verification, uniform 429 from the two buckets,
+  commit-on-failure, account-bucket reset on success, the two `__Host-` cookies, `request.client.host` as
+  the throttle address with proxy-header trust deferred to F060), same date and same basis; rationale in
+  ARCHITECTURE §3/§12.
 - **C12's fallout is reconciled** — F025/F029/F032 were amended in `TASKS.md` to match.
 - **All seven F002 gaps are closed** (`docs/REQUIREMENT_TRACEABILITY.md` §14, now a resolution table):
   G-1 `input-group`→F011; G-2 the 21 enhanced generics distributed across F009/F011–F013/F016/F017/F019/F020/
@@ -320,6 +343,16 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   `pnpm run api:types` in `frontend/`), and the resulting diff belongs in the same commit. **Never hand-edit
   `src/lib/generated/**`** — it is overwritten, and F061's drift check regenerates and diffs both artefacts.
   New code calls the API only through `lib/api.ts` (never `axios` directly) so every rejection stays an `ApiError`.
+- **Login's security properties are load-bearing for every later auth task (F028):** the failure paths must
+  keep committing their rate-limit counters before raising (a rollback there silently disarms the throttle —
+  the follow-on test `hit_count == 5` is what catches it), the 401/429 bodies must stay uniform across causes,
+  and no later endpoint may weaken the timing equalisation (the decoy verification's parameters are pinned by
+  `test_the_decoy_hash_is_current_parameter`). **CSRF enforcement is F029's obligation**: the readable
+  `__Host-csrf` cookie is issued at login precisely so the double-submit + Origin/Referer check can exist —
+  until F029 lands, do not ship any other unsafe-method endpoint that assumes it.
+- **The throttling address is `request.client.host` on purpose (F028, C17).** Do not "fix" it by reading
+  `X-Forwarded-For` outside F060's validated-proxy configuration — unvalidated, that header is client-controlled
+  and trusting it would hand every attacker a fresh rate-limit bucket per request.
 - **Identity-scoped query keys carry the user id** (`['users', userId, …]`) — see `lib/query-keys.ts`; F032 resets
   the cache on identity change, and the key shape is the second line of defence.
 - **The toast rule is deliberate:** a cold query failure is rendered inline (F017's `ErrorState`), a background
@@ -417,6 +450,35 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F028 — Authentication login.** `POST /api/v1/auth/login` — the endpoint where BP-6.2g's "no user
+  enumeration" becomes mechanics. **One refusal for every cause**: unknown email, wrong password,
+  deactivated account, deleted account, unusable stored hash — one 401, one body (six causes, asserted
+  byte-equal). **Comparable timing**: an unknown email still pays one Argon2 verification, against a decoy
+  hash generated at import under the *current* parameters (`_DUMMY_PASSWORD_HASH`; a test pins that the
+  decoy is not stale — a stale decoy would be the fast path it exists to close — and a spy proves the
+  unknown-email path runs a real verification). **One throttle answer**: both buckets (per account, per
+  address via `hit`/`account_key`/`ip_key`) are counted *before* the lookup and whether or not the account
+  exists; a denied attempt is a 429 + `Retry-After` that depends only on the caller — asserted identical
+  for an existing and a non-existent email — and the throttle gates before the password check, so a
+  throttled caller cannot burn verification work. **Failures persist**: the service commits the counters
+  *before* raising (`InvalidCredentials`/`LoginRateLimited`) — the stated exception to "a handler that
+  raises commits nothing" (ARCHITECTURE §12) — with the follow-on test asserting `hit_count == 5` after
+  five failures, which is what catches a regression to "commit only on success". A **successful login
+  clears the account bucket but not the address bucket** (one known credential must not buy a fresh
+  guessing budget for other accounts). Cookies (ARCHITECTURE §3): `__Host-session` — HttpOnly, Secure,
+  SameSite=Lax, Path=/, no Domain, **no Max-Age** (a browser-session cookie; the row's deadlines are the
+  authority) — plus the readable `__Host-csrf` companion that **F029** will enforce via double-submit;
+  `Secure` even in dev because browsers treat `http://localhost` as a secure context and the `__Host-`
+  prefix requires it. A below-policy stored hash is re-hashed on the way through (F026's no-reset-wave
+  promise, kept); `token_version` untouched (F029 decides). Throttling uses `request.client.host`;
+  `X-Forwarded-For` trust deferred to F060 (unvalidated it is a bypass). The response is identity only —
+  no roles/permissions; the union is F031's and arrives as `/auth/me`. New: `app/api/v1/auth.py`,
+  `app/services/auth.py`, `app/schemas/auth.py`; the request-scoped transaction rule is now stated in
+  `app/core/database.py`. Checks run: `uv run pytest` **114 passed** (11 new — the login suite freezes the
+  clock for every test, because a suite that straddles a rate-limit window boundary flakes once in a
+  thousand runs); `ruff check`/`format --check` clean; `mypy app migrations` clean (28 files); **no
+  migration** (`0004` remains head); `openapi.json` + `frontend/src/lib/generated/api/*` regenerated and
+  committed; `app_test` left empty after the suite.
 - **F027 — Admin bootstrap.** The platform's first account and the seeds that make it grantable, with the
   acceptance being what the CLI *refuses* to do. `app/bootstrap_admin.py`: the password comes from
   `--generate-password` (shown in the console **exactly once** — it is a temporary credential),
@@ -740,13 +802,15 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
-| **Backend tests (F023–F027)** | `cd D:\resors\backend; uv run pytest` | **103 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027 and F028 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
+| **Backend tests (F023–F028)** | `cd D:\resors\backend; uv run pytest` | **114 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Login tests (F028)** | `cd D:\resors\backend; uv run pytest tests/test_auth_login.py` | **11 passed** — six credential-failure causes answered with the *same* 401 body, the unknown-email path proven to run a real Argon2 verification against the decoy (whose parameters are pinned current), both throttle buckets (per account and per address) incl. the identical 429 for a non-existent email, `hit_count == 5` persisted after five failures (commit-on-failure), the account-bucket reset on success, rehash-on-login, the exact cookie attributes, and 422 for malformed bodies |
 | **Session model tests (F025)** | `cd D:\resors\backend; uv run pytest tests/test_session_model.py tests/test_session_tokens.py` | **18 passed** — the token-hash shape and uniqueness, both deadlines and their ordering, all-or-nothing revocation over a closed vocabulary, user FK + cascade, the unique replacement chain and `SET NULL`, the family-revocation rehearsal, the `is_active` matrix, and the token/lifetime contract |
 | **Password & rate-limit tests (F026)** | `cd D:\resors\backend; uv run pytest tests/test_password_hashing.py tests/test_rate_limit.py` | **34 passed** — Argon2id parameters and the no-plaintext contract (hash content, the `User` repr, message echo), every policy rule and the confirmed defaults, the generated-password properties (F027), window alignment/`Retry-After` math, the DB counter (limit, rollover, per-key budgets, `peek` without counting, `clear`), and the twelve-connection concurrency race |
 | **Seed & bootstrap tests (F027)** | `cd D:\resors\backend; uv run pytest tests/test_seed.py tests/test_bootstrap_admin.py` | **28 passed** — the vocabulary's shape and descriptions, the three roles and exactly their documented grant sets, idempotent re-runs, operator edits and non-system roles surviving, the super-admin invariant being *restored* (including codes registered later), and every bootstrap refusal path — proven with a session factory that raises if it is reached, so "refused before the database" is structural |
 | **Seed the roles and permissions (F027)** | `cd D:\resors\backend; uv run python -m app.seed` | first run prints `permissions created: 17`, `roles created: 3`, `grants added: 41`; a second run prints `Seed: nothing to do — roles and permissions are up to date.` (already done for `app_dev` — this is the fresh-database command, and it is safe at any time) |
 | **Create the super-admin (F027)** | `cd D:\resors\backend; uv run python -m app.bootstrap_admin --generate-password` | prompts for the email (`--email` or `BOOTSTRAP_ADMIN_EMAIL` skip the prompt), prints the generated password **exactly once** — record it in `LOCAL_CREDENTIALS.md` at that moment — and creates the account with a forced first-login change. With no password source: `There is no default password.` / `Nothing was created.`, exit 2. A second run refuses: `A super-admin already exists (…)` |
+| **Login smoke (F028)** | with the API running: `curl.exe -i -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"you@example.com","password":"wrong-guess"}'` | **401** + `{"detail":"Invalid email or password."}` — and the *identical* body for an email that does not exist (that is the point). With the real password (from `LOCAL_CREDENTIALS.md`): **200**, the user JSON (identity only), and two `Set-Cookie` headers — `__Host-session` (HttpOnly) and `__Host-csrf`. Every failed attempt counts: five in 15 minutes, then the next is **429** + `Retry-After` (`Too many login attempts. Try again later.`). So run the *correct* pair first if you plan to fumble; or use http://localhost:8000/docs → `POST /auth/login` → *Try it out* (the browser then keeps the cookies for `/docs` calls) |
 | Backend lint and types (F023) | `cd D:\resors\backend; uv run ruff check .; uv run ruff format --check .; uv run mypy app migrations` | clean. The CI gate that *enforces* this is F056's; these commands work today |
 | **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |

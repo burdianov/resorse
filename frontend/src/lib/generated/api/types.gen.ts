@@ -5,6 +5,45 @@ export type ClientOptions = {
 };
 
 /**
+ * AuthenticatedUser
+ *
+ * Who just signed in — identity only.
+ *
+ * No roles and no permissions: the effective permission union is resolved by
+ * F031's dependency and served by ``/auth/me``. Login answers "here is your
+ * session", not "here is everything about you"; a second round trip after
+ * sign-in is the honest cost of keeping one definition of the access set.
+ */
+export type AuthenticatedUser = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Must Change Password
+     */
+    must_change_password: boolean;
+};
+
+/**
+ * HTTPValidationError
+ */
+export type HttpValidationError = {
+    /**
+     * Detail
+     */
+    detail?: Array<ValidationError>;
+};
+
+/**
  * HealthResponse
  */
 export type HealthResponse = {
@@ -25,6 +64,88 @@ export type HealthResponse = {
      */
     version: string;
 };
+
+/**
+ * LoginRequest
+ */
+export type LoginRequest = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Password
+     */
+    password: string;
+};
+
+/**
+ * LoginResponse
+ */
+export type LoginResponse = {
+    user: AuthenticatedUser;
+};
+
+/**
+ * ValidationError
+ */
+export type ValidationError = {
+    /**
+     * Context
+     */
+    ctx?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Input
+     */
+    input?: unknown;
+    /**
+     * Location
+     */
+    loc: Array<string | number>;
+    /**
+     * Message
+     */
+    msg: string;
+    /**
+     * Error Type
+     */
+    type: string;
+};
+
+export type LoginApiV1AuthLoginPostData = {
+    body: LoginRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/login';
+};
+
+export type LoginApiV1AuthLoginPostErrors = {
+    /**
+     * Invalid credentials (never says which part).
+     */
+    401: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Login throttled; see Retry-After.
+     */
+    429: unknown;
+};
+
+export type LoginApiV1AuthLoginPostError = LoginApiV1AuthLoginPostErrors[keyof LoginApiV1AuthLoginPostErrors];
+
+export type LoginApiV1AuthLoginPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: LoginResponse;
+};
+
+export type LoginApiV1AuthLoginPostResponse = LoginApiV1AuthLoginPostResponses[keyof LoginApiV1AuthLoginPostResponses];
 
 export type HealthApiV1HealthGetData = {
     body?: never;

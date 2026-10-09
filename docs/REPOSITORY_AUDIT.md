@@ -276,6 +276,9 @@ py -0                                         # installed Python versions
   (logo/design assets, `docs/`, `Workshop/`, `QAQC Documents/`, and its own `qtc360/` subfolder). It was not
   inspected and is **not needed**: the relocated archive verified against every checkable claim in
   `BIG-PROMPT.txt` §1, so no task should depend on that copy. It was left untouched.
+  *(Update 2026-10-10, operator instruction: `D:\QTC360\qtc360\` is now the designated readable reference
+  tree — the extracted app to take hints from (e.g. production Docker). The rest of `D:\QTC360\` stays out of
+  scope. See `NEXT_PROMPT.md` §2.)*
 - `docs/` was created at the project root by this task so the audit has a home; F005 owns the final structure
   and may relocate the file. Section 2.4 records why the root location is the right default.
 - The reference inputs were relocated to `D:\RESORS_REFERENCE\` at operator instruction after the audit was

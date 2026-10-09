@@ -7,7 +7,7 @@ The project has two deliberately separated stages:
 - **Stage A (tasks F001–F063):** a genuinely working, domain-neutral enterprise foundation inspired by the supplied QTC360 source ZIP. Do not add construction business models or screens during this stage.
 - **Stage B (tasks D001–D091):** add the construction-specific domain as independent modules using the foundation's extension points.
 
-The original QTC360 ZIP is a **reference only**. Inspect it if actually present in the workspace. If missing, document that fact and use the provided text-derived design description; do not pretend to have inspected its source. Never transplant its branding, business rules, seed credentials or domain data.
+The original QTC360 source is a **reference only**, read from the extracted tree at `D:\QTC360\qtc360\` (the archive `D:\RESORS_REFERENCE\qtc360-main.zip` is kept for the audit record). Inspect it there — e.g. for production-Docker hints — by absolute path, read-only; never run anything from it. Never transplant its branding, business rules, seed credentials or domain data.
 
 ## Mandatory stack and non-negotiables
 - Frontend: React, Vite, TypeScript strict, React Router SPA, Tailwind CSS 4, shadcn/ui base-nova/Base UI where compatible, Lucide, TanStack Query/Table, React Hook Form + Zod, Axios, Recharts; **pnpm** package manager with `pnpm-lock.yaml` (operator override 2026-10-08, see `DECISIONS.md` C11 — `BIG-PROMPT.txt` says npm); accessible responsive light/dark/system theme.
