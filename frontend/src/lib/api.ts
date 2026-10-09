@@ -31,10 +31,12 @@ declare module 'axios' {
  *   turns out to still be valid the original request is retried **once**.
  *   Concurrent 401s share a single resolution (single-flight), and requests to
  *   `/auth/*` are never retried — a 401 from the login endpoint is the answer,
- *   not a stale session (BIG-PROMPT §6.2e).
- *
- * F032 supplies the handler; until then a 401 simply surfaces as an `ApiError`
- * and the caller keeps its state, which is correct — there is no session yet.
+ *   not a stale session (BIG-PROMPT §6.2e). F032 registers the handler.
+ * - **Unsafe requests carry the CSRF double-submit.** F029's middleware
+ *   demands `X-CSRF-Token` == the readable `__Host-csrf` cookie on every
+ *   POST/PUT/PATCH/DELETE that carries the session cookie. Putting it here —
+ *   one request interceptor — is what makes it impossible for a feature to
+ *   forget; a caller that sets the header itself (tests) keeps its value.
  */
 
 export type UnauthorizedHandler = () => Promise<boolean>
@@ -60,6 +62,41 @@ export const apiClient = axios.create({
 
 let unauthorizedHandler: UnauthorizedHandler | null = null
 let reauthInFlight: Promise<boolean> | null = null
+
+/** The readable CSRF companion cookie (F028 issues it; F029's middleware checks it). */
+export const CSRF_COOKIE_NAME = '__Host-csrf'
+export const CSRF_HEADER_NAME = 'X-CSRF-Token'
+
+const UNSAFE_METHODS = new Set(['post', 'put', 'patch', 'delete'])
+
+/**
+ * The `__Host-csrf` value, or null when the cookie is absent. The parameter
+ * exists so unit tests can hand in a cookie header without owning the real
+ * document; production always reads the default.
+ */
+export function readCsrfToken(cookieHeader: string = document.cookie): string | null {
+  for (const part of cookieHeader.split(';')) {
+    const separator = part.indexOf('=')
+    if (separator === -1) continue
+    if (part.slice(0, separator).trim() === CSRF_COOKIE_NAME) {
+      return part.slice(separator + 1).trim()
+    }
+  }
+  return null
+}
+
+apiClient.interceptors.request.use((config) => {
+  const method = (config.method ?? 'get').toLowerCase()
+  if (!UNSAFE_METHODS.has(method)) return config
+  const token = readCsrfToken()
+  // Login carries no session cookie and the middleware exempts it from the
+  // double-submit; attaching the header anyway is harmless (and correct the
+  // moment a stale session cookie makes the pair checkable).
+  if (token !== null && !config.headers.has(CSRF_HEADER_NAME)) {
+    config.headers.set(CSRF_HEADER_NAME, token)
+  }
+  return config
+})
 
 /**
  * Register (F032) or clear (tests, logout) the auth re-resolution used by the

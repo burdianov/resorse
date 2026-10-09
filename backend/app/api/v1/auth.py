@@ -278,6 +278,7 @@ async def me(
         full_name=user.full_name,
         must_change_password=user.must_change_password,
         phone=user.phone,
+        is_superuser=user.is_superuser,
         roles=sorted(role.name for role in user.roles),
         permissions=sorted(effective_permissions(user)),
     )

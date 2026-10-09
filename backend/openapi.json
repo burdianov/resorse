@@ -131,7 +131,7 @@
         "type": "object"
       },
       "MeResponse": {
-        "description": "``/auth/me`` — identity plus the effective access set (F031).\n\nExtends the login response rather than restating it: the identity fields\nare the same four, and one definition of \"who is this\" beats two that\nalmost match. ``roles`` are names (the UI displays them; ids belong to the\nadmin editor, F033), and ``permissions`` is the **expanded union** — a\nsuperuser sees every code's name, never a wildcard, so the frontend checks\nset membership and never special-cases a flag. Both lists are sorted, so\nresponses are deterministic and diffable.\n\n``is_active``/``is_deleted`` are deliberately absent: a session belonging\nto a disabled account does not resolve at all (F029), so fields that could\nonly ever read \"true\" would be decoration. ``is_superuser`` is absent for\nthe wildcard reason above — the union already says it.",
+        "description": "``/auth/me`` — identity plus the effective access set (F031).\n\nExtends the login response rather than restating it: the identity fields\nare the same four, and one definition of \"who is this\" beats two that\nalmost match. ``roles`` are names (the UI displays them; ids belong to the\nadmin editor, F033), and ``permissions`` is the **expanded union** — a\nsuperuser sees every code's name, never a wildcard, so the frontend checks\nset membership and never special-cases a flag. Both lists are sorted, so\nresponses are deterministic and diffable.\n\n``is_active``/``is_deleted`` are deliberately absent: a session belonging\nto a disabled account does not resolve at all (F029), so fields that could\nonly ever read \"true\" would be decoration. ``is_superuser`` is served —\nthe SPA's access model carries an explicit super-admin flag\n(``src/config/access.ts``, ARCHITECTURE §6's \"explicit super-admin\nhandling\"), and one truthful boolean beats a client that hardcodes\n``false`` and re-derives authority from grant-list length.",
         "properties": {
           "email": {
             "title": "Email",
@@ -145,6 +145,10 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "is_superuser": {
+            "title": "Is Superuser",
+            "type": "boolean"
           },
           "must_change_password": {
             "title": "Must Change Password",
@@ -182,6 +186,7 @@
           "full_name",
           "must_change_password",
           "phone",
+          "is_superuser",
           "roles",
           "permissions"
         ],

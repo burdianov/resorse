@@ -386,6 +386,39 @@ exception. This is that exception, recorded here and in `docs/STACK_VERSIONS.md`
 - The anti-flash script in `index.html` duplicates the key and the resolution rule deliberately — it must run
   before any module loads. Both copies carry a comment pointing at each other.
 
+### The session layer (F032)
+
+The SPA's understanding of the session lives in exactly one place (`src/lib/auth.tsx`), and its status *is*
+§6.2e's rule — the two refusals stay distinct:
+
+| status | meaning | what renders |
+|---|---|---|
+| `loading` | nothing known yet | a pending state |
+| `authenticated` | `/auth/me` answered 200 | the app; `NavigationAccess` comes from the response |
+| `anonymous` | `/auth/me` answered **401** | redirect to `/login`, the intended path in location state |
+| `error` | `/auth/me` unreachable (network/5xx) | **Retry** — a hiccup is not a logout |
+
+- **There is no refresh** (C12): `api.ts`'s 401 machinery is F018's, and F032 registers its handler —
+  one `/auth/me`, single-flight, the original request retried once. `/auth/*` requests are never retried.
+- **Login and password-change re-read `/auth/me`** rather than extending the login response: the permission
+  union has one source (F028's identity-only response was the point).
+- **Identity transitions clear the query cache** (`queryClient.clear()`), the belt to `queryKeys`'
+  id-in-key suspenders; a same-user refresh never clears.
+- **CSRF is an interceptor, not a discipline**: every unsafe request gets `X-CSRF-Token` from the readable
+  `__Host-csrf` cookie (F029's middleware refuses without it).
+- **`/login` and `/change-password` are standalone routes** — no shell. The anonymous visitor has no frame;
+  the forced-change user has one they are not yet allowed to use (F031 refuses regular endpoints until the
+  change completes), so rendering a sidebar of links that would all 403 would be a lie. `/change-password`
+  still demands a session — it is the way out of the forced state, not a public page — and offers a
+  *sign out instead* escape (§6.1's recovery rule, not a dead end).
+- **The header's account menu** (F032) carries change password, sign out and sign out everywhere (the last
+  behind F019's confirmation). Profile pages are F042's; until then no menu item links to one.
+- **`MeResponse.is_superuser` rides `/auth/me`** (C21, amending C20's omission): `NavigationAccess` has an
+  explicit super-admin flag for its visibility rules, and server truth beats a hardcoded `false`.
+- Actions that fail on the wire never masquerade as auth outcomes: the login card and the change form show
+  the server's own sentences (the uniform 401 verbatim; 422s mapped onto inputs — the API's field names
+  equal the form's by design; 429 with the throttle message).
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -875,6 +908,20 @@ Building authorization state in tests surfaced three SQLAlchemy traps, all under
 The general lesson: in tests, touch ORM attributes only while the objects are loaded, and let the *request*
 be the thing that proves re-reads.
 
+### Two frontend lessons from the auth screens (F032)
+
+- **The generated primitives carry no semantics.** `CardTitle`/`CardDescription` render `<div>`s (the
+  shadcn convention), so the auth cards — where the card *is* the page — wrap a real `<h1>` inside
+  `CardTitle`: assistive technology and role-based test queries both need a heading, and Tailwind's
+  preflight keeps the element visually identical. The general rule: when a UI primitive's element is
+  cosmetic, add the semantic element yourself rather than asserting on styling.
+- **Flow tests need a bigger time budget than unit tests.** `tests/auth/auth-flows.test.tsx` types whole
+  passwords keystroke by keystroke and crosses two network round trips per action; on a cold transform
+  cache that legitimately exceeds Testing Library's 1 s default, and the failure reads as "the button did
+  nothing" — a flake that is nobody's bug is still a bug. The fix is one per-file
+  `configure({ asyncUtilTimeout: 3000 })`: Vitest isolates module state per test file, so the raised
+  default cannot leak into other suites.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -892,6 +939,8 @@ be the thing that proves re-reads.
   the absolute deadline, a replayed ID kills its family, logout is idempotent, the origin + double-submit
   rules — C18, §3), **F030 the password-change lifecycle** (current-password proof incl. during the
   forced change, the re-authentication throttle, the one-commit rotate-and-revoke, the admin-reset
-  semantics — C19, §3), and **F031 the authorization guards** (the union via `effective_permissions`,
+  semantics — C19, §3), **F031 the authorization guards** (the union via `effective_permissions`,
   the `is_superuser` expansion as break-glass, the fail-closed dependency defaulting with the auth
-  router as the staged exemption list, `require_permission`, `/auth/me` — C20, §6).
+  router as the staged exemption list, `require_permission`, `/auth/me` — C20, §6), and **F032 the
+  session layer in the SPA** (the four-status session provider, the 401 re-resolution handler, the
+  CSRF interceptor, the login/forced-change standalone routes and the account menu — C21, §5).

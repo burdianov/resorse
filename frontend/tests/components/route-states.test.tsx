@@ -18,9 +18,16 @@ import type { RouteDefinition } from '@/config/navigation'
  * the root redirect, `/admin` → 403 while it has no target, the 404 catch-all,
  * direct 403, the route error boundary, and the automatic guard/permission
  * wiring `buildRouteObjects` applies to registry routes.
+ *
+ * Since F032 the shell sits behind the session boundary, so these tests state
+ * the session they assume by passing an access — the pre-authenticated shell
+ * path of `buildAppRoutes`, exactly what an authenticated caller renders. The
+ * anonymous redirect itself is covered in `tests/auth/auth-flows.test.tsx`.
  */
+const SIGNED_IN: NavigationAccess = { permissions: new Set(), isSuperuser: false }
+
 function renderApp(initialPath: string) {
-  const router = createMemoryRouter(buildAppRoutes(), { initialEntries: [initialPath] })
+  const router = createMemoryRouter(buildAppRoutes(SIGNED_IN), { initialEntries: [initialPath] })
   render(
     <ThemeProvider>
       <RouterProvider router={router} />
@@ -140,7 +147,7 @@ describe('route guard', () => {
       requiredPermissions: ['users.read'],
     })
 
-    renderRoutes([gated], '/admin/users')
+    renderRoutes([gated], '/admin/users', SIGNED_IN)
 
     expect(await screen.findByRole('heading', { name: '403 — Not authorised' })).toBeInTheDocument()
     expect(screen.queryByText('the page')).toBeNull()
@@ -200,7 +207,7 @@ describe('route error boundary', () => {
     }
     const bomb = route({ id: 'bomb', path: '/bomb', component: Exploding })
 
-    renderRoutes([bomb], '/bomb')
+    renderRoutes([bomb], '/bomb', SIGNED_IN)
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Something went wrong')

@@ -118,8 +118,11 @@ export type LoginResponse = {
  *
  * ``is_active``/``is_deleted`` are deliberately absent: a session belonging
  * to a disabled account does not resolve at all (F029), so fields that could
- * only ever read "true" would be decoration. ``is_superuser`` is absent for
- * the wildcard reason above — the union already says it.
+ * only ever read "true" would be decoration. ``is_superuser`` is served —
+ * the SPA's access model carries an explicit super-admin flag
+ * (``src/config/access.ts``, ARCHITECTURE §6's "explicit super-admin
+ * handling"), and one truthful boolean beats a client that hardcodes
+ * ``false`` and re-derives authority from grant-list length.
  */
 export type MeResponse = {
     /**
@@ -134,6 +137,10 @@ export type MeResponse = {
      * Id
      */
     id: string;
+    /**
+     * Is Superuser
+     */
+    is_superuser: boolean;
     /**
      * Must Change Password
      */

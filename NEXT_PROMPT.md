@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F031.
+> Last updated: 2026-10-10 — after task F032.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F032 in
-claude_code_pack/TASKS.md. Implement F032 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F033 in
+claude_code_pack/TASKS.md. Implement F033 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F032` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F033` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,30 +67,32 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F031 — Permission guards** (`app/core/permissions.py::effective_permissions` — the
-  union across roles, folded per request, with **`is_superuser` expanding to every code at runtime**
-  (break-glass, never persisted as grants; the seeded `super_admin` role stays the visible dictionary);
-  `app/api/v1/dependencies.py` now layers `optional_session` → `authenticated_session` (raw: 401) →
-  **`current_session` (the default: 401, or 403 while `must_change_password` is set)** →
-  `require_permission(code)` (a `PermissionCode` member + the union check, one generic 403); the
-  forced-change exemption list is exactly the auth router — logout, logout-all, change-password,
-  `/auth/me`; **`GET /auth/me`** serves identity + sorted role names + the expanded sorted union;
-  BP-6.3c's `require_admin` deliberately not built (specific codes are the boundary); DECISIONS C20;
-  9 new tests, 161 total; no migration; `openapi.json` + frontend types regenerated).
-- **Next task: F032 — Auth frontend.** "Login guard, session-renewal handling, forced-change and logout
-  flows." Accept: "Browser auth flow test". Everything it needs is live: the full backend auth surface
-  (login, logout, logout-all, change-password, `/auth/me`), the cookie + CSRF contract (`__Host-session`
-  HttpOnly; readable `__Host-csrf` copied into **`X-CSRF-Token` on every unsafe request**), the status
-  semantics to branch on — **401** = no/expired session (clear state, go to login), **403 + detail "Your
-  password must be changed before continuing."** = forced-change backstop, **403 generic** = insufficient
-  permission (403 UI), **422 field arrays** = map onto forms via `fieldErrors`, **429** = retry-after
-  message — and `/auth/me`'s `must_change_password` + `permissions` for routing and UI affordances
-  (the frontend's registry mirrors the codes; it is never the boundary). `lib/api.ts` already sends
-  cookies same-origin (Vite proxy) and normalises errors; F032 adds the auth guard, the forced-change
-  route, the 401 handling (BIG-PROMPT §6.2e: redirect only after anonymous/expired resolution; network
-  failure gets Retry UI, not a logout), logout/logout-all calls, and identity-scoped cache resets.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F031 sits on top of
-  `b8b12f9` (F030).
+- Last completed: **F032 — Auth frontend** (the SPA now has a real session: `src/lib/auth.tsx` — the
+  four-status provider (`loading`/`authenticated`/`anonymous` on a clear 401/`error` on network-5xx),
+  `/auth/me` as the identity source, identity transitions clearing the Query cache, the registered 401
+  re-resolution (no refresh exists — C12) and the CSRF request interceptor attaching `X-CSRF-Token` from
+  the readable cookie on every unsafe method; `ProtectedShell` + `RequireSession`
+  (`session-guard.tsx`) put §6.2e's rules in front of the shell — anonymous → `/login` with the intended
+  in-app path, **network failure → Retry, not a logout**, forced change → `/change-password`; standalone
+  `/login` and `/change-password` pages (centered cards, outside the shell) show the server's own
+  sentences — uniform 401 on the form, F030's field-addressable 422s mapped onto the change inputs (API
+  field names == form field names), 429 visible; the header gained the account menu (change password /
+  sign out / sign out everywhere behind F019's confirmation); `MeResponse.is_superuser` added to
+  `/auth/me` (C21 amends C20); DECISIONS C21; +14 frontend tests, **430 passing**; `openapi.json` +
+  types regenerated).
+- **Next task: F033 — Admin user API.** "Create list update deactivate with paging and scope."
+  Accept: "CRUD and privilege tests". Everything it needs is live: `require_permission(PermissionCode.X)`
+  + `current_session` (F031) for guards, `services/passwords.reset_password` for the reset endpoint
+  (`POST /admin/users/{id}/reset-password`, guard `users.reset_password` — C19), the `Role`/`Permission`
+  models and the seeded vocabulary, and the 403/401/422/429 semantics the frontend already branches on.
+  F033 owns the business rules C20 deliberately left to it: scope/paging filters **in SQL** (BP-8.2i),
+  "update" = full name/email/roles/active but **never passwords**, escalation prevention (nobody grants
+  what they do not hold; only superusers touch superusers), last-super-admin protections, auditing hooks
+  (F043 owns the log; F033 writes events if the interface exists by then — else note the gap), and the
+  list's sort/filter contract the F034 table will mirror. The admin pages are not registered in the
+  frontend nav yet (F034 does that) — do not register a route F034 has not built.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F032 sits on top of
+  `4a531b0` (F031; this task also amended `/auth/me` with `is_superuser` — same commit).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -211,6 +213,30 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **The SPA has a session (F032):** `src/lib/auth.tsx` — the one place the frontend's understanding of the
+  session lives, with four statuses whose split *is* BIG-PROMPT §6.2e: `loading` → pending, a **clear 401**
+  → `anonymous` → `/login` (intended in-app path kept in location state; `readIntendedPath` refuses
+  anything but a single-slash path — no open redirect), network/5xx while resolving → **`error` → Retry**
+  (a hiccup must never log anyone out), 200 → `authenticated` with `NavigationAccess` from `/auth/me`
+  (login and change-password re-read it — one definition of the permission union). **Identity transitions
+  clear the Query cache** (null↔id, id→other id — never a same-user refresh), the belt to `queryKeys`'
+  id-in-key suspenders. **The 401 machinery (F018's) now has its handler**: single-flight re-resolution
+  via `/auth/me`, the original request retried once, `/auth/*` never retried — no refresh endpoint exists
+  (C12). **CSRF rides a request interceptor** (`lib/api.ts`): every unsafe method automatically carries
+  `X-CSRF-Token` from the readable `__Host-csrf` cookie — a feature cannot forget it. **Routing**
+  (`session-guard.tsx` + `app/router.tsx`): the shell sits behind `ProtectedShell`, `/login` and
+  `/change-password` are standalone cards outside the shell (`/change-password` still requires a session
+  and offers *sign out instead* — §6.1's recovery rule, not a dead end); the forced-change flag becomes a
+  navigation, not a 403 wall. **`/login`** shows the server's uniform 401 verbatim (no enumeration
+  branches anywhere), **`/change-password`** maps F030's field-addressable 422s onto its inputs (the API's
+  field names ARE the form's field names) and shows the 429 sentence. The header's **account menu**
+  (change password / sign out / sign out everywhere behind F019's confirmation) — Profile pages stay
+  F042's, so no menu item links to one. `MeResponse.is_superuser` added to `/auth/me` (C21 amends C20).
+  Checks run: `pnpm run typecheck` clean; `pnpm exec vitest run` **430 passed** (14 new in
+  `tests/auth/auth-flows.test.tsx` — through the real route table, providers and `api.ts`, MSW the only
+  stand-in); `pnpm run build` succeeds (pre-existing chunk-size warning only); the F017 route-state tests
+  now state the session they assume (`buildAppRoutes(SIGNED_IN)`); `openapi.json` + generated types
+  regenerated.
 - **Authorization is live (F031):** `app/core/permissions.py::effective_permissions(user)` — the one
   definition of the union: the codes across the user's roles, folded per request from the graph F029's
   resolution loads (no cache; a role change applies on the next request). **`is_superuser` is
@@ -223,8 +249,9 @@ the archive original — `sha256sum` both to check):
   logout-all, change-password, `/auth/me` — the SPA reads the flag there to route), and
   `require_permission(PermissionCode.X)` (a member, not a string — a typo is an import error) layering
   `current_session` + the union check with one generic 403. **`GET /api/v1/auth/me`** serves identity +
-  sorted role names + the **expanded** sorted union — no `is_superuser` (redundant once expanded, the
-  frontend checks set membership), no `is_active` (a disabled account's session never resolves) —
+  sorted role names + the **expanded** sorted union — plus `is_superuser` since F032/C21 (the SPA's access
+  model carries the flag; server truth beats a hardcoded false), no `is_active` (a disabled account's
+  session never resolves) —
   reachable during a forced change; `PATCH /auth/me` + preferences are F041's. BP-6.3c's `require_admin`
   deliberately not built (specific codes are the boundary; super-admin *business rules* are F033/F035's).
   No migration; `openapi.json` + generated frontend types refreshed. **Tests:** 9 new, `uv run pytest`
@@ -383,6 +410,11 @@ the archive original — `sha256sum` both to check):
   gated by default** and the auth router as the staged exemption list; `require_permission` takes a
   `PermissionCode` member; `require_admin` deliberately not built; `/auth/me` = identity + expanded sorted
   union, reachable during a forced change), same date and same basis; rationale in ARCHITECTURE §6/§12.
+- **C21** — F032's session layer (the four-status provider — only a *clear* 401 redirects to `/login`,
+  network/5xx shows Retry; `/auth/me` as the identity source; identity transitions clear the Query cache;
+  the registered single-flight 401 re-resolution; the CSRF request interceptor; `ProtectedShell` +
+  standalone `/login`//`change-password`; the account menu; `MeResponse.is_superuser` added, amending
+  C20), same date and same basis; rationale in ARCHITECTURE §5/§12.
 - **C12's fallout is reconciled** — F025/F029/F032 were amended in `TASKS.md` to match.
 - **All seven F002 gaps are closed** (`docs/REQUIREMENT_TRACEABILITY.md` §14, now a resolution table):
   G-1 `input-group`→F011; G-2 the 21 enhanced generics distributed across F009/F011–F013/F016/F017/F019/F020/
@@ -452,6 +484,15 @@ the archive original — `sha256sum` both to check):
   `password:account:` — never `login:account:` (neither flow may lock the other out). F033 must build
   `POST /admin/users/{id}/reset-password` on `services/passwords.reset_password` behind F031's
   `users.reset_password` guard — the service deliberately does not enforce who may reset whom.
+- **The session layer's contracts are load-bearing (F032, C21):** only a *clear 401* may send anyone to
+  `/login` — an unreachable server renders Retry, and no future screen may "helpfully" redirect on a
+  network error. Unsafe requests get `X-CSRF-Token` from the api.ts interceptor — never hand-attach it,
+  never bypass `lib/api.ts` (axios directly), because the interceptor IS the CSRF guarantee. New
+  user-scoped queries must carry the user id in their key (`queryKeys`, F018) — the provider's
+  cache-clear on identity change is the belt, the key is the suspenders. Admin pages are **not** added to
+  the frontend nav until F034 registers them (a registered route is a rendered link); when F033 adds
+  `/admin/*` endpoints, the frontend keeps consuming them through `lib/api.ts` + generated types only.
+  `MeResponse.is_superuser` is real data now — do not re-derive authority from grant-list length.
 - **F031's `must_change_password` gate** (BIG-PROMPT §6.1) must let `POST /auth/change-password` (and
   login/logout) through while the flag is set — the forced-change flow needs the session it is about to
   rotate. The flag is cleared by the change itself (F030); the gate is about *regular* endpoints only.
@@ -566,6 +607,40 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F032 — Auth frontend.** The SPA now has a session, and §6.2e's rules are structure rather than
+  vigilance. `src/lib/auth.tsx` is the one place the client's understanding of the session lives —
+  four statuses whose split *is* the requirement: `loading`; `authenticated` (from `/auth/me`, the one
+  identity source — login and change-password re-read it); `anonymous` only on a **clear 401**; `error`
+  on network/5xx, which renders **Retry and stays put** — a hiccup must never log anyone out.
+  `ProtectedShell`/`RequireSession` (`components/layout/session-guard.tsx`) put that in front of the
+  shell: anonymous → `/login` carrying the intended in-app path (readIntendedPath refuses anything but a
+  single-slash path — an open redirect is impossible), forced change → `/change-password` (a navigation,
+  not a 403 wall), and the shell receives the resolved `NavigationAccess`. Identity transitions
+  (null↔id, id→other) **clear the TanStack Query cache** — the belt to F018's id-in-key suspenders; a
+  same-user refresh never clears. The F018 401 machinery got its handler: single-flight `/auth/me`
+  re-resolution and one retry, `/auth/*` never retried — there is no refresh endpoint (C12), and nothing
+  pretends otherwise. **CSRF became an interceptor**: `lib/api.ts` attaches `X-CSRF-Token` from the
+  readable `__Host-csrf` cookie on every unsafe method — impossible for a feature to forget. The
+  **login page** is a standalone centered card (brand from `config/branding.ts`, theme toggle) showing the
+  server's uniform 401 verbatim — no "no such account" branch exists anywhere — with shape-only client
+  validation and honest autocomplete attributes; `/login` routes an already-authenticated visitor through
+  (flag → `/change-password`, else the intended path). The **change-password page** serves the forced
+  flow and future Profile > Security links: `current_password`/`new_password` are the API's own field
+  names, so F030's field-addressable 422s land on the right inputs with zero translation; the confirm
+  field is client-side; the 429 shows the server's sentence; a *sign out instead* escape answers §6.1's
+  "recovery, not a dead end". The header gained the **account menu** (F032's promised owner):
+  change password, sign out, and sign out everywhere behind F019's confirmation — Profile items stay
+  unlinked until F042 registers that page. `MeResponse.is_superuser` was added to `/auth/me` (C21
+  amends C20's omission — the SPA's access model carries the flag, and server truth beats a hardcoded
+  false); `CardTitle`s on the auth cards wrap real `h1`s (the generated primitives render divs).
+  Checks run: `pnpm run typecheck` clean; `pnpm exec vitest run` **430 passed** (14 new —
+  `tests/auth/auth-flows.test.tsx` drives the real route table, provider stack and `api.ts` through MSW:
+  anonymous redirect + intended-path return, the server-refusal display, local validation, the
+  forced-change landing/bounce/completion (with the CSRF header asserted on the wire), 422 mapping onto
+  inputs, mismatch refusal without a request, both sign-out flows, the **network-failure Retry**
+  (§6.2e), and the registered 401 re-resolution retrying exactly once); `pnpm run build` succeeds
+  (pre-existing chunk-size warning only); the F017 route-state tests now state their session
+  (`buildAppRoutes(SIGNED_IN)`); `openapi.json` + generated types regenerated and committed.
 - **F031 — Permission guards.** The authorization boundary, built so the *default* is the safe answer.
   `app/core/permissions.py::effective_permissions(user)` — the union across the user's roles, folded per
   request from the graph F029's resolution already loaded (a role change applies on the next request,
@@ -1025,19 +1100,21 @@ and prints the real URL; uvicorn fails with a clear error.
 | **`/auth/me` smoke (F031)** | with the jar from the F029 row freshly logged in: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/auth/me` | **200** with identity (`id`, `email`, `full_name`, `phone`, `must_change_password`), `roles` — for the bootstrap account `["super_admin"]` — and **`permissions`**: the bootstrap account is `is_superuser`, so the list is **all 17 codes** sorted (`audit.read` … `users.update`) — the runtime expansion, no wildcard. Without the cookie: **401** `{"detail":"Not authenticated."}`. Sign in as a role-limited account (create one with F033 when it lands) and the list becomes exactly that role's union |
 | **Password-change smoke (F030)** — the *safe* path: no state change | with the jar from the F029 row freshly logged in (steps 1–2), **`<csrf>` = the jar's `__Host-csrf`**: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/auth/change-password -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"current_password":"definitely-wrong","new_password":"a brand new passphrase"}'` | **422** with `detail: [{"type":"value_error","loc":["body","current_password"],"msg":"Current password is incorrect."}]` — field-addressable, no `input`, and the session survives (the next command still works). Drop `X-CSRF-Token` → **403**; a `new_password` of `password123` (with the *correct* current one — this one does verify) → **422** with two entries on `new_password` (too short + common list) and nothing changed. Five wrong current passwords → the sixth is **429** + `Retry-After`. A **real** change (correct current + policy-passing new) answers **204** + a fresh cookie pair and invalidates every other session — if you smoke that, pick the new password deliberately and immediately update `LOCAL_CREDENTIALS.md`, because login will demand it from then on |
 | Backend lint and types (F023) | `cd D:\resors\backend; uv run ruff check .; uv run ruff format --check .; uv run mypy app migrations` | clean. The CI gate that *enforces* this is F056's; these commands work today |
-| **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |
+| **Renders, not just compiles (F018 fix; updated by F032)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | with no session, the DOM is the **login card** — `<h1>Sign in</h1>`, the email/password inputs, the theme toggle (the shell is behind the session boundary now; the sidebar + `Dashboard` appear once signed in). Add `2>&1 \| Select-String "CONSOLE"` to see console output; an empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss. If the card never appears and `CONSOLE` shows a failed `/api/v1/auth/me` fetch, check the backend is running — that request is the first thing the app makes |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"`, removes reinstated dependencies (run after every `shadcn add`) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **416 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **430 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| **Frontend auth-flow tests (F032)** | `cd D:\resors\frontend; pnpm exec vitest run tests/auth/auth-flows.test.tsx` | **14 passed** — the session boundary (anonymous redirect with intended-path return; network failure → Retry, **not** login), sign-in failures shown verbatim, local validation without a request, the forced-change landing/bounce/completion with the CSRF header asserted on the wire, 422 field mapping, mismatch refusal, both sign-out flows, the registered 401 re-resolution (one retry), and `readCsrfToken` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
 | **Sidebar preference (F015)** | click the round chevron on the sidebar edge, then press **F5** | it stays collapsed after reload; console: `localStorage.getItem('app.sidebar')` → `"collapsed"` |
 | **Nav behaviour (F015)** | inside the collapsed rail, hover the **Dashboard** row; click the **Overview** group label | the label appears as a tooltip in the rail; the group collapses/expands and the choice survives **F5** (`app.sidebar.groups`) |
 | **Context slot is off (F015)** | look at the header on desktop | **no** context selector is rendered — the slot is disabled by default (BIG-PROMPT §3.2a); it appears only when a module injects an enabled adapter |
 | **Command palette (F016)** | press **Ctrl+K** (or Cmd+K), or click the **Search anything** box in the header | the palette opens listing `Overview → Dashboard`; typing filters; **Enter** jumps to the highlighted page; **Escape** closes and focus returns to where it was |
-| **Route states (F017)** | visit **`/`**, **`/admin`**, **`/nonexistent`**, **`/403`**, **`/404`** in turn | `/` lands on `/dashboard` — the protected placeholder, which says plainly that the real screen is F047; `/admin` shows the **403** page (no admin route is registered yet, so there is nothing to redirect to); any unknown path shows **404 inside the shell** (navigation still usable); `/403` and `/404` render those pages directly |
-| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — today only **Dashboard**. The Administration group is **absent, not empty**: its pages arrive in F034–F044, and an anonymous caller (no session until F032) may see none of them |
-| **Typed client, end to end (F018)** | with the backend running, open http://localhost:5173 and paste into the devtools console: `const { api } = await import('/src/lib/api.ts'); await api.get('/api/v1/health')` | the health JSON straight from FastAPI (`{"status":"ok","name":"Application Platform",…}`) — the SPA reached the API through the Vite proxy with the generated types. Then `await api.get('/api/v1/nope').catch(e => e.detail)` → **`The requested item was not found.`** — the normalised `ApiError`, not an Axios error. The app itself makes **no** API calls on load yet: no page fabricates data, and F047's dashboard is the first real consumer |
+| **Route states (F017; session-footnote by F032)** | **signed in**, visit **`/`**, **`/admin`**, **`/nonexistent`**, **`/403`**, **`/404`** in turn (anonymous, every one of these lands on `/login` with the path remembered — that is F032's boundary working) | `/` lands on `/dashboard` — the protected placeholder, which says plainly that the real screen is F047; `/admin` shows the **403** page (no admin route is registered yet, so there is nothing to redirect to); any unknown path shows **404 inside the shell** (navigation still usable); `/403` and `/404` render those pages directly |
+| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — today only **Dashboard**. The Administration group is **absent, not empty**: its pages arrive in F034–F044; an anonymous visitor never reaches the shell at all (F032 sends them to `/login`), and a signed-in caller without administration codes sees no Administration group |
+| **Auth smoke (F032)** — the full round trip | backend + frontend running; open http://localhost:5173 in a browser | anonymous → the **Sign in** card (no shell). Sign in with the bootstrap account (`LOCAL_CREDENTIALS.md`): it has `must_change_password=true`, so the app lands on **Choose a new password** — try `/dashboard` and get bounced back; complete the change (**204**, cookies rotate) and the dashboard appears with your name in the header menu. Open the account menu: **Sign out** → login card; sign in again with the **new** password (update `LOCAL_CREDENTIALS.md` the moment you change it). Wrong password shows `Invalid email or password.`; five wrong ones → the 429 sentence. **Sign out everywhere…** asks for confirmation, then ends every session |
+| **Typed client, end to end (F018)** | with the backend running, open http://localhost:5173 and paste into the devtools console: `const { api } = await import('/src/lib/api.ts'); await api.get('/api/v1/health')` | the health JSON straight from FastAPI (`{"status":"ok","name":"Application Platform",…}`) — the SPA reached the API through the Vite proxy with the generated types. Then `await api.get('/api/v1/nope').catch(e => e.detail)` → **`The requested item was not found.`** — the normalised `ApiError`, not an Axios error. The app itself now makes exactly **one** API call on load — `GET /api/v1/auth/me` (F032; watch it in the network tab) — and no page fabricates data; F047's dashboard is the first real data consumer |
 | **Theme persists (F010)** | open the app, click the **sun/moon button in the header**, choose **Light / Dark / System**, then press **F5** | the chosen theme is still applied after reload, with **no flash** of the other theme first |
 | Inspect the stored theme (F010) | browser console: `localStorage.getItem('app.theme')` | `"light"`, `"dark"` or `"system"` |
 | Force a theme by hand (F009) | browser console: `document.documentElement.classList.add('dark')` / `.remove('dark')` | page repaints; a dark scrollbar on a light page would mean the token theme is broken |

@@ -219,6 +219,7 @@ async def test_me_returns_identity_roles_and_the_deduped_sorted_union(
     assert body["full_name"] == "Ada Lovelace"
     assert body["phone"] == "+971 50 000 0000"
     assert body["must_change_password"] is False
+    assert body["is_superuser"] is False
     assert body["roles"] == ["editor", "reader"]  # sorted names
     # The union across roles, deduplicated and sorted: users.read is held by
     # both roles and appears once.
@@ -243,6 +244,8 @@ async def test_a_superuser_holds_every_code_without_any_role(
     # The expansion, not a wildcard: every code by name, so the frontend
     # checks set membership and never special-cases a flag.
     assert body["permissions"] == sorted(ALL_PERMISSION_CODES)
+    # The flag rides along truthfully (the SPA's access model carries it).
+    assert body["is_superuser"] is True
 
 
 async def test_me_is_reachable_during_a_forced_password_change(
