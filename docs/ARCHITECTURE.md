@@ -109,21 +109,64 @@ mechanics:
 - **A success resets the account budget only.** The account bucket is cleared (a legitimate user who
   fumbled four attempts is not half-locked); the address bucket is not, or one known credential would buy
   a fresh guessing budget for other accounts.
-- **Cookies here, enforcement in F029.** Login issues the `__Host-session` cookie (HttpOnly, Secure,
+- **Cookies here, enforcement there (F029).** Login issues the `__Host-session` cookie (HttpOnly, Secure,
   SameSite=Lax, Path=/, no Domain, no Max-Age — a browser-session cookie; the row's deadlines are the
-  authority) and the readable `__Host-csrf` companion for F029's double-submit check. `Secure` even in
-  development: browsers treat `http://localhost` as a secure context, and the `__Host-` prefix requires it.
+  authority) and the readable `__Host-csrf` companion, which `app/core/csrf.py` (F029) checks on every
+  unsafe method. The attributes live in `app/core/cookies.py`, one spelling for login, rotation and
+  logout. `Secure` even in development: browsers treat `http://localhost` as a secure context, and the
+  `__Host-` prefix requires it.
 - **The throttling address is the transport's peer** (`request.client.host`). `X-Forwarded-For` is
   deliberately not consulted — without a validated proxy it is client-controlled and its trust would be a
   rate-limit bypass; that validation is deployment configuration (F060).
 - **A below-policy hash is upgraded on the way through** (`password_needs_rehash` → re-hash with the
   plaintext in hand), so raising Argon2 parameters never needs a reset wave (F026's promise, kept here).
-- `token_version` is not touched: under this design the session row is the revocation unit, and F029
-  decides whether the column earns a second role.
+- `token_version` is not touched — and F029 decided (C18) it never is: the session row is the only
+  revocation unit, and deactivation, password change and role changes revoke rows rather than bump a
+  counter.
 
 The response is identity only (`id`, `email`, `full_name`, `must_change_password`) — no roles, no
 permissions. The effective permission union is F031's dependency and will be served by `/auth/me`; one
 definition of the access set beats two that almost match.
+
+### Sessions at request time (F029)
+
+`resolve_session` (`app/services/sessions.py`, wrapped by the dependencies in `app/api/v1/dependencies.py`)
+is the one place a cookie becomes an identity. The rules are ordered so the dangerous case is handled first:
+
+- **A superseded ID is a replay.** A row revoked as `rotated` being presented again means a rotation's
+  predecessor outlived its rotation — a thief, or the victim's stale tab; the two are indistinguishable, so
+  both get the same answer: every live member of the family dies as `theft_detected`, and the presented row
+  keeps its `rotated` record (the history of what happened first survives what happened next). The check
+  runs before expiry, and it applies wherever the cookie is presented — logout included, because a stale
+  cookie is not a loophole.
+- **Expiry and logouts are quiet refusals** — one 401, no write. Expiry is not a security event. A
+  deactivated or deleted user's live row is refused but left alone for the admin flow (F033) to revoke with
+  a real reason: refusing access and recording why are different obligations.
+- **The idle deadline slides on activity**, capped at the absolute deadline that never moves — and the
+  resolver commits the slide itself, because the clock moved whatever the handler does next (the
+  bookkeeping rule of `app/core/database.py`; login's commit-before-raise is the same instinct).
+- **Rotation** issues a successor in the same family — predecessor `rotated` + `replaced_by_id`, one
+  commit — and the successor **inherits the absolute deadline**: an absolute deadline is precisely the
+  promise that no rotation extends it. Its idle deadline restarts. Rotation is fired by events (password
+  change F030, role change F035), never by a refresh endpoint (C12).
+- **Logout is 204, always.** Its goal state is "no session", which a junk cookie already satisfies, so
+  there is no failure to report and nothing to report it to; both cookies leave the browser either way.
+  **Logout-all** is the opposite: it acts under a session (401 without one) and revokes every live row of
+  the user.
+
+CSRF is `app/core/csrf.py` — an ASGI middleware rather than a per-endpoint dependency, so that a future
+unsafe endpoint is covered before its author writes it. The two checkable layers of the table above:
+
+- On POST/PUT/PATCH/DELETE, a claimed `Origin` (or, failing that, `Referer`) must reduce to an origin in
+  `Settings.allowed_origins` (`ALLOWED_ORIGINS`; the default is the development Vite origin, because the
+  browser's origin is the *frontend's*; F060 validates it in production). `Origin: null` reduces to nothing
+  and is refused. A request claiming **no** origin is a scripted client — the double-submit is the binding
+  check for it, and browsers always claim one.
+- A request **carrying the session cookie** must also present `X-CSRF-Token` equal to the `__Host-csrf`
+  cookie (constant-time, compared as bytes — a hostile non-ASCII header earns a 403, not a 500). The only
+  exemption is `POST /auth/login`'s double-submit: login *establishes* a session rather than acting under
+  one, and the dead HttpOnly cookie a browser cannot delete would otherwise lock the user out of the login
+  form. Login CSRF remains covered by the origin check.
 
 ### Password policy (F026)
 
@@ -189,7 +232,7 @@ Choosing opaque sessions removes three things the requirements assumed. None is 
 |---|---|---|
 | `POST /api/v1/auth/refresh` (§8.3 endpoint list) | **Not implemented — no such concept.** §8.3 permits evolving endpoints when justified; refresh is absent because there is no token to refresh. Session lifetime is extended server-side instead. | F028, F029 |
 | §6.2e single-flight refresh interceptor | **Not needed.** The Axios client retries once on a `401` after re-resolving auth state, with no refresh call and no cross-tab coordination. | F018, F032 |
-| F029 "rotation reuse detection" | **Reinterpreted**: reuse detection applies to a rotated session ID being presented again (family revoked) rather than to refresh-token families. The task's other halves — logout, CSRF policy — stand unchanged. | F029 |
+| F029 "rotation reuse detection" | **Reinterpreted**: reuse detection applies to a rotated session ID being presented again (family revoked) rather than to refresh-token families. The task's other halves — logout, CSRF policy — stand unchanged. Implemented in F029 (`app/services/sessions.py`, `app/core/csrf.py`). | F029 |
 
 `DECISIONS.md` **C12** records this choice. If the operator prefers the access + refresh token design instead,
 it must be changed *before* F025, because the session table's shape differs.
@@ -424,7 +467,8 @@ Discharged. When §3 was written, two task-list entries changed meaning under th
 
 - **F025** builds the `sessions` table (not `refresh_tokens`) — **done**: `app/models/session.py`, revision `0003`.
 - **F029** covers session rotation, superseded-ID replay detection, logout/logout-all and CSRF policy (not
-  refresh-token rotation). `TASKS.md` was amended to say exactly that; no further action is outstanding.
+  refresh-token rotation). `TASKS.md` was amended to say exactly that — **done**: `app/services/sessions.py`,
+  `app/core/csrf.py` (the middleware in `app/main.py`), `app/api/v1/dependencies.py`.
 
 ## 12. Implementation notes
 
@@ -718,6 +762,18 @@ Two smaller traps in the same file, both now pinned by tests:
   statement: this path must never traverse the authorization graph, so a future edit that tries fails
   loudly rather than quietly costing two queries.
 
+### Bookkeeping commits before the handler runs (F029)
+
+Login's commit-before-raise stopped being a one-off: F029's request dependency also writes **before the
+handler exists in the call stack**, and both writes must survive a handler that fails. The idle-deadline
+slide is activity — a 404 still moved the clock — and the replay-triggered family revocation must outlive
+the 401 that immediately follows it: the response is a refusal, the revocation is a fact. The rule of thumb
+`app/core/database.py` now states: **the handler's unit of work commits in the service the handler calls;
+bookkeeping commits where it is written.** The bulk-UPDATE identity-map trap recorded above (F025) reapplies
+verbatim — the family revocation is that shape — so the tests re-read the affected rows with
+`populate_existing=True` before asserting on them: the same discipline F025's model-level rehearsal called
+for, now exercised through the real service and the real endpoint.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -729,6 +785,8 @@ Two smaller traps in the same file, both now pinned by tests:
   confirmed rather than invented now — **F025 confirmed the session lifetimes**
   (`Settings.session_idle_timeout_minutes` = 720, `session_absolute_lifetime_days` = 30), **F026 the
   password policy** (12–128 characters, denylist, 5 login attempts / 15 minutes — §3), **F027 the
-  bootstrap credential policy and the default role catalog** (C15/C16 — §3, §6), and **F028 the login
+  bootstrap credential policy and the default role catalog** (C15/C16 — §3, §6), **F028 the login
   behaviour that consumes them** (uniform 401/429, the decoy verification, commit-before-raise, the
-  account-bucket reset — §3).
+  account-bucket reset — §3), and **F029 the session lifecycle and CSRF enforcement** (rotation inherits
+  the absolute deadline, a replayed ID kills its family, logout is idempotent, the origin + double-submit
+  rules — C18, §3).

@@ -1,7 +1,8 @@
-"""Authentication endpoints (F028 opens the surface with login).
+"""Authentication endpoints (F028 login; F029 adds logout and logout-all).
 
-The endpoint is deliberately thin: the service (``app/services/auth.py``)
-decides, this layer translates. Three outcomes exist, and only three:
+The endpoint layer is deliberately thin: the services
+(``app/services/auth.py``, ``app/services/sessions.py``) decide, this layer
+translates. For login, three outcomes exist and only three:
 
 - **200** — a session was issued; the two cookies are set here.
 - **401** — one message (:data:`INVALID_CREDENTIALS_DETAIL`) for *every* way
@@ -13,6 +14,16 @@ decides, this layer translates. Three outcomes exist, and only three:
 
 422 is reserved for a structurally invalid body (missing field, absurd
 lengths), which reveals nothing about any account.
+
+Logout is the opposite shape on purpose: **204, always.** Its goal state is
+"no session", which an expired row or a junk cookie already satisfies, so
+there is no failure case to report — and nothing to report it to. The full
+resolution still runs (F029), so replaying a *superseded* ID through logout
+triggers the same family revocation as anywhere else.
+
+Every unsafe endpoint here sits behind F029's CSRF middleware
+(``app/core/csrf.py``): a request carrying the session cookie must pass the
+origin check and present ``X-CSRF-Token`` matching the ``__Host-csrf`` cookie.
 """
 
 from typing import Annotated
@@ -20,15 +31,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.dependencies import current_session, optional_session
+from app.core.cookies import clear_session_cookies, set_session_cookies
 from app.core.database import get_session
 from app.schemas.auth import AuthenticatedUser, LoginRequest, LoginResponse
-from app.services.auth import (
-    CSRF_COOKIE_NAME,
-    SESSION_COOKIE_NAME,
-    InvalidCredentials,
-    LoginRateLimited,
-    log_in,
-)
+from app.services.auth import InvalidCredentials, LoginRateLimited, log_in
+from app.services.sessions import SessionContext, log_out, log_out_all
 
 router = APIRouter(prefix="/auth")
 
@@ -77,29 +85,64 @@ async def login(
             detail=INVALID_CREDENTIALS_DETAIL,
         ) from invalid
 
-    # No Max-Age/Expires: a browser-session cookie. The row's deadlines are
-    # authoritative either way (the request dependency enforces them), so the
-    # cookie's client-side lifetime adds nothing — and a cookie that outlives
-    # the row would only produce 401s that the frontend already handles.
-    #
-    # `secure=True` even in development: browsers treat http://localhost as a
-    # secure context, and the `__Host-` prefix requires the attribute.
-    response.set_cookie(
-        SESSION_COOKIE_NAME,
-        issued.token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        path="/",
-    )
-    # Readable by design (double-submit): F029 compares this value against the
-    # X-CSRF-Token header on unsafe methods.
-    response.set_cookie(
-        CSRF_COOKIE_NAME,
-        issued.csrf_token,
-        httponly=False,
-        secure=True,
-        samesite="lax",
-        path="/",
-    )
+    # The cookie contract (names, attributes) lives in app/core/cookies.py:
+    # logout and rotation must set and clear the exact same spellings.
+    set_session_cookies(response, token=issued.token, csrf_token=issued.csrf_token)
     return LoginResponse(user=AuthenticatedUser.model_validate(issued.user))
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    summary="End the current session",
+    responses={
+        403: {"description": "CSRF check failed (see docs/ARCHITECTURE.md §3)."},
+    },
+)
+async def logout(
+    context: Annotated[SessionContext | None, Depends(optional_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    """End the session this request presented, and clear both cookies.
+
+    Idempotent: no cookie, a junk cookie, an already-ended session — the
+    answer is the same 204 and the cookies still leave the browser. The
+    resolution that produced ``context`` is the full one, so a *rotated*
+    ID presented here trips the same family revocation as anywhere else; a
+    stale tab is not a loophole, and neither is a thief.
+    """
+    if context is not None:
+        await log_out(session, context)
+
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_session_cookies(response)
+    return response
+
+
+@router.post(
+    "/logout-all",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    summary="End every session of the signed-in user",
+    responses={
+        401: {"description": "No usable session was presented."},
+        403: {"description": "CSRF check failed (see docs/ARCHITECTURE.md §3)."},
+    },
+)
+async def logout_all(
+    context: Annotated[SessionContext, Depends(current_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    """Revoke every live session of the caller's account, this one included.
+
+    Distinct from logout in the one way that matters: it acts under a session
+    (401 without one), so it can revoke "all *my other* sessions" — the
+    response to "someone may have my credentials". One bulk UPDATE; the
+    family link is irrelevant here, because every family dies.
+    """
+    await log_out_all(session, user_id=context.user.id)
+
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_session_cookies(response)
+    return response

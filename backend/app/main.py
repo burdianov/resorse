@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
+from app.core.csrf import CsrfMiddleware
 from app.core.database import dispose_engine
 
 
@@ -31,6 +32,14 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         lifespan=lifespan,
+    )
+    # CSRF (F029) wraps everything, so no unsafe endpoint can be added
+    # without it (app/core/csrf.py). Login is exempt from the double-submit
+    # only — it establishes a session rather than acting under one.
+    application.add_middleware(
+        CsrfMiddleware,
+        trusted_origins=settings.trusted_origins,
+        session_exempt_paths=frozenset({f"{settings.api_v1_prefix}/auth/login"}),
     )
     application.include_router(api_router, prefix=settings.api_v1_prefix)
     return application

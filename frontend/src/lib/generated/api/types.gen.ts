@@ -147,6 +147,56 @@ export type LoginApiV1AuthLoginPostResponses = {
 
 export type LoginApiV1AuthLoginPostResponse = LoginApiV1AuthLoginPostResponses[keyof LoginApiV1AuthLoginPostResponses];
 
+export type LogoutApiV1AuthLogoutPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/logout';
+};
+
+export type LogoutApiV1AuthLogoutPostErrors = {
+    /**
+     * CSRF check failed (see docs/ARCHITECTURE.md §3).
+     */
+    403: unknown;
+};
+
+export type LogoutApiV1AuthLogoutPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type LogoutApiV1AuthLogoutPostResponse = LogoutApiV1AuthLogoutPostResponses[keyof LogoutApiV1AuthLogoutPostResponses];
+
+export type LogoutAllApiV1AuthLogoutAllPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/logout-all';
+};
+
+export type LogoutAllApiV1AuthLogoutAllPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * CSRF check failed (see docs/ARCHITECTURE.md §3).
+     */
+    403: unknown;
+};
+
+export type LogoutAllApiV1AuthLogoutAllPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type LogoutAllApiV1AuthLogoutAllPostResponse = LogoutAllApiV1AuthLogoutAllPostResponses[keyof LogoutAllApiV1AuthLogoutAllPostResponses];
+
 export type HealthApiV1HealthGetData = {
     body?: never;
     path?: never;

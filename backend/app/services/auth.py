@@ -27,9 +27,9 @@ What is issued (ARCHITECTURE §3, DECISIONS C12): a 256-bit token from F025's
 ``generate_session_token``, stored only as its SHA-256 digest, one new rotation
 family per login (``family_id`` — generated here, never by the database, so a
 rotation that forgets to copy one cannot silently mint a new family, F029), the
-configured idle and absolute deadlines, and a CSRF companion token. The two
-cookies themselves are set by the HTTP layer; this module never touches
-``Response`` objects.
+configured idle and absolute deadlines, and a CSRF companion token. The cookie
+spellings live in ``app/core/cookies.py`` (F029 moved them there when logout
+needed them back); this module never touches ``Response`` objects.
 
 ``token_version`` is deliberately untouched — under the opaque-session design
 the session row *is* the revocation unit, and F029 decides whether the column
@@ -55,15 +55,6 @@ from app.core.security import (
 )
 from app.models.identity import User
 from app.models.session import UserSession
-
-# The two cookies (ARCHITECTURE §3). Both carry the `__Host-` prefix, which
-# browsers only honour when the cookie is Secure, Path=/ and Domain-less — the
-# prefix is what makes "a subdomain cannot set or shadow this cookie" true.
-# The session cookie is HttpOnly (nothing in JavaScript may read it); the CSRF
-# cookie is deliberately readable — F029's double-submit check compares it
-# against the X-CSRF-Token header, which only works if the client can read it.
-SESSION_COOKIE_NAME = "__Host-session"
-CSRF_COOKIE_NAME = "__Host-csrf"
 
 
 class InvalidCredentials(Exception):

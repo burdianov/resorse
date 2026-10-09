@@ -19,9 +19,10 @@ starts from an empty schema, in a fixed order or any other.
 
 import asyncio
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 
+import httpx
 import pytest
 import pytest_asyncio
 from alembic import command
@@ -31,7 +32,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
-from app.core.database import get_engine, get_sessionmaker
+from app.core.database import get_engine, get_session, get_sessionmaker
 
 TEST_DATABASE_NAME = "app_test"
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -118,3 +119,47 @@ async def session(test_database_url: str) -> AsyncIterator[AsyncSession]:
             await transaction.rollback()
     finally:
         await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def make_client(
+    session: AsyncSession,
+) -> AsyncIterator[Callable[[str], Awaitable[httpx.AsyncClient]]]:
+    """Builders for app clients, each pretending to be a distinct peer address.
+
+    The API is exercised through the real FastAPI application over httpx's
+    ASGI transport — nothing about the request path is stubbed; only the
+    request-scoped database session is redirected (dependency override) onto
+    the rollback fixture, so a session a request committed is visible to the
+    test. Rate limiting counts per address, so a test that needs a fresh IP
+    budget opens its own client; every client shares the one session.
+    """
+    from app.main import app
+
+    async def session_override() -> AsyncIterator[AsyncSession]:
+        yield session
+
+    app.dependency_overrides[get_session] = session_override
+    opened: list[httpx.AsyncClient] = []
+
+    async def make(ip: str = "203.0.113.7") -> httpx.AsyncClient:
+        client = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app, client=(ip, 40301)),
+            base_url="http://testserver",
+        )
+        opened.append(client)
+        return client
+
+    try:
+        yield make
+    finally:
+        for client in opened:
+            await client.aclose()
+        app.dependency_overrides.pop(get_session, None)
+
+
+@pytest_asyncio.fixture
+async def client(
+    make_client: Callable[[str], Awaitable[httpx.AsyncClient]],
+) -> httpx.AsyncClient:
+    return await make_client()

@@ -64,6 +64,23 @@ class Settings(BaseSettings):
     login_max_attempts: int = 5
     login_attempt_window_minutes: int = 15
 
+    # The CSRF origin allow-list (F029), comma-separated full origins as a
+    # browser writes them in `Origin`. Development talks to the Vite dev
+    # server, which proxies /api to the backend, so the browser's origin is
+    # the *frontend's* (:5173) — not the API's. Production is same-origin
+    # behind Caddy, so a deployment sets this to its public origin; F060
+    # validates that it is set explicitly there.
+    allowed_origins: str = "http://localhost:5173"
+
+    @property
+    def trusted_origins(self) -> frozenset[str]:
+        """``allowed_origins`` as a lookup set: trimmed, lowercased, slash-free."""
+        return frozenset(
+            origin.strip().rstrip("/").lower()
+            for origin in self.allowed_origins.split(",")
+            if origin.strip()
+        )
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

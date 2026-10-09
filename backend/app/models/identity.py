@@ -81,9 +81,10 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # The source's invalidation pattern, kept because §6.1a requires the field.
-    # Under the opaque-session design (ARCHITECTURE §3) privilege changes are
-    # handled by *rotating the session*, so this is the second line: F029
-    # decides how (and whether) it is bumped.
+    # Under the opaque-session design (ARCHITECTURE §3) the session row is the
+    # revocation unit, so the column has **no second role**: F029 resolved
+    # (DECISIONS C18) that deactivation, password change and role changes
+    # revoke rows — nothing bumps a counter.
     token_version: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
 
     # Loading strategy: the auth path needs roles and their permissions on

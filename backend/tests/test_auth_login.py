@@ -4,7 +4,8 @@ The acceptance is "real DB integration tests", so nothing here stubs the
 request path: every test drives ``POST /api/v1/auth/login`` through the actual
 FastAPI application over httpx's ASGI transport, with the request-scoped
 database session redirected (dependency override) onto the rollback fixture —
-the CLI tests' "lending factory" pattern, one layer up.
+the CLI tests' "lending factory" pattern, one layer up. The client fixtures
+live in ``conftest.py`` (F029's tests share them).
 
 What this file pins down, in order of how easy each is to get wrong:
 
@@ -31,17 +32,16 @@ The frozen instant sits exactly at the start of a 15-minute window, which also
 makes ``Retry-After`` deterministic (the full 900 seconds).
 """
 
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta, tzinfo
 
 import httpx
 import pytest
-import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import INVALID_CREDENTIALS_DETAIL, RATE_LIMITED_DETAIL
-from app.core.database import get_session
+from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
 from app.core.rate_limit import account_key, clear, ip_key
 from app.core.security import (
     Argon2Parameters,
@@ -55,7 +55,6 @@ from app.models import User, UserSession
 from app.models.rate_limit import RateLimitBucket
 from app.schemas.auth import MAX_EMAIL_LENGTH, MAX_PASSWORD_LENGTH
 from app.services import auth as auth_service
-from app.services.auth import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
 
 pytestmark = pytest.mark.asyncio
 
@@ -125,50 +124,6 @@ async def bucket_row(session: AsyncSession, key: str) -> RateLimitBucket | None:
 
 async def session_rows(session: AsyncSession) -> list[UserSession]:
     return list(await session.scalars(select(UserSession)))
-
-
-# --- fixtures ----------------------------------------------------------------
-
-
-@pytest_asyncio.fixture
-async def make_client(
-    session: AsyncSession,
-) -> AsyncIterator[Callable[[str], Awaitable[httpx.AsyncClient]]]:
-    """Builders for app clients, each pretending to be a distinct peer address.
-
-    Rate limiting counts per address, so tests that need a fresh IP budget open
-    their own client; all clients share the one rollback session, so a session
-    a request committed is visible to the test.
-    """
-    from app.main import app
-
-    async def session_override() -> AsyncIterator[AsyncSession]:
-        yield session
-
-    app.dependency_overrides[get_session] = session_override
-    opened: list[httpx.AsyncClient] = []
-
-    async def make(ip: str = TEST_CLIENT_IP) -> httpx.AsyncClient:
-        client = httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app, client=(ip, 40301)),
-            base_url="http://testserver",
-        )
-        opened.append(client)
-        return client
-
-    try:
-        yield make
-    finally:
-        for client in opened:
-            await client.aclose()
-        app.dependency_overrides.pop(get_session, None)
-
-
-@pytest_asyncio.fixture
-async def client(
-    make_client: Callable[[str], Awaitable[httpx.AsyncClient]],
-) -> httpx.AsyncClient:
-    return await make_client(TEST_CLIENT_IP)
 
 
 # --- success: what a login produces ------------------------------------------

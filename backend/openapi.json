@@ -202,6 +202,45 @@
         ]
       }
     },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "End the session this request presented, and clear both cookies.\n\nIdempotent: no cookie, a junk cookie, an already-ended session — the\nanswer is the same 204 and the cookies still leave the browser. The\nresolution that produced ``context`` is the full one, so a *rotated*\nID presented here trips the same family revocation as anywhere else; a\nstale tab is not a loophole, and neither is a thief.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "CSRF check failed (see docs/ARCHITECTURE.md §3)."
+          }
+        },
+        "summary": "End the current session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "description": "Revoke every live session of the caller's account, this one included.\n\nDistinct from logout in the one way that matters: it acts under a session\n(401 without one), so it can revoke \"all *my other* sessions\" — the\nresponse to \"someone may have my credentials\". One bulk UPDATE; the\nfamily link is irrelevant here, because every family dies.",
+        "operationId": "logout_all_api_v1_auth_logout_all_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "CSRF check failed (see docs/ARCHITECTURE.md §3)."
+          }
+        },
+        "summary": "End every session of the signed-in user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "operationId": "health_api_v1_health_get",
