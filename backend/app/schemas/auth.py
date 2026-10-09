@@ -1,4 +1,4 @@
-"""Request and response shapes for /auth (F028).
+"""Request and response shapes for /auth (F028; F030 adds the password change).
 
 The login request is validated for **shape only** — a string of a sane length,
 never an ``EmailStr``. A login form must answer every credential problem with
@@ -11,6 +11,11 @@ index does the real matching.
 The password bound is not policy: ``Settings.password_max_length`` governs what
 may be *set*. Login must accept whatever the policy of the day stored, so the
 only limit here is a hostile-body cap — the full request-size cap is F060's.
+The same split applies to F030's change request: the schema caps the body, and
+the *policy* runs in the service — not here — because the denylist's email rule
+needs the user's address, which only the database knows. A policy failure
+therefore reaches the caller as a field-addressable 422 built by the endpoint,
+never as a schema error.
 """
 
 from uuid import UUID
@@ -25,6 +30,14 @@ MAX_PASSWORD_LENGTH = 1024
 class LoginRequest(BaseModel):
     email: str = Field(min_length=1, max_length=MAX_EMAIL_LENGTH)
     password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
+
+
+class ChangePasswordRequest(BaseModel):
+    """Self-service credential change (F030). Both fields are shape-bounded
+    only — see the module docstring for where the real policy lives."""
+
+    current_password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
+    new_password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
 
 
 class AuthenticatedUser(BaseModel):

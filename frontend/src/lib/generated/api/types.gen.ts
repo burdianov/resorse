@@ -34,6 +34,23 @@ export type AuthenticatedUser = {
 };
 
 /**
+ * ChangePasswordRequest
+ *
+ * Self-service credential change (F030). Both fields are shape-bounded
+ * only — see the module docstring for where the real policy lives.
+ */
+export type ChangePasswordRequest = {
+    /**
+     * Current Password
+     */
+    current_password: string;
+    /**
+     * New Password
+     */
+    new_password: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -113,6 +130,41 @@ export type ValidationError = {
      */
     type: string;
 };
+
+export type ChangePasswordApiV1AuthChangePasswordPostData = {
+    body: ChangePasswordRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/change-password';
+};
+
+export type ChangePasswordApiV1AuthChangePasswordPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * CSRF check failed (see docs/ARCHITECTURE.md §3).
+     */
+    403: unknown;
+    /**
+     * Field-addressable (loc = body/current_password or body/new_password); no input value is echoed.
+     */
+    422: unknown;
+    /**
+     * Too many failed current-password attempts; see Retry-After.
+     */
+    429: unknown;
+};
+
+export type ChangePasswordApiV1AuthChangePasswordPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type ChangePasswordApiV1AuthChangePasswordPostResponse = ChangePasswordApiV1AuthChangePasswordPostResponses[keyof ChangePasswordApiV1AuthChangePasswordPostResponses];
 
 export type LoginApiV1AuthLoginPostData = {
     body: LoginRequest;

@@ -168,6 +168,41 @@ unsafe endpoint is covered before its author writes it. The two checkable layers
   one, and the dead HttpOnly cookie a browser cannot delete would otherwise lock the user out of the login
   form. Login CSRF remains covered by the origin check.
 
+### Changing a password (F030)
+
+`POST /api/v1/auth/change-password` (`app/services/passwords.py`) serves both the forced first-login change
+and Profile > Security — the same request, because they are the same act. BIG-PROMPT §6.1 fixes the
+asymmetry: "password changes require current password except privileged reset."
+
+- **The current password is required even during a forced change** — the temporary credential is still the
+  account's secret, and asking for it keeps the flow honest about who is sitting there.
+- **The verification is throttled, in its own bucket.** A stolen session cookie would otherwise be a
+  password oracle running at Argon2 speed that the login throttle never sees. The attempts count against
+  `password:account:<email>` — deliberately *not* login's bucket, so neither flow can lock the other out —
+  the gate runs before the verification work, failures commit before raising (F028's lesson), and a
+  *verified* current password clears the bucket, exactly as a login forgives the login bucket.
+- **Refusals are field-addressable 422s**, never 401: a wrong current password lands at
+  `body/current_password`, policy violations at `body/new_password` (all of them, one round trip). The
+  entries mirror Pydantic's shape *minus* `input` — Pydantic echoes the offending value, and for credential
+  fields that value is a password; the frontend's field mapper reads `loc`/`msg` only, so the omission costs
+  the client nothing. And a 401 is how this API says "your session is over" — the status the frontend's
+  logout policy keys on; a typo on a form must not sign the user out.
+- **Policy runs in the service, not the schema**, because the denylist's email rule needs the *stored*
+  address — the request body cannot know it. New-equals-current is a policy violation too
+  (`SAME_AS_CURRENT_VIOLATION`): re-adopting the credential being replaced is exactly the accident the
+  confirm field exists to catch.
+- **Success is one commit**: the new hash (always under current F026 parameters — a change *is* the
+  rehash), every *other* session revoked as `password_change`, the asking session **rotated** (F029's
+  `rotate_within`, absolute deadline inherited), `must_change_password` cleared, `password_reset_at`
+  stamped. Splitting the commit — rotate first, re-hash later — would leave a live successor session that
+  outlived the password it was minted under.
+- **The admin reset is a different animal** (`reset_password`): it generates the temporary credential
+  (F026's `generate_password`, policy-checked), forces the change at next sign-in, revokes **every** session
+  of the target as `admin`, and returns the temporary value for shown-once delivery. It never asks for the
+  current password — the authority is the caller's permission, which is why its HTTP endpoint
+  (`POST /api/v1/admin/users/{id}/reset-password`) belongs behind F031's `users.reset_password` guard and is
+  built by F033, on top of this service.
+
 ### Password policy (F026)
 
 Argon2id (RFC 9106) with parameters **reviewed in code, not configured by the environment** —
@@ -774,6 +809,16 @@ verbatim — the family revocation is that shape — so the tests re-read the af
 `populate_existing=True` before asserting on them: the same discipline F025's model-level rehearsal called
 for, now exercised through the real service and the real endpoint.
 
+### Hand-built 422s omit `input` (F030)
+
+FastAPI emits Pydantic's validation-error dictionaries verbatim, `input` included — the offending value
+echoed back. Helpful for a mistyped enum; wrong for F030's change-password refusals, where the field under
+validation is a *password* and a response body travels through logs, proxies and browser caches. The
+endpoint therefore builds its own 422 entries (`{type, loc, msg}`) for wrong-current-password and
+policy-violation — and the frontend loses nothing, because its field mapper reads `loc` and `msg` only
+(`frontend/src/lib/errors.ts`). The rule behind the detail: when a refusal is about a credential, construct
+the body deliberately; do not let a framework's convenience shape decide what gets reflected.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -787,6 +832,8 @@ for, now exercised through the real service and the real endpoint.
   password policy** (12–128 characters, denylist, 5 login attempts / 15 minutes — §3), **F027 the
   bootstrap credential policy and the default role catalog** (C15/C16 — §3, §6), **F028 the login
   behaviour that consumes them** (uniform 401/429, the decoy verification, commit-before-raise, the
-  account-bucket reset — §3), and **F029 the session lifecycle and CSRF enforcement** (rotation inherits
+  account-bucket reset — §3), **F029 the session lifecycle and CSRF enforcement** (rotation inherits
   the absolute deadline, a replayed ID kills its family, logout is idempotent, the origin + double-submit
-  rules — C18, §3).
+  rules — C18, §3), and **F030 the password-change lifecycle** (current-password proof incl. during the
+  forced change, the re-authentication throttle, the one-commit rotate-and-revoke, the admin-reset
+  semantics — C19, §3).

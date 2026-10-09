@@ -49,6 +49,11 @@ EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 # spelling shared by both beats two that almost match.
 ACCOUNT_KEY_PREFIX = "login:account:"
 IP_KEY_PREFIX = "login:ip:"
+# F030's change-password re-authentication, deliberately a *separate* bucket
+# from login's: a session thief brute-forcing the current password through
+# `/auth/change-password` must not be able to lock the account out of login,
+# nor should login failures lock the user out of the password-change form.
+PASSWORD_KEY_PREFIX = "password:account:"
 
 
 def account_key(email: str) -> str:
@@ -66,6 +71,12 @@ def ip_key(address: str) -> str:
     """Bucket key for one source address. The caller passes the client IP as
     the server sees it; parsing is F028's concern."""
     return IP_KEY_PREFIX + address
+
+
+def password_key(email: str) -> str:
+    """Bucket key for one account's change-password re-authentication attempts
+    (F030). Canonicalised for the same reason as :func:`account_key`."""
+    return PASSWORD_KEY_PREFIX + email.strip().lower()
 
 
 @dataclass(frozen=True)

@@ -1,8 +1,9 @@
-"""Authentication endpoints (F028 login; F029 adds logout and logout-all).
+"""Authentication endpoints (F028 login; F029 logout; F030 change-password).
 
 The endpoint layer is deliberately thin: the services
-(``app/services/auth.py``, ``app/services/sessions.py``) decide, this layer
-translates. For login, three outcomes exist and only three:
+(``app/services/auth.py``, ``app/services/sessions.py``,
+``app/services/passwords.py``) decide, this layer translates. For login,
+three outcomes exist and only three:
 
 - **200** — a session was issued; the two cookies are set here.
 - **401** — one message (:data:`INVALID_CREDENTIALS_DETAIL`) for *every* way
@@ -34,14 +35,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.dependencies import current_session, optional_session
 from app.core.cookies import clear_session_cookies, set_session_cookies
 from app.core.database import get_session
-from app.schemas.auth import AuthenticatedUser, LoginRequest, LoginResponse
+from app.schemas.auth import (
+    AuthenticatedUser,
+    ChangePasswordRequest,
+    LoginRequest,
+    LoginResponse,
+)
 from app.services.auth import InvalidCredentials, LoginRateLimited, log_in
+from app.services.passwords import (
+    InvalidCurrentPassword,
+    PasswordPolicyViolation,
+    PasswordRateLimited,
+)
+from app.services.passwords import change_password as change_password_service
 from app.services.sessions import SessionContext, log_out, log_out_all
 
 router = APIRouter(prefix="/auth")
 
 INVALID_CREDENTIALS_DETAIL = "Invalid email or password."
 RATE_LIMITED_DETAIL = "Too many login attempts. Try again later."
+PASSWORD_RATE_LIMITED_DETAIL = "Too many password attempts. Try again later."
+
+
+def _field_error(field: str, message: str) -> dict[str, object]:
+    """One Pydantic-shaped 422 entry — deliberately without ``input``.
+
+    Pydantic's own validation errors echo the offending value in ``input``;
+    for credential fields that value is a password, and a response body is
+    the last place it belongs. ``loc``/``msg``/``type`` is everything the
+    frontend's field mapper reads (``frontend/src/lib/errors.ts``), so
+    omitting ``input`` changes nothing for the client and everything for
+    "never echo a credential".
+    """
+    return {"type": "value_error", "loc": ["body", field], "msg": message}
 
 
 @router.post(
@@ -117,6 +143,70 @@ async def logout(
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_session_cookies(response)
+    return response
+
+
+@router.post(
+    "/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    summary="Change the signed-in user's password",
+    responses={
+        401: {"description": "No usable session was presented."},
+        403: {"description": "CSRF check failed (see docs/ARCHITECTURE.md §3)."},
+        422: {
+            "description": (
+                "Field-addressable (loc = body/current_password or "
+                "body/new_password); no input value is echoed."
+            ),
+        },
+        429: {"description": "Too many failed current-password attempts; see Retry-After."},
+    },
+)
+async def change_password(
+    payload: ChangePasswordRequest,
+    context: Annotated[SessionContext, Depends(current_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    """Change the caller's own password — the forced first-login flow and
+    Profile > Security are the same request.
+
+    204 with a **fresh cookie pair**: the session that asked is rotated (a
+    new ID, same family), every *other* session of the account is revoked
+    (``password_change``), and ``must_change_password`` clears — one commit
+    in the service. Refusals are field-addressable 422s (wrong current
+    password, policy violations, new equals current); a wrong current
+    password is deliberately *not* a 401, which this API reserves for "your
+    session is over" — a typo must not sign the user out. The current
+    password is itself throttled (its own bucket, 429 with ``Retry-After``),
+    because a stolen session must not become a password oracle.
+    """
+    try:
+        issued = await change_password_service(
+            session,
+            context,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+        )
+    except PasswordRateLimited as limited:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=PASSWORD_RATE_LIMITED_DETAIL,
+            headers={"Retry-After": str(limited.retry_after_seconds)},
+        ) from limited
+    except InvalidCurrentPassword as invalid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=[_field_error("current_password", "Current password is incorrect.")],
+        ) from invalid
+    except PasswordPolicyViolation as violation:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=[_field_error("new_password", message) for message in violation.violations],
+        ) from violation
+
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    set_session_cookies(response, token=issued.token, csrf_token=issued.csrf_token)
     return response
 
 

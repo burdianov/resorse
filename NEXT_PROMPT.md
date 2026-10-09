@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F029 (and the requirements text moved in-repo to `claude_code_pack/BIG-PROMPT.txt`).
+> Last updated: 2026-10-10 — after task F030.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F030 in
-claude_code_pack/TASKS.md. Implement F030 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F031 in
+claude_code_pack/TASKS.md. Implement F031 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F030` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F031` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,25 +67,30 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F029 — Session rotation and logout** (sessions now resolve at request time —
-  `app/services/sessions.py` + `app/api/v1/dependencies.py` — with the idle-deadline slide committed by the
-  resolver; **replaying a rotated ID kills its family** as `theft_detected`; rotation issues a successor in
-  the same family that **inherits the absolute deadline**; `POST /auth/logout` is always 204 and clears both
-  cookies, `POST /auth/logout-all` 401s without a session and revokes every live row of the user; **CSRF is
-  enforced by a global ASGI middleware** — origin allow-list via new `ALLOWED_ORIGINS` setting + double-submit
-  `X-CSRF-Token` for every session-carrying unsafe request, login exempt from the double-submit only;
-  DECISIONS C18; 24 new tests, 138 total; no migration — the sessions table already had the machinery;
-  `openapi.json` and the generated frontend types were regenerated).
-- **Next task: F030 — Password change lifecycle.** "Forced first login self-change and admin reset."
-  Accept: "Old sessions invalid tests". Everything it needs is live: the `current_session` dependency
-  (`app/api/v1/dependencies.py`) for "who is this", `rotate_session` (`app/services/sessions.py`) for
-  "new ID on password change", `password_policy_violations` + `hash_password` (F026), and the
-  `must_change_password` flow F028 already surfaces in the login response. F030 owns the endpoints
-  (`/auth/change-password`, admin reset) and decides exactly which rows each flow revokes
-  (`password_change`, `admin`) versus rotates — the vocabulary (`app/models/session.py:REVOCATION_REASONS`)
-  already has both words. F031's permission guards and F032's frontend build on the same dependency.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F029 sits on top of
-  `c007dfa` (F028).
+- Last completed: **F030 — Password change lifecycle** (`POST /auth/change-password` serves the forced
+  first-login change and Profile > Security: current password required (throttled in its own
+  `password:account:` bucket — the gate before the Argon2 work, failures committed, a verified password
+  forgives), refusals are field-addressable 422s without `input` (never a 401 — a typo must not sign the
+  user out), success is **one commit** — new hash, all *other* sessions revoked `password_change`, the
+  asking session rotated, `must_change_password` cleared, `password_reset_at` stamped; the **admin reset**
+  is the `reset_password` service — temporary via `generate_password`, forced change, **every** session
+  revoked `admin` — whose HTTP endpoint is F033's by design; new `app/services/passwords.py`,
+  `services/sessions.py` grew `rotate_within`/`revoke_user_sessions` (non-committing building blocks);
+  DECISIONS C19; 14 new tests, 152 total; no migration; `openapi.json` + frontend types regenerated).
+- **Next task: F031 — Permission guards.** "Multi-role union and server-side permission dependencies."
+  Accept: "403 and role union tests". Everything it needs is live: `current_session`
+  (`app/api/v1/dependencies.py`) hands over a `SessionContext` whose `user` is loaded **with roles and
+  permissions** (the model's `selectin` design note: "every authenticated request re-evaluates the
+  effective access set from the database"), and `app/core/permissions.py`'s `PermissionCode` is the one
+  vocabulary (17 codes, seeded by F027). F031 builds the `require_permission(...)`-style dependencies, the
+  **`must_change_password` gate** (BIG-PROMPT §6.1: "the API should enforce it for all regular
+  endpoints" — the change-password endpoint must stay reachable, per F030), and `/auth/me` serving the
+  permission union (F028's login response is identity-only until then). Remember:
+  `is_superuser` short-circuits nothing silently — decide and record how it interacts with the union.
+  F033's admin endpoints (incl. `POST /admin/users/{id}/reset-password` → `services/passwords.reset_password`,
+  guard `users.reset_password`) and F032's frontend build on F031.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F030 sits on top of
+  `f06bfa1` (the requirements-text relocation; F029 before it).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -206,6 +211,27 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **The password lifecycle is live (F030):** `POST /api/v1/auth/change-password`
+  (`app/api/v1/auth.py` → NEW `app/services/passwords.py`) — one endpoint for the forced first-login change
+  and Profile > Security, requiring the current password (BIG-PROMPT §6.1) and, on success, committing
+  **one unit of work**: hash under current Argon2 parameters, every *other* session revoked
+  (`password_change`), the asking session rotated (a fresh cookie pair on the 204; absolute deadline
+  inherited), `must_change_password` cleared, `password_reset_at` stamped. Refusals: 422 with
+  Pydantic-shaped entries **minus `input`** — wrong current password at `body/current_password`, policy
+  violations (all at once, evaluated with the user's own email) at `body/new_password`; new-equals-current
+  is a violation too. A wrong current password is deliberately not a 401 (that means "session over" to the
+  frontend and would sign the user out). **Re-authentication throttling:** failures count in their own
+  bucket `password:account:<email>` (never login's — neither flow can lock the other out), the gate runs
+  before the Argon2 work, failures commit before raising, and a verified current password clears the bucket
+  (429 + `Retry-After` when exhausted). **Admin reset** lives as `reset_password` in the same module — a
+  policy-passing temporary from `generate_password`, forced change, **every** session of the target revoked
+  (`admin`), temporary returned for shown-once delivery; its HTTP endpoint
+  (`POST /api/v1/admin/users/{id}/reset-password`) is deliberately **F033's** (it needs F031's
+  `users.reset_password` guard). `services/sessions.py` grew two non-committing building blocks —
+  `rotate_within` and `revoke_user_sessions` (`rotate_session`/`log_out_all` are now thin committing
+  wrappers, behaviour unchanged) — and `core/rate_limit.py` gained `password_key`. No migration;
+  `openapi.json` + generated frontend types refreshed. **Tests:** 14 new, `uv run pytest` is now
+  **152 passed**.
 - **Sessions resolve and end (F029):** `app/services/sessions.py` — `resolve_session` (row by digest →
   replay check → expiry → user check → **idle slide capped at the absolute deadline, committed by the
   resolver itself**), `rotate_session` (successor in the same family, **absolute deadline inherited**,
@@ -219,7 +245,7 @@ the archive original — `sha256sum` both to check):
   dev server's), and any request carrying `__Host-session` must send `X-CSRF-Token` equal to the
   `__Host-csrf` cookie; **`/auth/login` is exempt from the double-submit only**. Cookie spellings now live
   once in `app/core/cookies.py`. No migration; `openapi.json` + generated frontend types refreshed.
-  **Tests:** 24 new (13 session-lifecycle + 11 CSRF), `uv run pytest` is now **138 passed**.
+  **Tests:** 24 new (13 session-lifecycle + 11 CSRF) — 138 at that commit, 152 after F030's 14.
 - **Login is live (F028):** `POST /api/v1/auth/login` (`app/api/v1/auth.py` → `app/services/auth.py`) — the
   first endpoint with a database dependency (the request-scoped rule is in `app/core/database.py`: the
   service commits; the failure path commits its rate-limit counters *before* raising). One **uniform 401**
@@ -244,7 +270,7 @@ the archive original — `sha256sum` both to check):
   `BOOTSTRAP_*` variables itself, never through `Settings`. `app_dev` is already seeded (17 permissions,
   3 roles, 41 grants, **0 users** — the operator runs the bootstrap once; the accounts table §9 records it).
   **Tests:** 31 new (11 seed + 17 bootstrap + 3 generator) — `uv run pytest` went to **103 passed** at this
-  commit (114 after F028's 11; 138 after F029's 24).
+  commit (114 after F028's 11; 138 after F029's 24; 152 after F030's 14).
 - **Password security and throttling are live (F026):** `app/core/security.py` — Argon2id with **reviewed
   constants** (`ARGON2_PARAMETERS`: 19 MiB, t=2, p=1, the OWASP profile — deliberately *not* settings, so no
   deployment can quietly weaken hashing), `hash_password`/`verify_password`/`password_needs_rehash` (an
@@ -328,6 +354,12 @@ the archive original — `sha256sum` both to check):
   origin check plus `X-CSRF-Token` double-submit for session-carrying unsafe requests, login exempt from
   the double-submit only; `token_version` has no second role), same date and same basis; rationale in
   ARCHITECTURE §3/§12.
+- **C19** — F030's password-change lifecycle (self-change requires the current password and is one commit:
+  hash + revoke-others `password_change` + rotate + clear the flag + stamp `password_reset_at`; refusals
+  are field-addressable 422s without `input`, never 401; re-auth throttled in its own
+  `password:account:` bucket with a verified password clearing it; admin reset = policy-passing temporary,
+  forced change, **all** sessions revoked `admin`, **no** current password — its endpoint is F033's,
+  behind F031's `users.reset_password` guard), same date and same basis; rationale in ARCHITECTURE §3/§12.
 - **C12's fallout is reconciled** — F025/F029/F032 were amended in `TASKS.md` to match.
 - **All seven F002 gaps are closed** (`docs/REQUIREMENT_TRACEABILITY.md` §14, now a resolution table):
   G-1 `input-group`→F011; G-2 the 21 enhanced generics distributed across F009/F011–F013/F016/F017/F019/F020/
@@ -388,6 +420,18 @@ the archive original — `sha256sum` both to check):
   `populate_existing=True` (ARCHITECTURE §12, F025). F030/F031 consume `current_session`/
   `optional_session` from `app/api/v1/dependencies.py` — extend those, never re-resolve the cookie
   somewhere else.
+- **The password-change contracts are load-bearing too (F030, C19):** the credential update, the
+  revocation of the other sessions and the rotation are **one commit** in `services/passwords.py` — do not
+  "simplify" by calling the committing `rotate_session`/`log_out_all` wrappers in the middle of it; use the
+  non-committing `rotate_within`/`revoke_user_sessions`. Auth refusals that concern credentials must never
+  be 401 (the frontend's 401 policy means "session over") and must never echo the submitted value —
+  hand-built 422s stay `loc` + `msg` (+ `type`), no `input`. The re-auth bucket key is
+  `password:account:` — never `login:account:` (neither flow may lock the other out). F033 must build
+  `POST /admin/users/{id}/reset-password` on `services/passwords.reset_password` behind F031's
+  `users.reset_password` guard — the service deliberately does not enforce who may reset whom.
+- **F031's `must_change_password` gate** (BIG-PROMPT §6.1) must let `POST /auth/change-password` (and
+  login/logout) through while the flag is set — the forced-change flow needs the session it is about to
+  rotate. The flag is cleared by the change itself (F030); the gate is about *regular* endpoints only.
 - **The throttling address is `request.client.host` on purpose (F028, C17).** Do not "fix" it by reading
   `X-Forwarded-For` outside F060's validated-proxy configuration — unvalidated, that header is client-controlled
   and trusting it would hand every attacker a fresh rate-limit bucket per request.
@@ -488,6 +532,36 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F030 — Password change lifecycle.** `POST /api/v1/auth/change-password` (`app/api/v1/auth.py` →
+  `app/services/passwords.py`) — one endpoint for the forced first-login change and Profile > Security,
+  because they are one act; the acceptance "old sessions invalid" is the design: **success is a single
+  unit of work** — the new hash (always current Argon2 parameters; a change *is* the rehash), every
+  *other* session of the account revoked as `password_change`, the asking session **rotated**
+  (`rotate_within` — same family, absolute deadline inherited), `must_change_password` cleared,
+  `password_reset_at` stamped — where splitting the commit would leave a successor session that outlived
+  the password it was minted under. The current password is required even during the forced change
+  (BIG-PROMPT §6.1: "password changes require current password except privileged reset"). **Refusals are
+  field-addressable 422s** and never 401 — a typo must not trip the frontend's "session over" policy:
+  wrong current password at `loc=body/current_password`, every policy violation at once at
+  `loc=body/new_password` (the policy runs in the *service* because the denylist's email rule needs the
+  stored address), new-equals-current as `SAME_AS_CURRENT_VIOLATION`, and the entries deliberately omit
+  Pydantic's `input` — a credential must not be echoed (the frontend reads `loc`/`msg` only;
+  ARCHITECTURE §12 records the why). **The current-password verification is throttled in its own bucket**
+  (`password:account:<email>`, new `password_key` in `core/rate_limit.py` — never login's, so neither
+  flow can lock the other out): the gate runs before the Argon2 work, failures commit before raising
+  (F028's lesson, with the `hit_count == 6` follow-on test), and a *verified* current password clears the
+  bucket, persisting even through a policy refusal. **Admin reset** is the `reset_password` service:
+  a policy-passing temporary from F026's `generate_password` (C15's uniform path, tested), forced change,
+  **every** session of the target revoked as `admin`, the temporary returned for shown-once delivery; no
+  current password is asked (privileged reset) and *who may reset whom* is deliberately not the service's
+  policy — the HTTP endpoint (`POST /api/v1/admin/users/{id}/reset-password`) is F033's, behind F031's
+  `users.reset_password` guard (recorded in C19 so it is not lost). `services/sessions.py` gained the two
+  non-committing building blocks (`rotate_within`, `revoke_user_sessions`) with `rotate_session`/
+  `log_out_all` as thin committing wrappers — F029's behaviour and tests unchanged. Checks run:
+  `uv run pytest` **152 passed** (14 new); `ruff check`/`format --check` clean; `mypy app migrations`
+  clean (33 files); **no migration** (`0004` remains head); `openapi.json` + generated frontend types
+  regenerated and committed; one trap avoided en route: Starlette deprecates
+  `HTTP_422_UNPROCESSABLE_ENTITY` — the endpoint uses `HTTP_422_UNPROCESSABLE_CONTENT`.
 - **F029 — Session rotation and logout.** What happens to a session after F028 issues it. **Resolution**
   (`app/services/sessions.py::resolve_session`, wrapped by `optional_session`/`current_session` in
   `app/api/v1/dependencies.py` — the dependency F030/F031 build on): row by digest, then **replay first** —
@@ -872,11 +946,12 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F029 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
-| **Backend tests (F023–F029)** | `cd D:\resors\backend; uv run pytest` | **138 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F030 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
+| **Backend tests (F023–F030)** | `cd D:\resors\backend; uv run pytest` | **152 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Login tests (F028)** | `cd D:\resors\backend; uv run pytest tests/test_auth_login.py` | **11 passed** — six credential-failure causes answered with the *same* 401 body, the unknown-email path proven to run a real Argon2 verification against the decoy (whose parameters are pinned current), both throttle buckets (per account and per address) incl. the identical 429 for a non-existent email, `hit_count == 5` persisted after five failures (commit-on-failure), the account-bucket reset on success, rehash-on-login, the exact cookie attributes, and 422 for malformed bodies |
 | **Session lifecycle tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_auth_sessions.py` | **13 passed** — resolution returns the user, the idle slide (committed by the resolver, capped at the absolute deadline, which never moves), expiry refused without a write, disabled users refused and left for the admin flow, rotation (same family, `rotated` + `replaced_by_id`, absolute deadline inherited), the replay killing exactly its own family as `theft_detected` while the presented row keeps `rotated`, logout (204, both cookies cleared, revoked `logout`, idempotent for junk/already-ended cookies), logout-all (401 without a session; every live row of *one* user revoked `logout_all`, others untouched), and a replay through logout still killing the family |
 | **CSRF tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_csrf_protection.py` | **11 passed** — the double-submit enforced whenever the session cookie is present (four refusal shapes, each changing nothing) and passing with no origin for scripted clients, the origin matrix refused even with a perfect double-submit (`https://evil.example`, `null`, scheme mismatch, lookalike host), the `Referer` fallback (and Origin winning when both are present), safe methods never checked, a latin-1 hostile header earning 403 not 500, login refusing a cross-site origin, and the carve-out: a dead session cookie does not lock the login form |
+| **Password-lifecycle tests (F030)** | `cd D:\resors\backend; uv run pytest tests/test_password_change.py` | **14 passed** — wrong current password refused with nothing changed; policy evaluated with the user's own email and never echoing the candidate; new-equals-current refused; the core: rotation of the asking session (absolute deadline inherited) + every other session `password_change` + hash/flags/reset-stamp in one commit; the forced-change flag cleared; the throttle (6th attempt denied before verification, `hit_count == 6` persisted, a verified password forgiving the failures *through* a policy refusal); the reset end-to-end (policy-passing temporary, all sessions `admin`, bystander untouched, temporary signs in with the flag surfaced); and over HTTP: 204 with a fresh cookie pair, the sibling session dead, 401 without a session, 403 without the CSRF header, the wrong-current-password **422 field error (not 401) with the session still alive**, multiple policy entries on `new_password`, and the 429 with `Retry-After: 900` |
 | **Session model tests (F025)** | `cd D:\resors\backend; uv run pytest tests/test_session_model.py tests/test_session_tokens.py` | **18 passed** — the token-hash shape and uniqueness, both deadlines and their ordering, all-or-nothing revocation over a closed vocabulary, user FK + cascade, the unique replacement chain and `SET NULL`, the family-revocation rehearsal, the `is_active` matrix, and the token/lifetime contract |
 | **Password & rate-limit tests (F026)** | `cd D:\resors\backend; uv run pytest tests/test_password_hashing.py tests/test_rate_limit.py` | **34 passed** — Argon2id parameters and the no-plaintext contract (hash content, the `User` repr, message echo), every policy rule and the confirmed defaults, the generated-password properties (F027), window alignment/`Retry-After` math, the DB counter (limit, rollover, per-key budgets, `peek` without counting, `clear`), and the twelve-connection concurrency race |
 | **Seed & bootstrap tests (F027)** | `cd D:\resors\backend; uv run pytest tests/test_seed.py tests/test_bootstrap_admin.py` | **28 passed** — the vocabulary's shape and descriptions, the three roles and exactly their documented grant sets, idempotent re-runs, operator edits and non-system roles surviving, the super-admin invariant being *restored* (including codes registered later), and every bootstrap refusal path — proven with a session factory that raises if it is reached, so "refused before the database" is structural |
@@ -884,6 +959,7 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Create the super-admin (F027)** | `cd D:\resors\backend; uv run python -m app.bootstrap_admin --generate-password` | prompts for the email (`--email` or `BOOTSTRAP_ADMIN_EMAIL` skip the prompt), prints the generated password **exactly once** — record it in `LOCAL_CREDENTIALS.md` at that moment — and creates the account with a forced first-login change. With no password source: `There is no default password.` / `Nothing was created.`, exit 2. A second run refuses: `A super-admin already exists (…)` |
 | **Login smoke (F028)** | with the API running: `curl.exe -i -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"you@example.com","password":"wrong-guess"}'` | **401** + `{"detail":"Invalid email or password."}` — and the *identical* body for an email that does not exist (that is the point). With the real password (from `LOCAL_CREDENTIALS.md`): **200**, the user JSON (identity only), and two `Set-Cookie` headers — `__Host-session` (HttpOnly) and `__Host-csrf`. Every failed attempt counts: five in 15 minutes, then the next is **429** + `Retry-After` (`Too many login attempts. Try again later.`). So run the *correct* pair first if you plan to fumble; or use http://localhost:8000/docs → `POST /auth/login` → *Try it out* (the browser then keeps the cookies for `/docs` calls) |
 | **Session & CSRF smoke (F029)** | step 1, with the API running and the real password: `curl.exe -s -c $env:TEMP\resors-cookies.txt -o NUL -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"you@example.com","password":"<real password>"}'`; step 2, read the CSRF value: `Select-String __Host-csrf $env:TEMP\resors-cookies.txt` (last column); step 3, **`<csrf>` = that value**: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/auth/logout -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>"` | step 3: **204**, two `Set-Cookie` lines emptying `__Host-session` and `__Host-csrf`; run step 3 again → **204** again (logout is idempotent). Without `X-CSRF-Token` → **403** `CSRF token missing or invalid.`; with `Origin: https://evil.example` → **403** `This origin is not allowed to make this request.`; `POST /api/v1/auth/logout-all` with no cookie → **401** `Not authenticated.` (curl's jar resends the Secure cookies to localhost — verified). A **rotated** cookie being presented anywhere (after F030 rotates) answers 401 *and* kills that session family as `theft_detected` — the test suite is the place to watch that, not curl |
+| **Password-change smoke (F030)** — the *safe* path: no state change | with the jar from the F029 row freshly logged in (steps 1–2), **`<csrf>` = the jar's `__Host-csrf`**: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/auth/change-password -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"current_password":"definitely-wrong","new_password":"a brand new passphrase"}'` | **422** with `detail: [{"type":"value_error","loc":["body","current_password"],"msg":"Current password is incorrect."}]` — field-addressable, no `input`, and the session survives (the next command still works). Drop `X-CSRF-Token` → **403**; a `new_password` of `password123` (with the *correct* current one — this one does verify) → **422** with two entries on `new_password` (too short + common list) and nothing changed. Five wrong current passwords → the sixth is **429** + `Retry-After`. A **real** change (correct current + policy-passing new) answers **204** + a fresh cookie pair and invalidates every other session — if you smoke that, pick the new password deliberately and immediately update `LOCAL_CREDENTIALS.md`, because login will demand it from then on |
 | Backend lint and types (F023) | `cd D:\resors\backend; uv run ruff check .; uv run ruff format --check .; uv run mypy app migrations` | clean. The CI gate that *enforces* this is F056's; these commands work today |
 | **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |

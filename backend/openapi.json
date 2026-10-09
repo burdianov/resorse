@@ -31,6 +31,29 @@
         "title": "AuthenticatedUser",
         "type": "object"
       },
+      "ChangePasswordRequest": {
+        "description": "Self-service credential change (F030). Both fields are shape-bounded\nonly — see the module docstring for where the real policy lives.",
+        "properties": {
+          "current_password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -155,6 +178,43 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/auth/change-password": {
+      "post": {
+        "description": "Change the caller's own password — the forced first-login flow and\nProfile > Security are the same request.\n\n204 with a **fresh cookie pair**: the session that asked is rotated (a\nnew ID, same family), every *other* session of the account is revoked\n(``password_change``), and ``must_change_password`` clears — one commit\nin the service. Refusals are field-addressable 422s (wrong current\npassword, policy violations, new equals current); a wrong current\npassword is deliberately *not* a 401, which this API reserves for \"your\nsession is over\" — a typo must not sign the user out. The current\npassword is itself throttled (its own bucket, 429 with ``Retry-After``),\nbecause a stolen session must not become a password oracle.",
+        "operationId": "change_password_api_v1_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "CSRF check failed (see docs/ARCHITECTURE.md §3)."
+          },
+          "422": {
+            "description": "Field-addressable (loc = body/current_password or body/new_password); no input value is echoed."
+          },
+          "429": {
+            "description": "Too many failed current-password attempts; see Retry-After."
+          }
+        },
+        "summary": "Change the signed-in user's password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",

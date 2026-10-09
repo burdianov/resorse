@@ -128,17 +128,20 @@ async def resolve_session(
     return SessionContext(row=row, user=user, token=token)
 
 
-async def rotate_session(
+async def rotate_within(
     session: AsyncSession,
     context: SessionContext,
     *,
     now: datetime | None = None,
 ) -> IssuedSession:
-    """Replace ``context``'s session with a fresh ID in the same family.
+    """Issue a successor for ``context``'s session **without committing**.
 
-    Returns what F028's login returns — the user and the two fresh tokens —
-    because callers of rotation (F030's password change, F035's role change)
-    set exactly the same cookies in exactly the same way.
+    The building block behind :func:`rotate_session` and behind F030's
+    password change — the latter folds the rotation into its own single
+    commit, together with the credential update and the other sessions'
+    revocation, because those three are one unit of work. Splitting the
+    commit (rotate first, change the hash next) would leave a window where a
+    successor session outlives the password it was minted under.
     """
     moment = _now(now)
     settings = get_settings()
@@ -162,12 +165,28 @@ async def rotate_session(
     predecessor.revoked_at = moment
     predecessor.revoked_reason = "rotated"
     predecessor.replaced_by_id = successor.id
-    await session.commit()
     return IssuedSession(
         user=context.user,
         token=successor_token,
         csrf_token=generate_session_token(),
     )
+
+
+async def rotate_session(
+    session: AsyncSession,
+    context: SessionContext,
+    *,
+    now: datetime | None = None,
+) -> IssuedSession:
+    """Replace ``context``'s session with a fresh ID in the same family.
+
+    Returns what F028's login returns — the user and the two fresh tokens —
+    because callers of rotation (F030's password change, F035's role change)
+    set exactly the same cookies in exactly the same way.
+    """
+    issued = await rotate_within(session, context, now=now)
+    await session.commit()
+    return issued
 
 
 async def revoke_family(
@@ -211,26 +230,49 @@ async def log_out(
     await session.commit()
 
 
+async def revoke_user_sessions(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    reason: str,
+    exclude_session_id: uuid.UUID | None = None,
+    now: datetime | None = None,
+) -> int:
+    """Revoke every live session of one user — **without committing**.
+
+    Returns how many rows it changed. ``reason`` comes from the closed
+    vocabulary (``app/models/session.py``): ``logout_all`` for the endpoint,
+    ``password_change``/``admin`` for F030's flows. ``exclude_session_id``
+    spares one row — the password change spares the caller's own session,
+    because that one is *rotated* (its successor is the live end of the
+    chain), not ended.
+
+    Bulk, one UPDATE, per the session design's claim; a caller whose own
+    ``context.row`` is among the rows this bypasses may not read it back
+    expecting fresh attributes without ``populate_existing`` (ARCHITECTURE
+    §12).
+    """
+    statement = (
+        update(UserSession)
+        .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=_now(now), revoked_reason=reason)
+        .returning(UserSession.id)
+    )
+    if exclude_session_id is not None:
+        statement = statement.where(UserSession.id != exclude_session_id)
+    changed = (await session.scalars(statement)).all()
+    return len(changed)
+
+
 async def log_out_all(
     session: AsyncSession,
     user_id: uuid.UUID,
     *,
     now: datetime | None = None,
 ) -> int:
-    """Revoke every live session of one user (the current one included).
-
-    Returns how many rows it changed. Bulk, one UPDATE, per the session
-    design's claim; the caller's own ``context.row`` is among the rows this
-    bypasses, so nothing may read it back here expecting fresh attributes
-    without ``populate_existing``.
-    """
-    changed = (
-        await session.scalars(
-            update(UserSession)
-            .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
-            .values(revoked_at=_now(now), revoked_reason="logout_all")
-            .returning(UserSession.id),
-        )
-    ).all()
+    """Revoke every live session of one user (the current one included) —
+    the ``logout-all`` endpoint's service half. Returns how many rows it
+    changed."""
+    changed = await revoke_user_sessions(session, user_id, reason="logout_all", now=now)
     await session.commit()
-    return len(changed)
+    return changed
