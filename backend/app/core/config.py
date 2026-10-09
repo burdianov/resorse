@@ -49,6 +49,21 @@ class Settings(BaseSettings):
     session_idle_timeout_minutes: int = 12 * 60
     session_absolute_lifetime_days: int = 30
 
+    # Password policy (F026; BP-6.1d: "strong configurable password policy").
+    # The Argon2 parameters themselves are deliberately **not** settings: a
+    # deployment that can quietly weaken the hash function is a foot-gun, so
+    # those are reviewed constants in app/core/security.py. What is policy —
+    # bound lengths, the denylist, login throttling — is configurable here.
+    password_min_length: int = 12
+    password_max_length: int = 128
+
+    # Login throttling (F026 primitives; F028 builds the buckets per account
+    # and per IP from them). Five attempts in fifteen minutes is the confirmed
+    # default; exceeding it answers 429 with a Retry-After for the rest of the
+    # window.
+    login_max_attempts: int = 5
+    login_attempt_window_minutes: int = 15
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

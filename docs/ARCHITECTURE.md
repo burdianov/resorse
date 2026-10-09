@@ -87,6 +87,32 @@ Cost: one indexed lookup per request. Acceptable for a single-company internal a
 micro-cache is permitted later (`BIG-PROMPT` §0.6 allows process-local caches for disposable optimisation) but
 is explicitly **not** part of this design.
 
+### Password policy (F026)
+
+Argon2id (RFC 9106) with parameters **reviewed in code, not configured by the environment** —
+`ARGON2_PARAMETERS` in `app/core/security.py`: 19 MiB, `t=2`, `p=1`, the first profile the OWASP Password
+Storage Cheat Sheet lists. A deployment that could weaken the hash function through a variable is a foot-gun;
+what *is* policy lives in `Settings`:
+
+| Rule | Value | Where |
+|---|---|---|
+| Minimum length | 12 | `password_min_length` |
+| Maximum length | 128 (a hostile megabyte "password" must not become a memory event) | `password_max_length` |
+| Denylist | embedded common-password list, case-insensitive exact | `COMMON_PASSWORDS` |
+| Email | may not equal the address or its local part | code |
+| Login throttling | 5 attempts per 15 minutes, per account and per IP | `login_max_attempts`, `login_attempt_window_minutes` |
+
+No composition rules (mixed case/digit/symbol) on purpose: they push people toward `Pa55word!`, exactly the
+shape a denylist catches, while length and the denylist do the real work. Three properties are tested as
+rules, not conventions: the stored value never contains the password, an unusable stored hash verifies
+`False` and rehashes `True` instead of raising, and a policy message never echoes the candidate. Rolling the
+parameters upward later needs no reset wave: `password_needs_rehash` tells the next successful login to
+re-hash.
+
+Throttling is DB-backed (no Redis, §8): one generic `rate_limit_buckets` row per key, counted by a single
+atomic upsert in `app/core/rate_limit.py` — §12 records why the statement, not a lock, is the concurrency
+story.
+
 ### Consequences to carry into dependent tasks
 
 Choosing opaque sessions removes three things the requirements assumed. None is silently dropped:
@@ -283,7 +309,9 @@ users ──< user_roles >── roles ──< role_permissions >── permissi
 audit_logs        (immutable; actor, action, entity, sanitized diff, correlation_id)
 app_settings      (typed allowlist registry, updated_by)
 file_assets       (UUID key, MIME, size, sha256, owner)
-login_attempts / rate_limit_buckets   (DB-backed throttling; no Redis)
+rate_limit_buckets   (F026: one fixed-window counter row per key — DB-backed
+                      throttling, no Redis; login attempts are keys, not a
+                      second table)
 ```
 
 Every table: UUID primary keys, `timestamptz` UTC instants, explicit constraints and indexes. Money as
@@ -566,6 +594,25 @@ back in the same session; F029's family revocation is exactly that shape. The fi
 demonstrates the pattern — and why trusting the cached instance would have made the test pass for the wrong
 reason.
 
+### Passwords, throttling, and what "no plaintext" means in code (F026)
+
+- **`mapped_column(repr=False)` is a dataclass-only argument in SQLAlchemy 2.1.** On a plain `DeclarativeBase`
+  mapping it raises `Attribute 'hashed_password' … includes dataclasses argument(s): 'repr'` at import. The
+  model that must not print its hash therefore defines `__repr__` itself (`User` — identity only), and a test
+  pins that the hash cannot appear in it.
+- **"The message never contains the value" cannot be asserted with the value `password`** — the message's own
+  English words trip the check. Echo tests use canary values (`P@ssw0rd`, `qwerty12345`) that cannot collide
+  with prose; the general lesson is to pick canaries that make the assertion mean what it says.
+- **A concurrency test cannot use the rollback fixture** — one transaction cannot race itself. The single
+  test that opens its own connections (twelve logins racing one bucket) writes a unique key and deletes
+  exactly that row in a `finally`. The F024 rule "let the fixture roll back" now has that one stated
+  exception.
+- **A counter primitive is only as good as its racing story.** `INSERT … ON CONFLICT DO UPDATE … RETURNING`
+  makes N concurrent hits return the distinct counts 1..N; the test asserts exactly that, so a
+  SELECT-then-UPDATE rewrite fails loudly instead of silently losing updates. The known cost of a *fixed*
+  window — a caller can spend the full budget before a boundary and again after — is accepted and documented
+  in the module rather than engineered away.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -575,5 +622,5 @@ reason.
   outbox (§8.4e).
 - Session timeouts and password-policy parameters are **initial defaults** here; the concrete values are
   confirmed rather than invented now — **F025 confirmed the session lifetimes**
-  (`Settings.session_idle_timeout_minutes` = 720, `session_absolute_lifetime_days` = 30), F026 the
-  password-policy parameters.
+  (`Settings.session_idle_timeout_minutes` = 720, `session_absolute_lifetime_days` = 30) and **F026 the
+  password policy** (12–128 characters, denylist, 5 login attempts / 15 minutes — §3).

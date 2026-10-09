@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-09 — after task F025.
+> Last updated: 2026-10-10 — after task F026.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F026 in
-claude_code_pack/TASKS.md. Implement F026 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F027 in
+claude_code_pack/TASKS.md. Implement F027 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F026` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F027` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -58,19 +58,21 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F025 — Session data model** (`app/models/session.py`: the `sessions` table — hashed token,
-  rotation family, two ordered deadlines, all-or-nothing revocation, unique replacement chain — as migration
-  `0003`; `app/core/security.py` holds the token generation/hash contract; 18 new tests).
-- **Next task: F026 — Password security.** "Argon2id policy hash verification and rate limit primitives",
-  with "unit tests no plaintext" as acceptance. The natural home for password hashing is `app/core/security.py`
-  — F025 created it for session-token hashing and its docstring states that Argon2id is the *other* hash
-  problem (slow and salted where the session digest deliberately is not), so the module is the landing site.
-  ARCHITECTURE §13 records the password-policy parameters as "confirmed at F026". `argon2-cffi==25.1.0` is
-  **already a locked dependency** and `users.hashed_password` (`String(255)`) is the column it fills (F024).
-  Rate limiting has no Redis by decree (ARCHITECTURE §8: DB-backed `login_attempts`/`rate_limit_buckets`);
-  F027 (bootstrap) and F028 (login) are its first consumers.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F025 sits on top of
-  `62986ab` (F024).
+- Last completed: **F026 — Password security** (Argon2id hashing at a reviewed profile, the configurable
+  policy — length/denylist/email — with message-echo and repr leak guards, and the DB-backed rate-limit
+  primitives over migration `0004`'s `rate_limit_buckets`; 31 new tests, 72 total).
+- **Next task: F027 — Admin bootstrap.** "One-time safe CLI super-admin and idempotent role seed", with
+  "no default credentials tests" as acceptance. Everything it needs exists: `roles.is_system` (F024) marks
+  the roles the seed creates so F035 can protect them; `hash_password` (F026) hashes the supplied password;
+  `.env.example` already sketches a commented `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD` — and is
+  explicit that there is **no default account**. ARCHITECTURE §4's layout names the landing sites:
+  `app/bootstrap_admin.py` (the one-time CLI) and `app/seed.py` (idempotent role/permission seed — §6.3
+  fixes the permission code vocabulary; the default roles are `super_admin`, `admin`, `viewer`, with
+  `viewer` read-only through explicit grants, never the source's block-if-only-viewer shortcut). The
+  password must be supplied or generated, never defaulted; per the §9 rule, the value the operator sets is
+  recorded in the git-ignored `LOCAL_CREDENTIALS.md`, never in NEXT_PROMPT.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F026 sits on top of
+  `eee37c3` (F025).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -191,6 +193,20 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **Password security and throttling are live (F026):** `app/core/security.py` — Argon2id with **reviewed
+  constants** (`ARGON2_PARAMETERS`: 19 MiB, t=2, p=1, the OWASP profile — deliberately *not* settings, so no
+  deployment can quietly weaken hashing), `hash_password`/`verify_password`/`password_needs_rehash` (an
+  unusable stored row verifies `False` and rehashes `True` — never a 500), and `password_policy_violations`
+  (bounds from settings, embedded `COMMON_PASSWORDS` denylist matched case-insensitively, the user's own
+  email; messages never echo the value). `User.__repr__` is hand-written — `print(user)` cannot leak the
+  hash (`mapped_column(repr=False)` is dataclass-only in SQLAlchemy 2.1; ARCHITECTURE §12). New:
+  `app/core/rate_limit.py` — `hit`/`peek`/`clear`, `RateLimitRule`/`RateLimitStatus` (`retry_after_seconds`
+  for F028's 429), epoch-aligned fixed windows, and the `account_key`/`ip_key` helpers, over the
+  `rate_limit_buckets` table (migration `0004`): one row per key, rewritten at each window rollover, counted
+  by a single atomic upsert — the concurrency test races twelve real connections and every hit counts.
+  Settings gained `password_min_length` (12), `password_max_length` (128), `login_max_attempts` (5),
+  `login_attempt_window_minutes` (15); `.env.example` documents all four. **Tests:** 31 new (19 password +
+  12 rate limit) — `uv run pytest` is now **72 passed**.
 - **Session table is live (F025):** `app/models/session.py` — `UserSession` (table `sessions`), the row behind
   one login per DECISIONS C12: `token_hash` (SHA-256 digest of the cookie's value — the unique lookup key,
   with a CHECK pinning the column to exactly what `hash_session_token` returns, so the raw token cannot be
@@ -314,7 +330,16 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   `UnsavedChangesGuard` (in-app navigation only — `useBeforeUnload` is a separate, later decision).
 - **Database tests run against `app_test`, never the development database** (F024): request the `session`
   fixture (an async fixture must use `pytest_asyncio.fixture` in strict mode) and let the rollback clean up —
-  do not truncate, do not commit outside the fixture. If a test needs a schema change, add a migration.
+  do not truncate, do not commit outside the fixture. The one stated exception is F026's concurrency test,
+  which needs real racing connections: a unique key, committed, deleted in a `finally` (ARCHITECTURE §12).
+  If a test needs a schema change, add a migration.
+- **Passwords only through the primitives** (F026): `hash_password` to store, `verify_password` to check,
+  `password_needs_rehash` after a successful login (F028) to roll parameters forward. Run
+  `password_policy_violations` **before** hashing at the API boundary; never return `hashed_password` in a
+  schema; never build an Argon2 parameter set by hand — `ARGON2_PARAMETERS` is the reviewed one. Throttling
+  goes through `hit()`/`peek()`/`clear()` and `account_key()`/`ip_key()`; never hand-roll counting, and never
+  build bucket keys outside the helpers (one account must not silently get two budgets). A denied hit is
+  F028's to turn into a 429 — with the same body whether or not the account exists (BP-6.2g).
 - **Invariants belong in the database** (F024): uniqueness, canonical form and code shape are CHECKs/indexes, not
   conventions in service code. When a new rule can be expressed in DDL, express it there and test the
   `IntegrityError` — the API validates first for a readable message, the constraint is what makes it true.
@@ -360,6 +385,31 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F026 — Password security.** `app/core/security.py` grew the password half it was written to hold.
+  **Argon2id at a reviewed profile** (19 MiB, t=2, p=1 — the first OWASP-listed parameter set), kept as
+  constants rather than settings: the configurable parts are the ones users experience (12–128 characters,
+  the denylist, throttling), because a deployment that can weaken the hash function through an environment
+  variable will eventually do it. Three properties are tested as rules rather than left to convention: the
+  stored value never contains the password; an unusable stored hash *verifies False and rehashes True*
+  instead of raising (an unusable credential is a failed login, not a 500); and a policy message never
+  echoes the candidate — with a canary-value test, because asserting "the message never contains `password`"
+  trips on the English word. The no-composition-rules decision (length + denylist instead of mixed
+  case/digit/symbol) is documented in the module: composition rules push people toward `Pa55word!`, exactly
+  what the denylist catches. `User.__repr__` is now hand-written so `print(user)` cannot leak the hash —
+  `mapped_column(repr=False)` turned out to be a dataclass-only argument in SQLAlchemy 2.1 and fails at
+  import on a plain `DeclarativeBase` (recorded in ARCHITECTURE §12). **Rate limiting** is DB-backed, no
+  Redis: `app/core/rate_limit.py` implements fixed-window primitives (`hit`, `peek`, `clear`,
+  `RateLimitRule`, `RateLimitStatus` with `retry_after_seconds` for F028's 429) over the
+  `rate_limit_buckets` table (migration `0004`), one row per key — rewritten at each window rollover, so the
+  table stays the size of the key space. The concurrency story is one statement, not a lock:
+  `INSERT … ON CONFLICT DO UPDATE … RETURNING` with a CASE that compares the stored window, and the test
+  races **twelve real connections** and asserts every racing hit returned a distinct count 1..12 — a
+  SELECT-then-UPDATE rewrite passes every other test and fails that one. Login attempts are keys
+  (`login:account:*`, `login:ip:*`), not a second table (BP-8.2h allows either; the generic one serves
+  F060 too). Checks run: `uv run pytest` **72 passed**; `ruff check`/`format --check` clean; `mypy app
+  migrations` clean (20 files); `0004` applied to `app_dev` (verified with `\d rate_limit_buckets`), round
+  trip `downgrade 0003`/`upgrade head` clean; `app_test` left empty after the suite — including the
+  concurrency test's own row, which it deletes in a `finally`.
 - **F025 — Session data model.** `app/models/session.py` declares `UserSession` (table `sessions`) — the row
   behind one login under DECISIONS C12 — and migration `0003` was autogenerated from it and reviewed against
   the models. The decisions are all about which states the table can represent. **Two deadlines, not one**:
@@ -631,9 +681,10 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F025)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0003 (head)`**; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the three revisions |
-| **Backend tests (F023–F025)** | `cd D:\resors\backend; uv run pytest` | **41 passed** — 5 schema conventions (no database needed) + 18 RBAC constraints + 15 session model/constraints + 3 session-secret unit tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`**; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
+| **Backend tests (F023–F026)** | `cd D:\resors\backend; uv run pytest` | **72 passed** — 5 schema conventions (no database needed) + 19 password/policy + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Session model tests (F025)** | `cd D:\resors\backend; uv run pytest tests/test_session_model.py tests/test_session_tokens.py` | **18 passed** — the token-hash shape and uniqueness, both deadlines and their ordering, all-or-nothing revocation over a closed vocabulary, user FK + cascade, the unique replacement chain and `SET NULL`, the family-revocation rehearsal, the `is_active` matrix, and the token/lifetime contract |
+| **Password & rate-limit tests (F026)** | `cd D:\resors\backend; uv run pytest tests/test_password_hashing.py tests/test_rate_limit.py` | **31 passed** — Argon2id parameters and the no-plaintext contract (hash content, the `User` repr, message echo), every policy rule and the confirmed defaults, window alignment/`Retry-After` math, the DB counter (limit, rollover, per-key budgets, `peek` without counting, `clear`), and the twelve-connection concurrency race |
 | Backend lint and types (F023) | `cd D:\resors\backend; uv run ruff check .; uv run ruff format --check .; uv run mypy app migrations` | clean. The CI gate that *enforces* this is F056's; these commands work today |
 | **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |

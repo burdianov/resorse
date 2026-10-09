@@ -96,6 +96,14 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         lazy="selectin",
     )
 
+    def __repr__(self) -> str:
+        """Never the hash. SQLAlchemy's default repr lists every loaded
+        column, so one stray ``print(user)`` would put an Argon2 hash in a log
+        file — "never logged" has to survive the operator's debugging too.
+        Identity is enough to be useful; nothing credential-shaped is here.
+        """
+        return f"User(id={self.id!r}, email={self.email!r})"
+
 
 # One dot, lowercase resource and action, digits and underscores allowed —
 # the codes ARCHITECTURE §6 fixes. The check is the floor, not the ceiling:
