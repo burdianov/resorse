@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F038.
+> Last updated: 2026-10-10 — after task F039.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F039 in
-claude_code_pack/TASKS.md. Implement F039 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F040 in
+claude_code_pack/TASKS.md. Implement F040 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F039` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F040` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,30 +67,34 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F038 — Permissions UI** (`/admin/permissions` — a **client-mode** DataTable over the
-  unpaginated dictionary (sorting/search in-browser; the tests assert rendered rows), Add/Edit/Delete
-  behind `permissions.manage` mirrors, the local code-shape check as UX only while the server owns the
-  verdict: 422 → the `code` field, 409 duplicate → the create dialog's root alert, the in-use rename →
-  the edit dialog's root alert, the in-use delete → the query layer's toast once the confirmation
-  closes; the page never guesses usage). Route registered (third admin route, Lock icon). New:
-  `pages/admin/permissions.tsx`, `pages/admin/permission-dialogs.tsx`; DECISIONS C27; +9 frontend tests
-  (**466 passing**); backend unchanged (204).
-- **Next task: F039 — Settings backend.** "Typed allowlist settings persistent API audit." Accept
-  (TASKS.md): "Restart persistence tests". BP-7.5 fixes the shape: an `app_settings` table
-  (key unique, value typed via a **declared registry/allowlist** — no arbitrary mass-assignment),
-  display name/description, date format (the source's options `DD.MM.YYYY`, `MM/DD/YYYY`, `YYYY-MM-DD`,
-  `DD-MM-YYYY`, `DD/MM/YYYY`), timezone/display localization, optional notification defaults; **secrets
-  stay outside the UI/config DB**; updates are admin-only (`settings.manage`), validated, audit-tracked
-  (F043 gap continues), and survive restarts (the acceptance). The frontend `format-date.ts`
-  deliberately left the format as a constant "that arrives with F039/F040" — F040 will consume the
-  API. Decide and record (C28): the registry's typed value shapes (str/bool/int/enum?), the read
-  surface (`GET /admin/settings` under `settings.read`; PUT/PATCH per-key or whole-form under
-  `settings.manage` — pick one, BP-7.5 says avoid mass-assignment), defaults when a key has never
-  been written, and how `APP_NAME`/description interact with `config/branding.ts` (the settings value
-  should become the runtime source; the frontend reads it — decide the split in F040 if needed).
-  Migration needed (`app_settings` table — the first migration since `0004`).
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F038 sits on top of
-  `a487d9e` (F037).
+- Last completed: **F039 — Settings backend** (`app/core/settings_registry.py` — four typed specs with
+  defaults and validators (app name 3–64, description 0–200, the source's five date formats, IANA
+  timezone via `zoneinfo`; **`tzdata` added** because Windows ships no tz database) — over the new
+  `app_settings` table (**migration `0005`**, applied to `app_dev`; round-trip verified against
+  `app_test`): unique key, JSONB value validated **before any write**, `updated_by` FK **SET NULL**
+  (attribution, not ownership), unwritten keys read as defaults. `GET /admin/settings` (`settings.read`)
+  serves the snapshot; **bare-map `PUT`** (`settings.manage`) validates everything then upserts in one
+  commit and returns the fresh snapshot — refusals address as `loc ["body","<key>"]`, which is why
+  F040's form fields must be named after the registry keys. No DELETE verb (PUT-to-default is the
+  reset). Deliberately not settings: Argon2 parameters, session lifetimes/throttles, secrets; F045 adds
+  notification keys when their behaviour exists. DECISIONS C28; +8 backend tests (**212 passing**);
+  frontend unchanged (466); `openapi.json` + types regenerated).
+- **Next task: F040 — Settings UI.** "Card sections name/date/timezone settings." Accept (TASKS.md):
+  "Validation/reload tests". BP-7.5 fixes the shape: a page of **Card sections** (not one giant form) —
+  application display name/description, date display format (the five options as a select), timezone
+  (IANA input or select), plus (per BP optional) notification defaults — persisted via the F039 API,
+  saving state/toasts, and **re-read across reload** (the acceptance). The form's field names ARE the
+  registry keys (`branding.app_name`, `display.date_format`, …) so `applyServerErrors` maps the
+  server's per-key 422s straight onto the inputs; a whole-form Save sends one bare-map PUT; the
+  response snapshot re-seeds the form. **Decide and record (C29)**: how `branding.app_name` flows into
+  the shell — the sidebar/header/login read `config/branding.ts` (build-time); the honest options are
+  (a) a small `useAppSettings` query consumed by the shell (with the static constants as pre-load
+  fallback), or (b) deferring consumption to a later task and shipping F040 as an editor only against
+  the existing name — pick (a) if it stays small, and keep the anti-flash/no-fabrication rules in
+  mind. Route registration: `/admin/settings` (`settings.read` + `adminOnly`, Settings icon). Audit
+  gap continues (F043).
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F039 sits on top of
+  `5bea508` (the F038 byte repair).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -211,6 +215,15 @@ the archive original — `sha256sum` both to check):
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+- **Settings are live (F039):** `app_settings` (**migration `0005`**) over the code registry
+  (`app/core/settings_registry.py`): typed specs with defaults — unwritten keys read as their defaults,
+  a new key later just starts there. `GET /admin/settings` (`settings.read`) → `{values: {...}}`;
+  `PUT` (`settings.manage`) takes the **bare map** (registry keys → values), validates **everything
+  before the first upsert**, one commit, returns the fresh snapshot; refusals are 422 at
+  `loc ["body","<key>"]` (F040's form fields must carry the registry keys). `updated_by` is SET NULL.
+  No DELETE verb — PUT-to-default is the reset. Not settings, by design (C28): Argon2 params, session
+  lifetimes/throttles, secrets. **Tests:** 8 new (incl. the two restart proofs — expunge-and-reread,
+  and a genuine write-close-reopen on its own connection), `uv run pytest` is now **212 passed**.
 - **The dictionary screen is live (F038):** `/admin/permissions` — client-mode DataTable (code
   sortable/mono + description, toolbar search, view options; `admin-permissions` preferences key),
   Add/Edit/Delete behind `permissions.manage` mirrors (the server refuses regardless). Refusals are
@@ -515,6 +528,10 @@ the archive original — `sha256sum` both to check):
 - **C27** — F038's dictionary screen (client-mode on the unpaginated list; server-sentence refusals
   in whichever surface fits — field/dialog-root/toast; local shape check as UX only; no client-side
   usage guessing), same date and same basis; rationale in ARCHITECTURE §5/§13.
+- **C28** — F039's settings (the registry-as-allowlist with typed specs and defaults; the `0005`
+  `app_settings` table with `updated_by` SET NULL; the bare-map PUT validated entirely before the
+  first upsert; no DELETE verb; the deliberately-not-settings list; `tzdata` added for IANA
+  validation), same date and same basis; rationale in ARCHITECTURE §5/§9/§13.
 - **C26** — F037's permission dictionary (the in-use freeze — rename and delete both 409 while granted;
   descriptions free; refused-not-normalised codes against the model's own pattern; duplicates via the
   unique index's 409; **no subset rule by design** — grants are where escalation lives; seed
@@ -615,6 +632,11 @@ the archive original — `sha256sum` both to check):
   filter (its counts are loaded rows), one always-on server sort, and row actions through
   `DataTableRowActions`. Permission mirrors hide controls the caller cannot use; they never replace the
   server's check. Preferences keys are per screen (`admin-users` today).
+- **Settings contracts for F040/F045 (F039, C28):** the registry key strings ARE the form field
+  names and the 422 `loc` paths — do not rename them in the UI; write through the bare-map PUT
+  (per-key PATCH does not exist); unwritten keys are defaults, so a form must render the snapshot, not
+  blanks; secrets never enter `app_settings`. **Downgrade-base is for scratch databases only** — the
+  §8 round-trip row now targets `app_test`; never run it against `app_dev`.
 - **F038's screen closes the admin-UI trio (C27):** new admin screens follow the same pattern —
   client-mode only for deliberately-unpaginated lists, mirrors on the codes the server enforces,
   refusals rendered as the server's sentence, preferences under `admin-<thing>`. F040's settings
@@ -760,6 +782,30 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F039 — Settings backend.** The application's runtime settings, and the first migration since
+  `0004`. The design is the **registry as allowlist** (BP-7.5): `app/core/settings_registry.py`
+  declares four typed specs — `branding.app_name` (3–64), `branding.app_description` (0–200),
+  `display.date_format` (the source's five formats), `display.timezone` (validated against IANA via
+  `zoneinfo`; **`tzdata` became a dependency** because Windows ships no tz database) — each with a
+  default and a validator whose messages name the rule and never echo the value (F026's rule). The new
+  `app_settings` table (**migration `0005`**, applied to `app_dev`; the full round-trip verified against
+  `app_test` — **never** `downgrade base` on dev) stores **overrides only**: unique `key`, JSONB
+  `value` validated before it gets anywhere near the table, `updated_by` FK **SET NULL** (attribution,
+  not ownership — deleting a user must not delete the setting; tested), and **no row at all for a
+  default**, so a fresh deployment needs no seeding and a key added in a later release simply starts at
+  its default. `GET /admin/settings` (`settings.read`) serves the snapshot — defaults overlaid with
+  stored rows; the write is a **bare-map `PUT`** (`settings.manage`): every key and value validated
+  **before the first upsert**, one commit (F035's matrix discipline in miniature), the fresh snapshot
+  back, refusals addressed at `loc ["body","<key>"]` — which is why F040's form field names are the
+  registry keys. No DELETE verb exists: putting a key back to its default is the same outcome with a
+  clearer history. What is **deliberately not a setting** is as designed as what is: the Argon2
+  parameters (F026's reviewed constants), session lifetimes and login throttles, and every secret
+  (BP-7.5); notification keys arrive with F045 when their behaviour exists. The restart acceptance is
+  proven twice: the snapshot re-reads after `expunge_all` (row-backed, not memory), and a genuine
+  write–close–reopen on **its own connection** (cleaned up in a `finally`). DECISIONS C28. Checks run:
+  `uv run pytest` **212 passed** (8 new in `tests/test_admin_settings.py`); `ruff check`/`format
+  --check` clean; `mypy app migrations` clean (49 files); `0005` applied to `app_dev`; `openapi.json` +
+  generated frontend types regenerated (frontend unchanged: 466).
 - **F038 — Permissions UI.** `/admin/permissions` — the dictionary screen (F038, BP-7.4), closing the
   admin-catalogue trio (users, roles, permissions). A **client-mode** DataTable over the deliberately
   unpaginated list (C25/C26): code column sortable and monospaced, description beside it, the kit's
@@ -1393,8 +1439,8 @@ and prints the real URL; uvicorn fails with a clear error.
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F026)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0004 (head)`** — F027–F038 added no revision; `uv run alembic downgrade base` takes the chain all the way down and leaves `alembic_version` empty; `uv run alembic history` shows the four revisions |
-| **Backend tests (F023–F035)** | `cd D:\resors\backend; uv run pytest` | **195 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 20 admin-users + 14 admin-roles + 9 admin-permissions tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F039)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) → `0005` (app settings) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0005 (head)`** (`app_dev` is at `0005`; F027–F038 added no revision, **F039 added `0005`**); `uv run alembic history` shows the five revisions. **The round-trip check targets a scratch database only** — `downgrade base` drops every table it touches; derive the test URL in PowerShell: `$t = uv run python -c "from sqlalchemy.engine import make_url; from app.core.config import get_settings; print(make_url(get_settings().database_url).set(database='app_test').render_as_string(hide_password=False))"; $env:DATABASE_URL = $t; uv run alembic downgrade base; uv run alembic upgrade head; uv run alembic current` → ends **`0005 (head)`**. **Never run `downgrade base` against `app_dev`** |
+| **Backend tests (F023–F039)** | `cd D:\resors\backend; uv run pytest` | **212 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 20 admin-users + 14 admin-roles + 9 admin-permissions + 8 admin-settings tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Login tests (F028)** | `cd D:\resors\backend; uv run pytest tests/test_auth_login.py` | **11 passed** — six credential-failure causes answered with the *same* 401 body, the unknown-email path proven to run a real Argon2 verification against the decoy (whose parameters are pinned current), both throttle buckets (per account and per address) incl. the identical 429 for a non-existent email, `hit_count == 5` persisted after five failures (commit-on-failure), the account-bucket reset on success, rehash-on-login, the exact cookie attributes, and 422 for malformed bodies |
 | **Session lifecycle tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_auth_sessions.py` | **13 passed** — resolution returns the user, the idle slide (committed by the resolver, capped at the absolute deadline, which never moves), expiry refused without a write, disabled users refused and left for the admin flow, rotation (same family, `rotated` + `replaced_by_id`, absolute deadline inherited), the replay killing exactly its own family as `theft_detected` while the presented row keeps `rotated`, logout (204, both cookies cleared, revoked `logout`, idempotent for junk/already-ended cookies), logout-all (401 without a session; every live row of *one* user revoked `logout_all`, others untouched), and a replay through logout still killing the family |
 | **CSRF tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_csrf_protection.py` | **11 passed** — the double-submit enforced whenever the session cookie is present (four refusal shapes, each changing nothing) and passing with no origin for scripted clients, the origin matrix refused even with a perfect double-submit (`https://evil.example`, `null`, scheme mismatch, lookalike host), the `Referer` fallback (and Origin winning when both are present), safe methods never checked, a latin-1 hostile header earning 403 not 500, login refusing a cross-site origin, and the carve-out: a dead session cookie does not lock the login form |
@@ -1420,7 +1466,9 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"`, removes reinstated dependencies (run after every `shadcn add`) |
 | **Matrix UI tests (F036)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/roles.test.tsx` | **13 passed** — the grid renders from the dictionary (namespace groups, codes, descriptions) with ticks matching the catalogue; the seed column is read-only (aria-disabled + lock, menu items disabled); a tick is unsaved state with **zero requests**, one Save puts the whole matrix (protected unchanged) and re-reads the catalogue; Reset and untick-to-clean both clear the bar; the 422's entry message shows in the bar with the draft intact; the rule 403 the same; navigation with a dirty draft hits the discard confirm; create/duplicate-conflict/rename/delete flows |
 | **Permissions smoke (F037)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): create: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/admin/permissions -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"code":"reports.export","description":"Export reports."}'` | **201**; the list (`GET /api/v1/admin/permissions`) shows it sorted. The guardrails worth seeing: the same create again → **409**; `"Users.Read"` → **422** on `code` (never normalised); `DELETE` on a seeded code (e.g. `users.read`, which `super_admin` holds) → **409** `cannot be renamed or deleted`; on the just-created unused code → **204** |
+| **Settings tests (F039)** | `cd D:\resors\backend; uv run pytest tests/test_admin_settings.py` | **8 passed** — guards (401/403, read-only callers can read); the snapshot serves registry defaults with zero rows; a failed payload (unknown key, bad format, wrong JSON type) writes **nothing**; overrides stored trimmed with `updated_by`; partial updates leave other overrides alone; `updated_by` → NULL when the author is deleted; and the two restart proofs (expunge-and-reread through the API; write-close-reopen on its own connection) |
 | **Permissions UI tests (F038)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/permissions.test.tsx` | **9 passed** — the table renders and sorts/searches in the browser; no management controls without `permissions.manage`; create posts the dialog and closes; a malformed code is refused locally with **no request**; server 422/409 refusals render in the right surfaces (field, dialog root alert, confirmation-then-toast) with the draft intact |
+| **Settings smoke (F039)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): read: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/admin/settings`; write: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PUT http://localhost:8000/api/v1/admin/settings -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"branding.app_name":"Resors","display.date_format":"YYYY-MM-DD"}'` | read: **200** with all four registry keys at their defaults. write: **200** echoing the fresh snapshot; re-read returns the new values — and they **survive an API restart** (stop/start uvicorn; the row is in PostgreSQL). Refusals: `{"nope.key":"x"}` → **422** at `nope.key`; `{"display.date_format":"31/12/2026"}` → **422** at that key |
 | Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **466 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | **Frontend auth-flow tests (F032)** | `cd D:\resors\frontend; pnpm exec vitest run tests/auth/auth-flows.test.tsx` | **14 passed** — the session boundary (anonymous redirect with intended-path return; network failure → Retry, **not** login), sign-in failures shown verbatim, local validation without a request, the forced-change landing/bounce/completion with the CSRF header asserted on the wire, 422 field mapping, mismatch refusal, both sign-out flows, the registered 401 re-resolution (one retry), and `readCsrfToken` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |

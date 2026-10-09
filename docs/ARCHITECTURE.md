@@ -543,6 +543,27 @@ rename, in the dialog's root alert; the in-use delete, as the query layer's toas
 confirmation closes) are the server's own sentences — the page never guesses usage, because the list
 deliberately carries none.
 
+### Application settings (F039)
+
+`app_settings` (migration `0005`) holds **overrides for a registry declared in code**
+(`app/core/settings_registry.py`, BP-7.5): four typed specs — app name, app description, the source's
+five date formats, an IANA-validated timezone — each with a default and a validator. The properties
+that matter:
+
+- **Unwritten keys read as defaults.** The snapshot is defaults overlaid with stored rows, so a fresh
+  deployment needs no seeding step and a key added in a later release starts at its default.
+- **The registry is the allowlist.** A `PUT /admin/settings` body is the bare map of keys; unknown
+  keys and invalid values are refused before the first upsert — validate everything, then write
+  everything, in one commit (the F035 matrix discipline in miniature) — and the refusal addresses as
+  `loc ["body", "<key>"]`, which is why F040's form fields carry the registry keys as their names.
+  No DELETE verb exists: putting a key back to its default is the same outcome with a clearer history.
+- **`updated_by` is SET NULL.** Attribution, not ownership: deleting a user must never delete a
+  setting (F024's reasoning for audit-facing references).
+- **What is deliberately not a setting** is as much the design as what is: the Argon2 parameters
+  (reviewed constants, F026), session lifetimes and login throttles (session-wide effects no settings
+  form should reach), and every secret — BP-7.5 keeps credentials in the environment. Notification
+  keys arrive with F045, when their behaviour exists.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -704,7 +725,10 @@ unrestricted rows in Python. **No domain table is created in Stage A.**
   tables**: it is the chain's root, and each table arrives with the task that owns it. F024 added the identity
   group (revision `0002`); F025 the `sessions` table (revision `0003` — hashed token key, rotation family, two
   ordered deadlines, an all-or-nothing revocation over a closed reason vocabulary, and a unique replacement
-  chain). The full chain `upgrade head` / `downgrade base` / `upgrade head` runs clean against PostgreSQL 18.6.
+  chain); F026 the `rate_limit_buckets` table (revision `0004`); F039 the `app_settings` table
+  (revision `0005`). The full chain `upgrade head` / `downgrade base` / `upgrade head` runs clean against
+  PostgreSQL 18.6 (run the round-trip against a **scratch database** — `app_test` — never `app_dev`: the
+  downgrade drops every table it touches).
 
 ## 10. API contract
 
@@ -1174,4 +1198,6 @@ the field-error messages when they exist and falls back to the detail string
   as the single failure voice, the read-only protected column, one grant-write path — C25, §5), and
   **F037 the permission dictionary** (the in-use freeze, refused-not-normalised codes, no subset rule
   by design — C26, §5), and **F038 the dictionary screen** (client-mode on the unpaginated list,
-  server-sentence refusals, mirrors behind `permissions.manage` — C27, §5).
+  server-sentence refusals, mirrors behind `permissions.manage` — C27, §5), and **F039 the settings
+  registry** (typed allowlist, defaults for unwritten keys, validate-then-upsert in one commit, SET
+  NULL attribution, the deliberately-not-settings list — C28, §5).

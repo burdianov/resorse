@@ -611,6 +611,21 @@
         "title": "SaveMatrixRequest",
         "type": "object"
       },
+      "SettingsResponse": {
+        "description": "The effective settings: every registry key, override or default.",
+        "properties": {
+          "values": {
+            "additionalProperties": true,
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "values"
+        ],
+        "title": "SettingsResponse",
+        "type": "object"
+      },
       "UpdatePermissionRequest": {
         "description": "Partial edit with fields-set semantics.\n\nA **code rename** is only permitted while no role holds the code (F037's\nservice rule, C26): every existing grant means \"the code as it reads\" —\nchanging the spelling under live grants would silently rewrite what they\nauthorise. The description has no such weight and edits freely.",
         "properties": {
@@ -1314,6 +1329,75 @@
           }
         },
         "summary": "Rename or re-describe a role",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "description": "Every declared key: its stored override, or the registry's default.",
+        "operationId": "get_settings_endpoint_api_v1_admin_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the settings.read permission."
+          }
+        },
+        "summary": "Read the effective application settings",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "description": "Validate every key before the first write, then upsert in one commit;\nthe response is the fresh snapshot, so no follow-up GET is needed.",
+        "operationId": "update_settings_endpoint_api_v1_admin_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing settings.manage."
+          },
+          "422": {
+            "description": "Field-addressable: `loc` names the offending setting key."
+          }
+        },
+        "summary": "Update application settings",
         "tags": [
           "admin"
         ]

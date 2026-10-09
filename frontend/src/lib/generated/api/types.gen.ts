@@ -426,6 +426,20 @@ export type SaveMatrixRequest = {
 };
 
 /**
+ * SettingsResponse
+ *
+ * The effective settings: every registry key, override or default.
+ */
+export type SettingsResponse = {
+    /**
+     * Values
+     */
+    values: {
+        [key: string]: unknown;
+    };
+};
+
+/**
  * UpdatePermissionRequest
  *
  * Partial edit with fields-set semantics.
@@ -974,6 +988,69 @@ export type UpdateRoleApiV1AdminRolesRoleIdPatchResponses = {
 };
 
 export type UpdateRoleApiV1AdminRolesRoleIdPatchResponse = UpdateRoleApiV1AdminRolesRoleIdPatchResponses[keyof UpdateRoleApiV1AdminRolesRoleIdPatchResponses];
+
+export type GetSettingsEndpointApiV1AdminSettingsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/settings';
+};
+
+export type GetSettingsEndpointApiV1AdminSettingsGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the settings.read permission.
+     */
+    403: unknown;
+};
+
+export type GetSettingsEndpointApiV1AdminSettingsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SettingsResponse;
+};
+
+export type GetSettingsEndpointApiV1AdminSettingsGetResponse = GetSettingsEndpointApiV1AdminSettingsGetResponses[keyof GetSettingsEndpointApiV1AdminSettingsGetResponses];
+
+export type UpdateSettingsEndpointApiV1AdminSettingsPutData = {
+    /**
+     * Payload
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/settings';
+};
+
+export type UpdateSettingsEndpointApiV1AdminSettingsPutErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing settings.manage.
+     */
+    403: unknown;
+    /**
+     * Field-addressable: `loc` names the offending setting key.
+     */
+    422: unknown;
+};
+
+export type UpdateSettingsEndpointApiV1AdminSettingsPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: SettingsResponse;
+};
+
+export type UpdateSettingsEndpointApiV1AdminSettingsPutResponse = UpdateSettingsEndpointApiV1AdminSettingsPutResponses[keyof UpdateSettingsEndpointApiV1AdminSettingsPutResponses];
 
 export type ListUsersApiV1AdminUsersGetData = {
     body?: never;
