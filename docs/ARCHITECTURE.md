@@ -1083,6 +1083,18 @@ service is about to mutate is fetched through a `populate_existing` getter (`get
 is loaded *before* anything assigns to it. The general rule is the F031/F033 one, sharpened: before
 writing a relationship, make sure reading it is free — or do the reading in SQL.
 
+### Dependency edges met while building the auth stack (F029–F036)
+
+- **Starlette renamed the 422 status constant.** `HTTP_422_UNPROCESSABLE_ENTITY` now emits a
+  deprecation warning on every response built with it; `HTTP_422_UNPROCESSABLE_CONTENT` is the
+  spelling (F030's endpoint uses it). The suite treats warnings as defects — a deprecation that
+  fires per request is exactly the kind of noise that hides the next real one.
+- **httpx will not store `Secure` cookies from an `http://` URL.** The test client's cookie jar
+  drops the `__Host-` pair a response sets (its `http.cookiejar` policy refuses secure cookies over
+  plain http, even for `localhost`), so auth-flow tests either pass cookies explicitly per request
+  or set them on the jar (`client.cookies.update(...)`) — never assume the jar kept what the server
+  sent. Documented in the F029 test file's header, too.
+
 ### The normaliser's fallback is not the only carrier (F036)
 
 `lib/errors.ts` (F018) hides array-shaped 422 details from `ApiError.detail`

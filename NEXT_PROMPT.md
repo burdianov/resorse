@@ -94,8 +94,8 @@ the archive original — `sha256sum` both to check):
   assigned, 409 with the count); the escalation rule (`ensure_codes_assignable`) applies to granting?
   — a permission *code* is not "granted" by creating it, but check whether creating a code a
   non-superuser does not hold is authority they lack (decide + record); audit gap continues (F043).
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F036 sits on top of
-  `56ce2ad` (F035).
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F036 (plus the
+  docs/lessons sweep that followed it, operator request) sits on top of `56ce2ad` (F035).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -513,6 +513,18 @@ the archive original — `sha256sum` both to check):
 
 ## 6. Gaps and constraints later tasks must honour
 
+- **Frontend tests are not type-checked.** `tsconfig.json` includes `src` and `vite.config.ts` only;
+  `tests/**` runs through Vitest's transform with no `tsc` pass, so a test fixture can drift behind a
+  generated type silently (F034's `RoleItem` fixtures did, discovered in F035). When a generated DTO
+  changes shape, grep `tests/` for its fixtures; F056's CI gate should consider adding a test-aware
+  typecheck (`vitest --typecheck` or a second tsconfig).
+- **Editing files containing Windows paths from scripted writes (Bash heredoc + python) mangles
+  backslashes on this machine** — escape sequences for CR, backspace and form-feed can land as
+  real control bytes inside `NEXT_PROMPT.md` and similar files, corrupting paths invisibly to
+  review. Prefer the Edit tool for these edits; after any scripted write, verify with a
+  control-byte scan (`python -c "d=open('NEXT_PROMPT.md','rb').read(); print(d.count(chr(13)), d.count(chr(8)), d.count(chr(12)))"`
+  → `0 0 0`) and repair byte-level if needed (`chr(...)` instead of escape sequences, for
+  obvious reasons).
 - **TypeScript 6 deprecates `baseUrl`** — it errors and will stop working in TS 7. Omit `baseUrl`; `paths` alone
   resolves relative to the tsconfig file. Any new tsconfig must follow this.
 - **`.gitattributes` must be extended, never replaced** — `* text=auto eol=lf` (scripts/Docker/Caddy LF;
@@ -719,6 +731,18 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **Docs/lessons sweep (operator request, after F036).** Every lesson from F028–F036 is now in the
+  specs, and the docs-location audit is recorded: **all specs live in-repo** — the pack (`BIG-PROMPT.txt`
+  verbatim, hash-verified against the archive) and `docs/` carry everything the tasks read; the only
+  external items are deliberate (the third-party reference tree `D:\QTC360\qtc360\`, read-only, and the
+  archive originals in `D:\RESORS_REFERENCE\` kept as audit records). The seven audit-required documents
+  not yet written (README, SECURITY, DEPLOYMENT, BACKUP_RESTORE, ADDING_A_MODULE, TESTING,
+  IMPLEMENTATION_LOG) are future-task deliverables (audit §9), not strays. Newly recorded lessons:
+  Starlette renamed the 422 constant (`HTTP_422_UNPROCESSABLE_CONTENT`; a per-response deprecation
+  warning) and httpx will not store `Secure` cookies from `http://` URLs (ARCHITECTURE §12); frontend
+  tests are not type-checked (`tsconfig` excludes `tests/**`) and scripted edits of files holding
+  Windows paths can mangle backslashes into control bytes on this machine — scan after writing
+  (NEXT_PROMPT §6).
 - **F036 — Role matrix UI.** `/admin/roles` — the UI half of BP-7.4's atomicity, whose central
   decision is what a tick *is*: **draft state, never a request**. The matrix renders every permission
   code grouped by namespace (rows, with descriptions) against every role (columns), and however many
