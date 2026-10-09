@@ -73,11 +73,11 @@ wins on simplicity and blast radius:
 | Property | Decision |
 |---|---|
 | Cookie | `__Host-session`, `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, no `Domain` (the `__Host-` prefix enforces this) |
-| Secret | 256-bit random session ID; only its **SHA-256 hash** is stored. Raw value never logged or persisted. |
+| Secret | 256-bit random session ID; only its **SHA-256 hash** is stored. Raw value never logged or persisted. F025 implements the contract: `hash_session_token` produces the hex digest, `sessions.token_hash` holds it, and a CHECK accepts nothing else. |
 | Rotation | New ID issued on login, on password change/reset, on any change to the user's roles, and on privilege escalation |
 | Theft detection | Presenting a **superseded** session ID (rotation replay) revokes the whole session family and records an audit event |
-| Idle timeout | initial default 12 h, refreshed on activity — configurable, confirmed at F025 |
-| Absolute lifetime | initial default 30 days regardless of activity — configurable, confirmed at F025 |
+| Idle timeout | 12 h default, refreshed on activity — `Settings.session_idle_timeout_minutes`, confirmed at F025 |
+| Absolute lifetime | 30 days default regardless of activity, never extended — `Settings.session_absolute_lifetime_days`, confirmed at F025 |
 | Multiple sessions | allowed; each row is independently revocable (`logout-all` = revoke all rows for the user) |
 | Re-evaluation | every request resolves the user **and** effective permissions from the DB, so a role change applies on the next request without stale privilege |
 | CSRF | `SameSite=Lax` **plus** mandatory `Origin`/`Referer` validation on unsafe methods **plus** a double-submit `X-CSRF-Token` header (token issued as a readable companion cookie at login) |
@@ -304,7 +304,10 @@ unrestricted rows in Python. **No domain table is created in Stage A.**
   `backend/migrations/` and takes its engine from the application, so the CLI and the app cannot point at
   different databases — the committed `alembic.ini` deliberately carries no URL. Revisions are hand-numbered
   (`alembic revision -m "…" --rev-id 0002`) so the directory reads in order, and **revision 0001 creates no
-  tables**: it is the chain's root, and each table arrives with the task that owns it.
+  tables**: it is the chain's root, and each table arrives with the task that owns it. F024 added the identity
+  group (revision `0002`); F025 the `sessions` table (revision `0003` — hashed token key, rotation family, two
+  ordered deadlines, an all-or-nothing revocation over a closed reason vocabulary, and a unique replacement
+  chain). The full chain `upgrade head` / `downgrade base` / `upgrade head` runs clean against PostgreSQL 18.6.
 
 ## 10. API contract
 
@@ -318,12 +321,11 @@ unrestricted rows in Python. **No domain table is created in Stage A.**
 
 ## 11. Consequence of the session choice for the task list
 
-Two entries are affected. Neither is blocked; both change meaning:
+Discharged. When §3 was written, two task-list entries changed meaning under the opaque-session design:
 
-- **F025** builds the `sessions` table (not `refresh_tokens`).
-- **F029** covers session rotation, rotated-ID replay detection, logout/logout-all and CSRF policy (not
-  refresh-token rotation). Its title still reads "Auth refresh logout"; the operator may want to amend that line,
-  the same way C11 amended the package manager.
+- **F025** builds the `sessions` table (not `refresh_tokens`) — **done**: `app/models/session.py`, revision `0003`.
+- **F029** covers session rotation, superseded-ID replay detection, logout/logout-all and CSRF policy (not
+  refresh-token rotation). `TASKS.md` was amended to say exactly that; no further action is outstanding.
 
 ## 12. Implementation notes
 
@@ -553,6 +555,17 @@ pass. Two rules and one guard came out of it:
   `import type` (erased by `verbatimModuleSyntax`, so type-only edges cannot cycle at runtime) and dynamic
   `import()`, and prints the cycle path. Type-checking does not catch this class of bug; this test does.
 
+### Bulk UPDATEs bypass the identity map (F025)
+
+A Core `update()`/`delete()` statement runs in the database, not through the ORM, so **objects already loaded
+in that session keep their stale attribute values** — a row the update just revoked still reads `revoked_at is
+None` from the in-memory instance. This matters wherever a bulk write is followed by reading the same rows
+back in the same session; F029's family revocation is exactly that shape. The fix is either
+`select(...).execution_options(populate_existing=True)` (re-populate what the query returns) or
+`session.refresh(obj)` for a single row. `test_session_model.py::test_replaying_a_rotated_id_revokes_the_whole_family`
+demonstrates the pattern — and why trusting the cached instance would have made the test pass for the wrong
+reason.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not
@@ -561,4 +574,6 @@ pass. Two rules and one guard came out of it:
 - No microservices, message broker or background worker beyond bounded `BackgroundTasks` or a PostgreSQL
   outbox (§8.4e).
 - Session timeouts and password-policy parameters are **initial defaults** here; the concrete values are
-  confirmed at F025/F026 rather than invented now.
+  confirmed rather than invented now — **F025 confirmed the session lifetimes**
+  (`Settings.session_idle_timeout_minutes` = 720, `session_absolute_lifetime_days` = 30), F026 the
+  password-policy parameters.

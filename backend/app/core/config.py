@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     # working without one. Production startup validation arrives with F060.
     database_url: str | None = None
 
+    # Session lifetimes (ARCHITECTURE §3: "configurable, confirmed at F025").
+    # F028 reads these when issuing a session row; the idle deadline moves
+    # forward on activity but is capped at the absolute one, which never moves.
+    # The defaults are the confirmed ones: 12 hours of inactivity, 30 days
+    # regardless of activity.
+    session_idle_timeout_minutes: int = 12 * 60
+    session_absolute_lifetime_days: int = 30
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
