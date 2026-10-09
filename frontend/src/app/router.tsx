@@ -1,70 +1,20 @@
 import { createBrowserRouter } from 'react-router'
 
-import { ThemeToggle } from '@/components/common/theme-toggle'
+import { AppShell } from '@/components/layout/app-shell'
+import { FoundationStatus } from '@/pages/foundation-status'
 
 /**
- * Router skeleton — data-router mode (ARCHITECTURE §5).
+ * Route table — data-router mode (ARCHITECTURE §5).
  *
- * F006 proved the routing mode end to end; F009 added the theme tokens and F010
- * the persisted theme preference, so this page renders from them and survives a
- * reload. The real registry arrives with F016 and the route states with F017.
- * Nothing here renders data.
+ * F006 proved the routing mode end to end; F015 turned the root into a layout
+ * route so every page renders inside the sidebar/header shell. The shared
+ * navigation registry and its route metadata arrive with F016, and the route
+ * states (root and /admin redirects, 403, 404, error boundary) with F017.
  */
-function FoundationStatus() {
-  return (
-    <main className="min-h-dvh bg-background px-6 py-10 text-foreground">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Application Platform</h1>
-          <p className="text-sm text-muted-foreground">
-            Foundation bootstrapped: Vite, React, TypeScript, React Router and theme tokens. No
-            application pages exist yet.
-          </p>
-          <ThemeToggle />
-        </header>
-
-        <section className="rounded-lg border border-border bg-card p-5 text-card-foreground">
-          <h2 className="text-sm font-medium">Theme tokens</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Temporary surface for F009/F010: every swatch below is painted from a semantic token, so
-            the whole block repaints when the theme changes, and the choice persists across reloads.
-            It is replaced when the real routes land in F017.
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              ['bg-primary text-primary-foreground', 'primary'],
-              ['bg-secondary text-secondary-foreground', 'secondary'],
-              ['bg-muted text-muted-foreground', 'muted'],
-              ['bg-accent text-accent-foreground', 'accent'],
-              ['bg-destructive text-primary-foreground', 'destructive'],
-            ].map(([classes, label]) => (
-              <span
-                key={label}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium ${classes ?? ''}`}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-
-          {/* Literal class names: Tailwind only generates classes it can find in source. */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="size-8 rounded-md bg-chart-1" title="chart-1" />
-            <span className="size-8 rounded-md bg-chart-2" title="chart-2" />
-            <span className="size-8 rounded-md bg-chart-3" title="chart-3" />
-            <span className="size-8 rounded-md bg-chart-4" title="chart-4" />
-            <span className="size-8 rounded-md bg-chart-5" title="chart-5" />
-          </div>
-        </section>
-      </div>
-    </main>
-  )
-}
-
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <FoundationStatus />,
+    element: <AppShell />,
+    children: [{ index: true, element: <FoundationStatus /> }],
   },
 ])

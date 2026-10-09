@@ -364,6 +364,30 @@ See §5. The rule that matters most: **commit before running the generator**, th
 reverts components it considers dependencies, and `HEAD` is what `fix:ui` restores from — F013 and F014 each lost
 work to this.
 
+### Adapting a generated primitive — the sidebar (F015)
+
+Beyond the standard pass, the registry's `sidebar` needed four corrections; the header of
+`components/ui/sidebar.tsx` records each one. Two are worth generalising:
+
+- **Generated persistence is Next.js persistence.** The provider wrote its open state to a cookie because the
+  reference's server rendered the first paint. A cookie only earns its keep when a server reads it; here the app
+  owns the preference in localStorage (`layout/sidebar-preferences.ts`) and drives the provider through
+  `open`/`onOpenChange`. The theme (F010) set the same precedent.
+- **`no-scrollbar` styled nothing.** Utility classes from `shadcn/tailwind.css` are silently dead in a project
+  that does not import it (§5 item 3). Removing the class was the fix; the global themed thin scrollbar applies.
+
+And one source bug deliberately **not** copied: the reference positions its collapse chevron `absolute -right-3`
+inside a wrapper with no positioned ancestor, so the chevron anchors to the viewport and escapes to the right edge
+of the screen. Anchor floating furniture to an element you positioned yourself.
+
+### "No inert buttons" changes what a shell renders
+
+The reference header always renders its bell, avatar menu and project switcher, with data arriving later or not
+at all. CLAUDE_MASTER forbids placeholder controls, so the shell renders a control only when its backing exists:
+the search trigger appears when F016 passes `onSearchClick`, the context slot when a module passes an enabled
+adapter (F015), the profile menu when F032 supplies a user. A shell that looks emptier than the reference for a
+few tasks is the intended state, not a defect — do not "fix" it by rendering dead controls.
+
 ## 13. Non-goals and deferred choices
 
 - No service worker, offline mode or PWA — "offline" in this project means *network-failure handling*, not

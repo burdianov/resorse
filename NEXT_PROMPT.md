@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-09 — after task F014.
+> Last updated: 2026-10-09 — after task F015.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -26,13 +26,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F015 in
-claude_code_pack/TASKS.md. Implement F015 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F016 in
+claude_code_pack/TASKS.md. Implement F016 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F015` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F016` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -55,15 +55,17 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F014 — picker and command primitives** (Select, Tabs, Collapsible, Command, Calendar, plus
-  hand-built Date Picker and Time Picker; G-8 fixed).
-- **Next task: F015 — layout shell.** 64px header, 260/64px sidebar, mobile drawer, and the disabled-by-default
-  context-switcher slot (interface already designed in `ARCHITECTURE.md` §7). Acceptance is three responsive widths
-  working. Expect to touch `components/layout/` and to use the F011–F014 primitives; check the Dark Mode toggle
-  still works after the shell lands.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F014 sits on top of
-  `3ad6fe8` (F013).
-- Last human verification: **NOT RUN** — no gate suite has been run by the operator yet.
+- Last completed: **F015 — layout shell** (64px header, 260/64px sidebar, mobile drawer, context-switcher slot;
+  the app now renders inside the shell at `/`).
+- **Next task: F016 — navigation registry.** Permission-ready declarative nav, breadcrumbs and the command
+  palette (Ctrl/Cmd+K). It replaces the temporary `FOUNDATION_NAVIGATION` constant in `components/layout/app-shell.tsx`
+  with the shared `config/navigation.ts` registry, and passes `onSearchClick` to `AppHeader` so the header's
+  search trigger appears. The sidebar already consumes a `groups` prop of the right shape, and
+  `context-switcher-slot.tsx` shows the adapter pattern F063 will prove.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F015 sits on top of
+  `0011dd6` (docs, lessons F009–F014).
+- Last human verification: **NOT RUN** — no gate suite has been run by the operator yet. F015's three-width
+  check is the operator's first visual check of the shell (see §8).
 
 ## 4. Environment facts
 
@@ -74,10 +76,22 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **Styling is live:** `frontend/src/styles/globals.css` holds the theme tokens (31 light / 30 dark, values
   verified against the reference). Tailwind 4 goes through `@tailwindcss/vite`; dark mode is the `.dark` class
   on `<html>`, not a media query — F010 supplies the provider that sets it.
-- **UI primitives and tests are live:** 26 components in `frontend/src/components/ui/` (F011–F014), with the
-  generation-and-correction workflow in `ARCHITECTURE.md` §5 — after every `shadcn add` run **`pnpm run fix:ui`**,
-  which restores components the generator reverted. Component tests live in
-  `frontend/tests/components/`; Vitest config sits in `vite.config.ts` (jsdom + `src/testing/setup.ts`).
+- **UI primitives and tests are live:** 29 files in `frontend/src/components/ui/` (F011–F015) = 28 of the source's
+  29 primitives — only `table` missing, it is F020 — plus `calendar`, with the generation-and-correction workflow
+  in `ARCHITECTURE.md` §5 — after every `shadcn add` run **`pnpm run fix:ui`**, which restores components the
+  generator reverted. Component tests live in `frontend/tests/components/`; Vitest config sits in `vite.config.ts`
+  (jsdom + `src/testing/setup.ts`).
+- **Layout shell is live (F015):** `frontend/src/components/layout/` — `app-shell.tsx` (SidebarProvider + sidebar
+  + 64px header + `p-6` content, mounted as the root layout route in `app/router.tsx`), `app-sidebar.tsx` (nav
+  mechanics; items arrive through a `groups` prop), `app-header.tsx`, `context-switcher-slot.tsx` (BIG-PROMPT
+  §3.2a interface; disabled by default and renders **nothing**), `sidebar-preferences.ts`. Sidebar collapse is
+  persisted in localStorage `app.sidebar` (`expanded`/`collapsed`), group open state in `app.sidebar.groups`;
+  a first load in the 768–1023px band starts collapsed. The theme control moved from the page into the header
+  (sun/moon menu with Light/Dark/System). `src/pages/foundation-status.tsx` is the temporary page; `src/config/`
+  and `src/hooks/` are no longer empty (`branding.ts`, `use-mobile.ts`).
+- **The header shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons, so the
+  search trigger renders only once F016 passes `onSearchClick`, and notifications/profile arrive with F046/F032.
+  An empty right-hand cluster today is expected, not a bug (`ARCHITECTURE.md` §12).
 - **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
   `app`. Credentials are in the git-ignored `.env`. Verified working end to end: asyncpg 0.32.0 and SQLAlchemy
   2.1.4 both connect to **PostgreSQL 18.6** (this closed the compatibility check F003 had to defer).
@@ -123,6 +137,15 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   arrives in **F057** and fix or dismiss it there.
 - **`pnpm run fix:ui` after every `shadcn add`** — it restores components the generator reverted, remaps `cn`,
   strips `"use client"` and drops the `cn` package. **Commit before generating**: it restores from `HEAD`.
+- **F016 owns the seam the shell left open.** `FOUNDATION_NAVIGATION` in `app-shell.tsx` is temporary and holds
+  the only route that exists today; the registry replaces it and maps its entries onto `SidebarNavGroup` /
+  `SidebarNavItem` (`components/layout/app-sidebar.tsx` — `id`, `label`, `path`, optional Lucide `icon`).
+  `AppHeader` renders its search trigger only when given `onSearchClick`; until F016 passes it, the trigger's
+  absence is by design (no inert controls).
+- **Two source behaviours were deliberately not copied in F015** (recorded in `ARCHITECTURE.md` §12): the
+  reference re-forces its viewport default on every load and resize, discarding the stored collapse preference —
+  here the viewport only decides the first load with nothing stored; and the reference's edge chevron is anchored
+  to no positioned ancestor, escaping to the viewport edge — the wrapper here is `relative`.
 - **Read `docs/ARCHITECTURE.md` §12 (Implementation notes) before debugging anything in the frontend.** It records
   the traps that cost the most time in F011–F014: minifiers rewriting values and quotes so that hand-written checks
   produce false failures, most failing component tests being wrong expectations rather than defects (dump the DOM
@@ -132,6 +155,19 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F015 — layout shell.** `ui/sidebar.tsx` came from the registry and took four corrections (all in its header
+  comment): the §1.2 geometry (260px expanded / 64px rail / 260px drawer — generated defaults were 16rem/3rem),
+  no cookie (the preference is the app's, in localStorage; nothing here is server-rendered), `no-scrollbar`
+  dropped (that utility lives in `shadcn/tailwind.css`, which we do not import, so it styled nothing), and
+  `relative` on the wrapper. That last one is a source bug **not** copied — the reference's `absolute -right-3`
+  chevron has no positioned ancestor and escapes to the viewport edge. New `components/layout/`: `app-shell`
+  (now the root layout route), `app-sidebar` (collapsible groups, persisted group state, active-row
+  `aria-current` + `data-active`, scroll-into-view, rail tooltips, Ctrl/Cmd+B), `app-header` (64px, hamburger +
+  brand below `md`), `context-switcher-slot` (§3.2a/ARCHITECTURE §7 — disabled renders nothing; enabled renders
+  a working selector), `sidebar-preferences` (also the first-load viewport rule). The theme control moved into
+  the header as a sun/moon menu keeping all three modes explicit. The header deliberately renders no search
+  trigger, bell or avatar yet — their owners pass real handlers in F016/F046/F032; a dead control would violate
+  "no inert buttons". Checks run: **196 tests across 29 files, all passing**; typecheck exit 0; build exit 0.
 - **F014 — picker and command primitives.** `select`, `tabs`, `collapsible`, `command` and `calendar` came from the
   registry; **`date-picker` and `time-picker` are not registry items** (the reference hand-built both too), so they
   are composed here from Popover + Calendar and from hour/minute/period columns, with a new `src/lib/format-date.ts`
@@ -163,7 +199,7 @@ The fuller table (including future suites) lives in `claude_code_pack/OPERATOR_G
 | What | Command | What you should see |
 |---|---|---|
 | **Database** (F008) | `cd D:\resors; docker compose up -d --wait` | `resors-postgres  ... Healthy`, published on **5432** |
-| **Frontend** (F006) | `cd D:\resors\frontend; pnpm run dev` | `VITE v8.3.4 ready` → open **http://localhost:5173** |
+| **Frontend** (F006) | `cd D:\resors\frontend; pnpm run dev` | `VITE v8.3.4 ready` → open **http://localhost:5173**: the page renders **inside the shell** (sidebar + 64px header) since F015 |
 | **Backend API** (F007) | `cd D:\resors\backend; uv run uvicorn app.main:app --reload --port 8000` | `Application startup complete` → open **http://localhost:8000/docs** |
 | **Frontend production build** (F006) | `cd D:\resors\frontend; pnpm run build; pnpm run preview` | serves the built app on **http://localhost:4173** |
 
@@ -189,12 +225,16 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F014)** | `cd D:\resors\frontend; pnpm run test:run` | **171 passing** across 25 files |
+| **Frontend tests (F011–F015)** | `cd D:\resors\frontend; pnpm run test:run` | **196 passing** across 29 files |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"` (run after every `shadcn add`) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | 100% over the exercised files |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **196 tests passing**, ~86% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
-| **Theme persists (F010)** | open the app, click **Light / Dark / System**, then press **F5** | the chosen theme is still applied after reload, with **no flash** of the other theme first |
+| **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
+| **Sidebar preference (F015)** | click the round chevron on the sidebar edge, then press **F5** | it stays collapsed after reload; console: `localStorage.getItem('app.sidebar')` → `"collapsed"` |
+| **Nav behaviour (F015)** | inside the collapsed rail, hover the **Status** row; click the **Foundation** group label | the label appears as a tooltip in the rail; the group collapses/expands and the choice survives **F5** (`app.sidebar.groups`) |
+| **Context slot is off (F015)** | look at the header on desktop | **no** context selector is rendered — the slot is disabled by default (BIG-PROMPT §3.2a); it appears only when a module injects an enabled adapter |
+| **Theme persists (F010)** | open the app, click the **sun/moon button in the header**, choose **Light / Dark / System**, then press **F5** | the chosen theme is still applied after reload, with **no flash** of the other theme first |
 | Inspect the stored theme (F010) | browser console: `localStorage.getItem('app.theme')` | `"light"`, `"dark"` or `"system"` |
 | Force a theme by hand (F009) | browser console: `document.documentElement.classList.add('dark')` / `.remove('dark')` | page repaints; a dark scrollbar on a light page would mean the token theme is broken |
 | Dependencies current | `cd D:\resors\frontend; pnpm install` · `cd D:\resors\backend; uv sync` | pnpm: "Already up to date" · uv: "Audited 64 packages" |
