@@ -16,6 +16,10 @@ interface TimePickerProps {
   placeholder?: string
   disabled?: boolean
   id?: string
+  /** Matches `DatePicker`: the form kit drives invalid state through this. */
+  invalid?: boolean
+  /** Forwarded to the trigger — see the note in `date-picker.tsx` (F019). */
+  'aria-describedby'?: string
   'aria-label'?: string
   className?: string
 }
@@ -71,7 +75,9 @@ export function TimePicker({
   placeholder = 'Select a time',
   disabled = false,
   id,
+  invalid = false,
   className,
+  'aria-describedby': ariaDescribedBy,
   'aria-label': ariaLabel,
 }: TimePickerProps) {
   const [open, setOpen] = useState(false)
@@ -94,6 +100,8 @@ export function TimePicker({
             variant="outline"
             disabled={disabled}
             aria-label={ariaLabel}
+            aria-invalid={invalid}
+            aria-describedby={ariaDescribedBy}
             data-empty={value ? 'false' : 'true'}
             className={cn(
               'w-full justify-start gap-2 font-normal',

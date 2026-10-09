@@ -140,6 +140,7 @@ frontend/src/
   app/            router.tsx, providers.tsx
   styles/         globals.css (Tailwind 4 tokens)
   config/         navigation.ts, access.ts (leaf access model), permissions.ts, branding.ts
+  components/form/  form.tsx (pattern), fields.tsx, form-actions, form-errors, unsaved-changes-guard
   components/     ui/ (29 primitives), layout/, data-table/, form/, loaders/, common/, providers/
   features/       <feature>/{api,hooks,schemas,components}   — auth, admin/*, profile, notifications, reports
   pages/          route components
@@ -414,6 +415,32 @@ for exactly this reason. Put extra UI inside a route element.
 - **Axios' XHR adapter and MSW work together in jsdom** without forcing an adapter or a fetch shim; a request made
   through the shared client is intercepted by `setupServer` as-is. The trap is elsewhere: unmatched requests must
   be configured to *fail* (`onUnhandledFrame: 'error'`), or a test that forgot its handler just hangs or warns.
+
+### The form kit's own traps (F019)
+
+- **The `base-nova` registry has no `form` item, and the CLI says nothing.** `shadcn add form` prints
+  "Checking registry ✔" and exits 0 without creating a file or an error — a silent no-op. `components/form/form.tsx`
+  is therefore hand-written (like `date-picker`/`time-picker` in F014), and mirrors the documented §5.4 pattern with
+  `cloneElement` standing in for Radix's `Slot`, which this stack does not have.
+- **A control that does not forward unknown props silently breaks its field.** `FormControl` injects
+  `id`/`aria-describedby`/`aria-invalid` into its child; `DatePicker`/`TimePicker` destructure their props, so
+  those injections vanished without a type error. They now take `aria-describedby` (and `invalid`) explicitly —
+  and `FormControl`'s child type names the three props a control must accept.
+- **jsdom dispatches clicks on disabled buttons.** F019's duplicate-submit test clicked the busy submit button
+  "to prove" no second request goes out — and a second request went out. Real browsers cannot activate a disabled
+  button, so the guard (disabled + `aria-busy` while pending) is asserted as *state*, not by clicking again. Same
+  family as the other jsdom gaps in this section: the DOM is only an approximation of the browser.
+- **A `Spinner` inside a `Button` renames the button.** The Spinner carries `role="status"` and
+  `aria-label="Loading"`, so a busy button's accessible name became "Loading Delete user" — bad for voice control
+  and for anyone referring to the button by name mid-action. `Button` now renders it `aria-hidden`; `aria-busy`
+  already carries the state (the same duplicate-live-region rule F017 applied in `LoadingState`).
+- **Base UI's `Checkbox` renders a hidden input next to its button**, so `getByLabelText` matches twice; query the
+  checkbox by role. The label association still names the control.
+- **`handleSubmit` + `useMutation`: return `mutateAsync`.** With `mutate(values)` the submit handler returns
+  `undefined`, RHF considers the submission finished immediately and `isSubmitting` never turns true — so
+  `FormActions` would never show the pending state. The canonical wiring is
+  `form.handleSubmit((values) => mutation.mutateAsync(values).catch(() => undefined))`: the catch stops the
+  rejection escaping `handleSubmit` after the mutation's own `onError` mapped it onto the form.
 
 ### A circular import is invisible to every check except a browser (found after F017)
 

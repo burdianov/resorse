@@ -5,6 +5,20 @@ import { toast } from 'sonner'
 
 import { toApiError } from '@/lib/errors'
 
+declare module '@tanstack/react-query' {
+  interface Register {
+    mutationMeta: {
+      /**
+       * Set by a mutation whose failures are surfaced *inline* — F019's forms
+       * render them through `applyServerErrors` + `FormError`. Without it the
+       * user would read the same sentence twice: once in the form, once in a
+       * toast.
+       */
+      suppressErrorToast?: boolean
+    }
+  }
+}
+
 /**
  * Server-state provider (F018, BIG-PROMPT §9.2).
  *
@@ -26,9 +40,11 @@ import { toApiError } from '@/lib/errors'
  * cold load — is the page's business: it renders `ErrorState` with a Retry,
  * and a toast on top would say the same thing twice. A query that fails while
  * data is already on screen (a background refetch) has no visible home, so it
- * gets a toast. A failed mutation has no home at all until the form work in
- * F019 maps server errors onto fields, so it toasts. Cancelled requests —
- * TanStack cancels in-flight queries on unmount — are never surfaced.
+ * gets a toast. A failed mutation has no home of its own, so it toasts —
+ * unless it opts out through `meta: { suppressErrorToast: true }`, which is
+ * how F019's forms keep the form's inline error and the toast from saying the
+ * same sentence twice. Cancelled requests — TanStack cancels in-flight queries
+ * on unmount — are never surfaced.
  */
 export const QUERY_STALE_TIME_MS = 30_000
 
@@ -66,7 +82,10 @@ export function createQueryClient(): QueryClient {
       },
     }),
     mutationCache: new MutationCache({
-      onError: (error) => {
+      onError: (error, _variables, _context, mutation) => {
+        // A form that maps the failure onto its fields says it better; see
+        // `mutationMeta` above.
+        if (mutation.meta?.suppressErrorToast === true) return
         notifyError(error)
       },
     }),

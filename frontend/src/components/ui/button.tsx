@@ -75,7 +75,13 @@ function Button({
       aria-busy={loading}
       {...props}
     >
-      {loading ? <Spinner className={SPINNER_SIZE[size ?? 'default'] ?? 'size-4'} /> : null}
+      {/* Decorative here: the button's own `aria-busy` announces the state, and
+          without this the Spinner's role="status"/aria-label would change the
+          button's accessible name to "Loading <label>" while it works — which
+          breaks voice control and any name-based reference mid-action (F019). */}
+      {loading ? (
+        <Spinner aria-hidden className={SPINNER_SIZE[size ?? 'default'] ?? 'size-4'} />
+      ) : null}
       {children}
     </ButtonPrimitive>
   )

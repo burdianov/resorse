@@ -21,6 +21,12 @@ interface DatePickerProps {
   invalid?: boolean
   disabled?: boolean
   id?: string
+  /**
+   * Forwarded to the trigger. The form kit's `FormControl` injects it, and a
+   * component that does not pass it on drops the field's connection to its
+   * description and error message — silently, in the DOM (F019).
+   */
+  'aria-describedby'?: string
   'aria-label'?: string
   className?: string
 }
@@ -33,6 +39,7 @@ export function DatePicker({
   disabled = false,
   id,
   className,
+  'aria-describedby': ariaDescribedBy,
   'aria-label': ariaLabel,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
@@ -49,6 +56,7 @@ export function DatePicker({
             disabled={disabled}
             aria-label={ariaLabel}
             aria-invalid={invalid}
+            aria-describedby={ariaDescribedBy}
             data-empty={value ? 'false' : 'true'}
             className={cn(
               'w-full justify-start gap-2 font-normal',

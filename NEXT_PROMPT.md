@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-09 — after task F018.
+> Last updated: 2026-10-09 — after task F019.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F019 in
-claude_code_pack/TASKS.md. Implement F019 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F020 in
+claude_code_pack/TASKS.md. Implement F020 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F019` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F020` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read all of `BIG-PROMPT.txt` — jump to a section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
 ## 2. Where things are
@@ -58,16 +58,16 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F018 — API client foundation** (shared Axios instance with `ApiError` normalization and the
-  401 retry-once policy, TanStack Query provider with 30 s stale time and the retry/toast rules, typed DTOs
-  generated from FastAPI's OpenAPI schema, `docs/OPENAPI_CLIENT.md`, MSW wired into the test setup).
-- **Next task: F019 — Form framework.** React Hook Form + Zod field kit, `aria-invalid`/`aria-describedby`
-  wiring, and **server error mapping** — the half of F018 that exists for it: `ApiError.fieldErrors` already
-  carries Pydantic's 422 entries as dotted field paths, so F019 maps them onto inputs instead of inventing a
-  second convention. Acceptance is validation and accessibility tests. The mutation toast F018 added is what
-  F019 should refine for handled validation errors.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F018 sits on top of
-  `5b828e5` (F017).
+- Last completed: **F019 — Form framework** (RHF + Zod v4 field kit in `components/form/`, server error mapping
+  from `ApiError.fieldErrors`, `FormActions`, `ConfirmDialog`, the unsaved-changes guard, and the mutation-toast
+  opt-out the F018 handoff flagged).
+- **Next task: F020 — DataTable core.** TanStack Table with sorting, search and pagination, server mode included;
+  acceptance is real fixture tests. It is the second consumer of this foundation: the table's URL state (F021)
+  will sit alongside the query keys F018 centralised, and its searches/filters are ordinary controlled inputs —
+  the F019 field kit is what a filter form composes. `table` is also the one primitive still missing from the
+  source's 29 (§4), and F020 owns it.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F019 sits on top of
+  `0ff51e6` (the circular-import fix).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -83,8 +83,9 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 - **Styling is live:** `frontend/src/styles/globals.css` holds the theme tokens (31 light / 30 dark, values
   verified against the reference). Tailwind 4 goes through `@tailwindcss/vite`; dark mode is the `.dark` class
   on `<html>`, not a media query — F010 supplies the provider that sets it.
-- **UI primitives and tests are live:** 29 files in `frontend/src/components/ui/` (F011–F015) = 28 of the source's
-  29 primitives — only `table` missing, it is F020 — plus `calendar`, with the generation-and-correction workflow
+- **UI primitives and tests are live:** 30 files in `frontend/src/components/ui/` = 28 of the source's 29
+  primitives — only `table` missing, it is F020 — plus `calendar`, `date-picker`, `time-picker` (F014, all three
+  hand-written: not registry items) and `sonner` (F018), with the generation-and-correction workflow
   in `ARCHITECTURE.md` §5 — after every `shadcn add` run **`pnpm run fix:ui`**, which restores components the
   generator reverted. Component tests live in `frontend/tests/components/`; Vitest config sits in `vite.config.ts`
   (jsdom + `src/testing/setup.ts`).
@@ -137,6 +138,19 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   (`onUnhandledFrame: 'error'`; MSW 3 renamed that option) with the server in `src/testing/msw-server.ts`;
   `tests/lib/` holds `api-client.test.ts` and `query-provider.test.tsx`. New deps: axios 1.20.0,
   @tanstack/react-query 5.104.1, sonner 2.0.8 (+ dev: msw 3.0.2, @hey-api/openapi-ts 0.99.0).
+- **Form framework is live (F019):** `components/form/` — `form.tsx` (the §5.4 pattern: Form, FormField,
+  FormItem, FormLabel, FormControl, FormDescription, FormMessage and a form-level `FormError`; hand-written
+  because the `base-nova` registry has **no `form` item** — `shadcn add form` exits 0 without creating a file —
+  and `cloneElement` replaces Radix's `Slot`), `fields.tsx` (InputField, TextareaField, SelectField,
+  CheckboxField, DateField, TimeField; values are strings — numbers/dates are the Zod schema's job),
+  `form-actions.tsx` (pending state from `useFormState`; the disabled control is the duplicate-submit guard),
+  `form-errors.ts` (`applyServerErrors`: Pydantic's dotted 422 paths → `setError`, `ApiError.detail` → the root
+  error, previous attempt cleared), `unsaved-changes-guard.tsx` (react-router `useBlocker`; in-app navigation
+  only — the tab-close prompt is a separate mechanism), and `components/common/confirm-dialog.tsx` (the §5.2b
+  composite; G-2 moved it here from F013 because the guard is its first consumer). A mutation that surfaces its
+  failure inline sets `meta: { suppressErrorToast: true }` (typed via TanStack's `Register`), so the form and the
+  toast never say the same sentence twice. New deps: react-hook-form 7.89.0, @hookform/resolvers 5.9.1,
+  zod 4.6.5.
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
   notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
 - **Database:** `resors-postgres` on `postgres:18.6-alpine`, published on **5432**, database `app_dev`, user
@@ -198,6 +212,15 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
   the cache on identity change, and the key shape is the second line of defence.
 - **The toast rule is deliberate:** a cold query failure is rendered inline (F017's `ErrorState`), a background
   failure and a failed mutation toast. Do not "unify" them — see `docs/OPENAPI_CLIENT.md` §4.
+- **The form kit's canonical wiring** (F019): the mutation carries `meta: { suppressErrorToast: true }` and
+  `onError: (error) => applyServerErrors(error, form)`; the form submits through
+  `form.handleSubmit((values) => mutation.mutateAsync(values).catch(() => undefined))`. `mutate` instead of
+  `mutateAsync` leaves `isSubmitting` false and the pending state never appears; the `.catch` stops the
+  rejection escaping `handleSubmit` after `onError` already mapped it. One announcement per failure: the
+  `FormError` alert, never a role on every field message.
+- **`ConfirmDialog` lives in `components/common/`** and is controlled: `closeOnConfirm={false}` is for the
+  caller that closes it when its work settles; `pending` blocks dismissals. Its first consumer is
+  `UnsavedChangesGuard` (in-app navigation only — `useBeforeUnload` is a separate, later decision).
 - **Import cycles are fatal in a browser and invisible everywhere else.** `tsc`, `vite build` and Vitest all
   tolerate them; native ESM throws `Cannot access 'X' before initialization` and the page renders nothing (F017's
   blank page). `tests/lib/module-graph.test.ts` fails on any cycle in `src/` — never make it "expected". The
@@ -224,6 +247,24 @@ path; an out-of-folder read may raise a permission prompt, which is expected. Ha
 
 ## 7. Completed work (newest first)
 
+- **F019 — form framework.** `components/form/` now holds the §5.4 form kit, built on a hand-written `form.tsx`
+  (the `base-nova` registry has no `form` item — `shadcn add form` exits 0 creating nothing; `cloneElement`
+  stands in for Radix's `Slot`, and `FormControl`'s child type states the three props a control must forward).
+  The reusable fields (`InputField`, `TextareaField`, `SelectField`, `CheckboxField`, `DateField`, `TimeField`)
+  render label + required marker + control + description + message and get `aria-invalid` and one
+  `aria-describedby` chain by construction; `DatePicker`/`TimePicker` had to learn to forward
+  `aria-describedby`/`invalid` — without that the injection would have vanished silently. **Server mapping:**
+  `applyServerErrors` turns F018's `ApiError.fieldErrors` into RHF field errors, always sets a root error from
+  `ApiError.detail`, and clears the previous attempt's; `FormError` renders that root error as the single
+  `role="alert"` per form. `FormActions` reads `isSubmitting` from context — which required fixing the
+  `mutate` → `mutateAsync` wiring pitfall, documented in the kit — and the disabled control is the
+  duplicate-submit guard (asserted as state, because jsdom dispatches clicks on disabled buttons whereas a
+  browser cannot). `ConfirmDialog` (G-2, moved from F013) plus `UnsavedChangesGuard` cover the unsaved-change
+  prompt on a real data router. The **mutation-toast opt-out F018 promised** landed here:
+  `meta: { suppressErrorToast: true }`, typed through TanStack's `Register`. Also fixed: a `Button` with
+  `loading` had its accessible name rewritten to "Loading <label>" by the Spinner's own live region — now
+  `aria-hidden`, with `aria-busy` carrying the state. Checks run: **314 tests across 42 files, all passing**
+  (+23 in four new files); typecheck exit 0; build exit 0.
 - **F018 follow-up — the blank page, fixed (F017 regression).** The operator opened the app and got
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` with an empty `#root`. Cause: F017's
   `buildRouteObjects` made `navigation.ts` import `RouteGuard`, closing the cycle
@@ -363,13 +404,14 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F018)** | `cd D:\resors\frontend; pnpm run test:run` | **291 passing** across 38 files |
+| **Frontend tests (F011–F019)** | `cd D:\resors\frontend; pnpm run test:run` | **314 passing** across 42 files |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
 | **API client tests (F018)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib` | **29 passing** in 3 files (MSW; no network) |
+| **Form kit tests (F019)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/form-fields.test.tsx tests/components/form-submission.test.tsx tests/components/confirm-dialog.test.tsx tests/components/unsaved-changes-guard.test.tsx` | **23 passing** in 4 files — validation, the `aria-describedby`/`aria-invalid` wiring, server 422 mapping with and without the toast opt-out, and the unsaved-changes prompt on a real data router |
 | **Renders, not just compiles (F018 fix)** | with the dev server running: `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --user-data-dir=$env:TEMP\chrome-smoke --virtual-time-budget=9000 --enable-logging=stderr --dump-dom http://localhost:5173/` | the DOM contains the sidebar + `Dashboard` page (add `2>&1 | Select-String "CONSOLE"` to see console output). An empty `<div id="root">` or a `CONSOLE` line naming a module means the app did not start — this is the check that catches circular-import crashes, which typecheck/tests/build all miss |
 | **Regenerate the API types (F018)** | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | `wrote …\backend\openapi.json`, then `✓ …\generated\api · 2 files`; **both committed artefacts must come back unchanged** — `git -C D:\resors status --short backend/openapi.json frontend/src/lib/generated` prints nothing. That is exactly F061's drift check |
 | **Normalise generated UI (F014)** | `cd D:\resors\frontend; pnpm run fix:ui` | restores reverted components, remaps `cn`, strips `"use client"`, removes reinstated dependencies (run after every `shadcn add`) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **291 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **314 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
 | **Sidebar preference (F015)** | click the round chevron on the sidebar edge, then press **F5** | it stays collapsed after reload; console: `localStorage.getItem('app.sidebar')` → `"collapsed"` |
