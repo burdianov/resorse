@@ -534,6 +534,15 @@ list F036's matrix reads, plus create/patch/delete under `permissions.manage` �
 - **The seed stays idempotent** across operator-defined codes — it creates what is missing and never
   modifies existing rows, so F037's additions survive every seed run.
 
+`pages/admin/permissions.tsx` (F038) renders the dictionary as a **client-mode** DataTable — the
+list's unpaginated shape (C25/C26) makes in-browser sorting and search the honest choice, and the
+tests assert rendered rows rather than query strings; the server-mode discipline of F034/C23 applies
+only if the vocabulary ever grows past a screen. The refusals stay the server's: a local shape check
+on the code is UX only, the 422 lands on the field, and the 409s (duplicate; the in-use freeze on
+rename, in the dialog's root alert; the in-use delete, as the query layer's toast once the
+confirmation closes) are the server's own sentences — the page never guesses usage, because the list
+deliberately carries none.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1164,4 +1173,5 @@ the field-error messages when they exist and falls back to the detail string
   matrix save — C24, §6), **F036 the matrix screen** (the draft-not-a-form model, the save bar
   as the single failure voice, the read-only protected column, one grant-write path — C25, §5), and
   **F037 the permission dictionary** (the in-use freeze, refused-not-normalised codes, no subset rule
-  by design — C26, §5).
+  by design — C26, §5), and **F038 the dictionary screen** (client-mode on the unpaginated list,
+  server-sentence refusals, mirrors behind `permissions.manage` — C27, §5).
