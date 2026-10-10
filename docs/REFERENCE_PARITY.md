@@ -79,7 +79,7 @@ inspected read-only in F001 and re-listed for this task. Status meanings:
 | `app/api/v1/notifications.py` | `app/api/v1/notifications.py` | KEEP | Per-user CRUD, ownership enforced in SQL. |
 | `app/api/v1/{checklist,links,progress,requirements,tag_targets,work_items,dashboard,approval,attachments,signing,master,ref_config,bundle,generation,templates}.py` | — | EXCLUDE | Domain routers (§3.1). |
 | `app/main.py` | `app/main.py` | REWRITE | The global `APIRouter.include_router` monkey patch must **not** be copied (§6.2h). |
-| `app/seed.py` | `app/seed.py` + `bootstrap_admin.py` | REWRITE | Idempotent roles/permissions only; no demo data, no default credentials (§0.7). |
+| `app/seed.py` | `app/seed.py` + `bootstrap_admin.py` | REWRITE | Idempotent create-if-missing for the roles, the permission codes and the reference rows the specification requires (the seven disciplines, D002) — the last by `code`, never updated. No demo data, no default credentials (§0.7). |
 | `app/{seed_demo,seed_commissioning}.py`, `recalculate_all.py`, `cleanup_*.py` | — | EXCLUDE | Demo/domain tooling. |
 | `backend/{_chk,reset_password,purge_documents}.py` | — | EXCLUDE | Ad-hoc scripts superseded by the bootstrap CLI and admin UI. |
 | `app/repositories/` | *not created* | EXCLUDE | Thin pass-through in the reference; services + models suffice (§8.1 permits deviation). |

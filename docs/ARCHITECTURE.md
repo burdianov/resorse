@@ -244,7 +244,10 @@ CLIs stand between a fresh database and a usable platform:
   viewer" shortcut). Creation is create-if-missing: existing permission rows and non-system roles are
   never modified, because F036's matrix and F037's dictionary own edits after creation. The seed never
   creates or modifies users — a seed that provisioned accounts would be a credentials-by-deployment
-  backdoor.
+  backdoor. Since D002 it also creates the **reference rows the product cannot start without** — the
+  seven disciplines (`PRODUCT_SPEC.md` §3), created if their `code` is missing and never updated, so an
+  operator's rename or deactivation survives a re-run (`DECISIONS.md` C61; the same create-if-missing
+  clause, and still no invented data).
 - **`python -m app.bootstrap_admin`** creates the one super-admin: `is_superuser=true` (the explicit
   super-admin handling §6 relies on) **and** holding the `super_admin` role (visible and revocable in the
   matrix), with `must_change_password=true` — the operator's password is a temporary credential

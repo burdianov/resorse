@@ -78,9 +78,9 @@ that fixes a shape which is not self-evident from the columns.
 
 ```text
 MASTERS (D002–D006, D011–D013)
-disciplines (code UQ, name, active)
-departments (code UQ, name, classification HEAD_OFFICE|SITE, active)
-designations (code UQ, name, department_id → departments, discipline_id → disciplines, active)
+disciplines (code UQ, name, is_active)
+departments (code UQ, name, classification HEAD_OFFICE|SITE, is_active)
+designations (code UQ, name, department_id → departments, discipline_id → disciplines, is_active)
 employees (employee_id UQ, full_name, designation_id → designations, status, hire/end dates)
     └─ user_id → users.id      NULLABLE, UNIQUE — a login link, not an identity (§3)
     a designation's department and discipline are single-valued (§3 of the spec)
@@ -156,9 +156,9 @@ The requirements that are constraints rather than conventions, and where each on
 
 **Migration numbering.** The next revision is always `max(head) + 1` from the directory
 (`ARCHITECTURE.md` §9), hand-numbered so it reads in order. This map reserves no numbers: a reservation the
-tree does not honour is drift, and the first task to add a table (`D002`) takes `0010`. D001 adds no revision,
-so the head stays `0009` until D002 lands — deliberate, and worth knowing before any later check reads
-`alembic current` and wonders where the domain went.
+tree does not honour is drift, and the first task to add a table (`D002`) took `0010` — D001 added no revision,
+so the head stayed `0009` until then. `0010_disciplines` is where the domain starts; a later task reads its
+number from the directory, never from a plan.
 
 ## 3. The action/scope matrix
 

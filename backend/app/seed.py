@@ -26,6 +26,13 @@ everything":
   exists to prevent.
 - **Non-system roles are never touched once created.** Editing ``admin`` or
   ``viewer`` is a supported operation (F036); re-seeding is not an undo.
+- **The rows the product cannot start without are created the same way**
+  (D002): the seven disciplines the specification names ship from this module,
+  created if their ``code`` is missing and never updated — so an operator's
+  rename or deactivation survives every re-run. This is not demo data (the
+  distinction ``REFERENCE_PARITY.md`` draws): nothing is invented for a
+  screenshot, and a database that has run the migrations but not this seed is
+  one the product cannot classify anything in.
 
 The three seeded roles (C16): ``super_admin`` holds everything;
 ``admin`` holds everything except ``roles.manage``/``permissions.manage`` —
@@ -55,7 +62,7 @@ from app.core.permissions import (
     PERMISSION_DESCRIPTIONS,
     PermissionCode,
 )
-from app.models import Permission, Role
+from app.models import Discipline, Permission, Role
 from app.models.identity import role_permissions
 
 SUPER_ADMIN_ROLE_NAME = "super_admin"
@@ -128,6 +135,22 @@ DEFAULT_ROLES = (
     ),
 )
 
+# The initial reference rows (D002; PRODUCT_SPEC §3 names all seven). Written
+# as a table of ``(code, name)`` pairs because that is what it is: the code is
+# the stable key — what every later row and query stores — and the name is the
+# label an operator may correct. `PRODUCT_SPEC` fixes the names; the codes are
+# the lowercase form DOMAIN_ARCHITECTURE's business-code rule takes, and a
+# test spells both out so changing either is a deliberate act.
+DEFAULT_DISCIPLINES: tuple[tuple[str, str], ...] = (
+    ("electrical", "Electrical"),
+    ("mechanical", "Mechanical"),
+    ("plumbing", "Plumbing"),
+    ("csi", "CSI"),
+    ("mep", "MEP"),
+    ("elv", "ELV"),
+    ("general", "General"),
+)
+
 
 @dataclass(frozen=True)
 class SeedReport:
@@ -139,6 +162,7 @@ class SeedReport:
     grants_added: int
     grants_removed: int
     system_flags_restored: int
+    disciplines_created: int
 
     @property
     def is_noop(self) -> bool:
@@ -148,17 +172,19 @@ class SeedReport:
             and self.grants_added == 0
             and self.grants_removed == 0
             and self.system_flags_restored == 0
+            and self.disciplines_created == 0
         )
 
     def summary_lines(self) -> list[str]:
         """The operator-facing report, one line per fact touched."""
         if self.is_noop:
-            return ["Seed: nothing to do — roles and permissions are up to date."]
+            return ["Seed: nothing to do — roles, permissions and reference rows are up to date."]
         lines = [
             "Seed applied:",
             f"  permissions created: {self.permissions_created}",
             f"  roles created:       {self.roles_created}",
             f"  grants added:        {self.grants_added} (removed: {self.grants_removed})",
+            f"  disciplines created: {self.disciplines_created}",
         ]
         if self.system_flags_restored:
             lines.append(f"  is_system flags restored: {self.system_flags_restored}")
@@ -166,7 +192,8 @@ class SeedReport:
 
 
 async def seed(session: AsyncSession) -> SeedReport:
-    """Bring roles and permissions up to the shipped catalog. Caller commits."""
+    """Bring the seeded catalogs up to date — roles, permissions and the
+    initial reference rows. Caller commits."""
     existing_codes = set((await session.scalars(select(Permission.code))).all())
     created_permissions = 0
     for code in ALL_PERMISSION_CODES:
@@ -236,12 +263,24 @@ async def seed(session: AsyncSession) -> SeedReport:
             )
             grants_removed += len(to_remove)
 
+    # The reference rows (D002). Create-if-missing by the natural key and
+    # nothing else: a row that exists keeps whatever the operator made it,
+    # including its name and its active flag.
+    existing_discipline_codes = set((await session.scalars(select(Discipline.code))).all())
+    disciplines_created = 0
+    for discipline_code, discipline_name in DEFAULT_DISCIPLINES:
+        if discipline_code not in existing_discipline_codes:
+            session.add(Discipline(code=discipline_code, name=discipline_name))
+            disciplines_created += 1
+    await session.flush()
+
     return SeedReport(
         permissions_created=created_permissions,
         roles_created=created_roles,
         grants_added=grants_added,
         grants_removed=grants_removed,
         system_flags_restored=system_flags_restored,
+        disciplines_created=disciplines_created,
     )
 
 
@@ -261,9 +300,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m app.seed",
         description=(
-            "Create the default roles and every permission code if they are "
-            "missing. Idempotent: existing rows are never modified. Safe to "
-            "run at any time; the bootstrap CLI runs it for you."
+            "Create the default roles, every permission code and the initial "
+            "reference rows if they are missing. Idempotent: existing rows are "
+            "never modified. Safe to run at any time; the bootstrap CLI runs it "
+            "for you."
         ),
     )
     parser.parse_args(argv)
