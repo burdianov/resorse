@@ -81,9 +81,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   { id: 'administration', label: 'Administration', order: 20, adminOnly: true },
 ]
 
-const DashboardPlaceholder = lazy(async () => {
-  const module = await import('@/pages/dashboard-placeholder')
-  return { default: module.DashboardPlaceholder }
+const DashboardPage = lazy(async () => {
+  const module = await import('@/pages/dashboard')
+  return { default: module.DashboardPage }
 })
 
 const NotificationsPage = lazy(async () => {
@@ -127,9 +127,9 @@ const ProfileSecurityPage = lazy(async () => {
 })
 
 /**
- * Built-in routes. `/dashboard` currently renders the protected placeholder
- * (F017) — F047 replaces the component, not the entry, so the navigation, the
- * palette and the route states never notice. F034 registered `/admin/users`
+ * Built-in routes. `/dashboard` renders the home screen (F047, which replaced
+ * the F017 placeholder component, not the entry, so the navigation, the palette
+ * and the route states never noticed). F034 registered `/admin/users`
  * and F036 adds `/admin/roles` (the permission matrix): `/admin` redirects to
  * the first permitted administration route in registry order, and the
  * Administration group appears for exactly the callers holding a read code in
@@ -144,7 +144,7 @@ export const APP_ROUTES: readonly RouteDefinition[] = [
     label: 'Dashboard',
     icon: LayoutDashboard,
     group: 'overview',
-    component: DashboardPlaceholder,
+    component: DashboardPage,
   },
   {
     // The inbox (F046, §7.7/BP-4.3): a protected user page in the Overview

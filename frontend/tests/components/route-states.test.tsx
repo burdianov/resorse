@@ -81,8 +81,10 @@ describe('root redirect', () => {
     renderApp('/dashboard')
 
     expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
-    // The placeholder is honest about itself — no fabricated KPI tiles (§3.2b).
-    expect(screen.getByText(/arrives in F047/)).toBeInTheDocument()
+    // No session is resolved in this shell, so the home screen waits for its
+    // identity instead of inventing one (§3.2b); the F017 placeholder is gone.
+    expect(screen.queryByText(/arrives in F047/)).toBeNull()
+    expect(screen.getByText('Loading your dashboard')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
   })
 })

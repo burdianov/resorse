@@ -9,22 +9,22 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F047
-in claude_code_pack/TASKS.md. Implement F047 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F048
+in claude_code_pack/TASKS.md. Implement F048 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F048.
+me the operator checks. Do not push. Do not start F049.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F046 — Notifications UI. Commit **`96e86f8`** (`feat(F046): notifications UI — server-filtered inbox, polling bell, optimistic writes`) on `main`.
-- **Latest documentation commit:** **`ce8b703`** — `docs: archive historical handoff documentation`. It adds the
-  four archives only and changes no implementation code. It is the documentation baseline for this handoff.
-- **Next: F047 — Dashboard.** TASKS.md accept line: "No fabricated stats." F047 replaces
-  `frontend/src/pages/dashboard-placeholder.tsx` and reads the one unread-count query key,
-  `queryKeys.notifications.unreadCount(userId)` (defined in `frontend/src/lib/query-keys.ts`).
-- **Gates:** tasks F016 and F032 are complete. Operator gate results are **not recorded in this handoff**.
+- **Last completed:** F047 — Dashboard. Committed together with this handoff (`git log -1 --format="%h %s"`).
+  It replaces the F017 placeholder with `frontend/src/pages/dashboard.tsx`: identity and permission summary from
+  `useAuth()`, the unread count from `useUnreadCount(userId)` (the bell's query, no second poller), and quick links
+  from `visibleNavigation(access)` with the Dashboard entry excluded. No backend or migration changes.
+- **Previous task:** F046 — Notifications UI. Commit **`96e86f8`** (`feat(F046): ...`).
+- **Next: F048 — Table prefs integration.** TASKS.md accept line: "Cross-account reload tests."
+- **Gates:** tasks F016, F032 and F047 are complete. Operator gate results are **not recorded in this handoff**.
   Next gate: **G-A3, after F048**.
 - **Blockers:** none recorded.
 - **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN.** They are Stage B business rules (working-day
@@ -124,6 +124,7 @@ current result. Report what you observe.
 | Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `ce8b703 docs: archive historical handoff documentation` at the time of writing. Last implementation commit: `96e86f8 feat(F046): ...` |
 | Backend health | `curl http://localhost:8000/api/v1/health` | `{"status":"ok",...}` |
 | Notifications UI tests | `cd D:\resors\frontend; pnpm exec vitest run tests/notifications/notifications.test.tsx` | 13 passed |
+| Dashboard tests (F047) | `cd D:\resors\frontend; pnpm exec vitest run tests/dashboard/dashboard.test.tsx` | 10 passed (F047 focused run, observed by the agent; re-run to confirm) |
 | Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | 498 passed |
 | Backend suite | `cd D:\resors\backend; uv run pytest` | 246 passed |
 
@@ -134,7 +135,7 @@ The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F047 is at about line 191 |
+| `claude_code_pack/TASKS.md` | Backlog; F048 is at about line 195 |
 | `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C35; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
