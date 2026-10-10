@@ -84,6 +84,15 @@ AUDIT_ACTIONS: tuple[str, ...] = (
     "designation.create",
     "designation.update",
     "designation.delete",
+    # Projects (D008). The same three verbs, and again no fourth for a status
+    # change: D008 invents no transition machine, so a `status` edit is an
+    # update like any other field and `project.update`'s diff is what records
+    # which way it moved. The award conversion (D033) will bring its own verb
+    # when it exists — an event type declared before the code that writes it is
+    # a vocabulary with a member nobody can produce.
+    "project.create",
+    "project.update",
+    "project.delete",
 )
 
 # The entity a row is about, same idea as the actions.
@@ -101,6 +110,10 @@ AUDIT_ENTITY_TYPES: tuple[str, ...] = (
     "discipline",
     "department",
     "designation",
+    # Projects (D008). The second group the vocabulary reaches, and the first
+    # whose rows other domain modules will point at — a `project_id` will be
+    # what `forecasts`, `assignments` and `costs` events name.
+    "project",
 )
 
 

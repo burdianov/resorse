@@ -219,7 +219,10 @@
               "department.delete",
               "designation.create",
               "designation.update",
-              "designation.delete"
+              "designation.delete",
+              "project.create",
+              "project.update",
+              "project.delete"
             ],
             "items": {
               "type": "string"
@@ -238,7 +241,8 @@
               "file",
               "discipline",
               "department",
-              "designation"
+              "designation",
+              "project"
             ],
             "items": {
               "type": "string"
@@ -474,6 +478,57 @@
           "code"
         ],
         "title": "CreatePermissionRequest",
+        "type": "object"
+      },
+      "CreateProjectRequest": {
+        "description": "A new project.\n\nField order matters: `start_date` precedes the two completions so the pair\ncheck can read it out of ``info.data``.",
+        "properties": {
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "contractual_completion": {
+            "format": "date",
+            "title": "Contractual Completion",
+            "type": "string"
+          },
+          "forecast_completion": {
+            "format": "date",
+            "title": "Forecast Completion",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "status": {
+            "default": "tender",
+            "enum": [
+              "tender",
+              "awarded",
+              "retired"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "start_date",
+          "contractual_completion",
+          "forecast_completion"
+        ],
+        "title": "CreateProjectRequest",
         "type": "object"
       },
       "CreateRoleRequest": {
@@ -1231,6 +1286,104 @@
         "title": "PreferencesResponse",
         "type": "object"
       },
+      "ProjectItem": {
+        "description": "One project, as the list and the detail screen show it.\n\nThe dates are ISO calendar days (D007's rule), and `responsible_user_id` is\npresent but **read-only** — the screen needs to render who is answerable,\nand no request shape accepts it (D019 owns the write, §3's matrix).",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "contractual_completion": {
+            "format": "date",
+            "title": "Contractual Completion",
+            "type": "string"
+          },
+          "forecast_completion": {
+            "format": "date",
+            "title": "Forecast Completion",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "responsible_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsible User Id"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "tender",
+              "awarded",
+              "retired"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "status",
+          "start_date",
+          "contractual_completion",
+          "forecast_completion",
+          "responsible_user_id"
+        ],
+        "title": "ProjectItem",
+        "type": "object"
+      },
+      "ProjectListResponse": {
+        "description": "One page of projects, and the total the filters match.\n\nPaginated, unlike the reference tables' lists, and for the reason those are\nnot: a vocabulary is bounded and an operator curates it, while projects\naccumulate — a list that renders all of them is a list that stops working\nthe year the company wins enough work. `total` counts everything the filters\nmatch, so the footer cannot disagree with the page it describes\n(ARCHITECTURE §10).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ProjectListResponse",
+        "type": "object"
+      },
       "PutPreferenceRequest": {
         "properties": {
           "value": {
@@ -1608,6 +1761,79 @@
           }
         },
         "title": "UpdatePermissionRequest",
+        "type": "object"
+      },
+      "UpdateProjectRequest": {
+        "additionalProperties": false,
+        "description": "A partial edit: the name, the status and the three dates.\n\nThe **code is not editable** — it is the identity (D002's rule, carried by\nevery table since), and `extra=\"forbid\"` turns an attempted rename into a\n422 at the unknown field rather than a 200 that quietly did nothing.\n`responsible_user_id` is forbidden for a different reason: that action has\nits own code and its own task (D019), so this shape does not reach it at all.\n\nThe pair check runs only when the payload carries both dates; a payload that\nmoves one side against the row's stored other is the service's to refuse,\nbecause the schema cannot see the row.",
+        "properties": {
+          "contractual_completion": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contractual Completion"
+          },
+          "forecast_completion": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Completion"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "tender",
+                  "awarded",
+                  "retired"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "UpdateProjectRequest",
         "type": "object"
       },
       "UpdateRoleRequest": {
@@ -4428,6 +4654,337 @@
         "summary": "Mark one notification read",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "description": "One page of projects, newest first by default.\n\n``search`` matches the code and the name — the two things a caller knows\nabout a project — and matches them literally (a typed ``%`` is a percent\nsign, not a wildcard). ``total`` counts everything the filters match, so the\ntable footer can count without lying (ARCHITECTURE §10).",
+        "operationId": "list_projects_api_v1_projects_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "tender",
+                    "awarded",
+                    "retired"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "created_at",
+              "enum": [
+                "code",
+                "name",
+                "status",
+                "start_date",
+                "contractual_completion",
+                "forecast_completion",
+                "created_at"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the projects.read permission."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List projects",
+        "tags": [
+          "projects"
+        ]
+      },
+      "post": {
+        "description": "Create a project. ``status`` defaults to ``tender`` — the lifecycle's\nfirst state — and the code is the identity, set here and never edited.",
+        "operationId": "create_project_api_v1_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the projects.create permission."
+          },
+          "409": {
+            "description": "A live project already uses this code."
+          },
+          "422": {
+            "description": "Shape errors, or a completion before the start date."
+          }
+        },
+        "summary": "Create a project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "delete": {
+        "operationId": "delete_project_api_v1_projects__project_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the projects.update permission."
+          },
+          "404": {
+            "description": "No such project."
+          },
+          "409": {
+            "description": "The project still has forecasts or assignments."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a project nothing references",
+        "tags": [
+          "projects"
+        ]
+      },
+      "get": {
+        "operationId": "get_project_api_v1_projects__project_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the projects.read permission."
+          },
+          "404": {
+            "description": "No such project."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One project",
+        "tags": [
+          "projects"
+        ]
+      },
+      "patch": {
+        "description": "The name, the status and the three dates. **Not the code** — the identity\nis set at creation and a rename is a 422 at the unknown field — and not the\nresponsible person, whose own code and task are D019's.\n\n``status`` moves like any other field: D008 ships no transition machine, so\nan edit to ``awarded`` here is a field write, and C57's award conversion is\nD033's own route.",
+        "operationId": "update_project_api_v1_projects__project_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "An empty edit (no values submitted)."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the projects.update permission."
+          },
+          "404": {
+            "description": "No such project."
+          },
+          "422": {
+            "description": "Shape errors, or a date that would precede the start."
+          }
+        },
+        "summary": "Edit a project, its status and its dates",
+        "tags": [
+          "projects"
         ]
       }
     },

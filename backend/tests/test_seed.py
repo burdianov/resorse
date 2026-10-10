@@ -54,6 +54,11 @@ EXPECTED_VIEWER_CODES = {
     "disciplines.read",
     "departments.read",
     "designations.read",
+    # D008's read. Spelled out here on purpose (C16): adding a viewer grant is
+    # a decision about what a read-only role may see, and it should fail a test
+    # that names it rather than pass because the two sides were derived from
+    # one another.
+    "projects.read",
 }
 
 EXPECTED_ADMIN_WITHHELD = {"roles.manage", "permissions.manage"}

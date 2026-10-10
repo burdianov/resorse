@@ -98,6 +98,11 @@ VIEWER_GRANTS = (
     PermissionCode.DISCIPLINES_READ,
     PermissionCode.DEPARTMENTS_READ,
     PermissionCode.DESIGNATIONS_READ,
+    # The first *domain* read (D008). Read-only, like every other viewer grant:
+    # a viewer sees the project list and a project's details and cannot create
+    # or edit one — `projects.create` and `projects.update` are the two codes
+    # this tuple deliberately leaves out.
+    PermissionCode.PROJECTS_READ,
 )
 
 

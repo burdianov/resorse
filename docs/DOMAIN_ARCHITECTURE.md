@@ -267,21 +267,29 @@ find the rule instead of re-deriving a shape from the columns:
   executable. What *is* executable arrives with each task: D084 re-checks the API contract and the typed
   client, D085–D087 are the three suites, and D091 ("production-like deployment smoke and known limitations",
   "no unverified success claims") is the gate that reads this document against the shipped product.
-- **What is already checked, as of D007.** `PermissionCode` carries the six reference-table codes §3's matrix
+- **What is already checked, as of D008.** `PermissionCode` carries the six reference-table codes §3's matrix
   registers for D005 (`disciplines`/`departments`/`designations` × `read`/`manage`, all global), the routes that
   enforce them exist at `/api/v1/masters/…`, and **`APP_MODULES` is no longer empty**: D006 registered the module
   §1's first row plans — one group ("Reference Data", `order` 25) and the three screens
   `/masters/{disciplines,departments,designations}`, each declaring the codes its own calls need (the third
   declares all three reads, because it joins both reference lists). It is `adminOnly`-free on purpose: the codes
-  are the boundary, and the seeded `viewer` holds the three reads (C64/C65). `alembic heads` is `0014` (D005's
-  revision widens the audit vocabularies, D006's module adds none and D007's adds `projects`), with `disciplines`
+  are the boundary, and the seeded `viewer` holds the three reads (C64/C65). **D008 is the first domain surface
+  that is not a reference table**: `PermissionCode` gained the three codes §3's matrix plans for projects
+  (`projects.read`, `projects.create`, `projects.update` — the first row §3 scopes to `project`, though that
+  narrowing belongs to D081 and these are role gates until `ScopePolicy` exists), the five routes exist at
+  `/api/v1/projects/…`, and the seeded `viewer` holds `projects.read` (C67) — while `APP_MODULES` is
+  **unchanged**, because the module registry entry is D009's. `alembic heads` is `0015` (D005's
+  revision widens the audit vocabularies, D006's module adds none, D007's adds `projects`, and D008's adds the
+  three `project.*` actions and the `project` entity type to the same pair of CHECKs), with `disciplines`
   (D002), `departments` (D003), `designations` (D004) and `projects` (D007) the domain tables under it — D004's
   being the first with a foreign key, and §3's "deactivate, never delete where a row is referenced" now reaching
   a caller as a 409 the service translates from `ON DELETE RESTRICT`; and D007's being the first table that is
   **not** a reference list, so §2's PROJECTS block has begun to land: the three `Date` columns are the tree's
   first calendar days, `status` is the closed tender/awarded/retired vocabulary, and `ix_projects_code` is the
   first index whose predicate **is** a §3 rule — unique among live projects, so C57's award can reuse the retired
-  tender's code (C66); and `docs/FOUNDATION_REPORT.md` §3's boundary scan still finds no vocabulary of the
+  tender's code (C66) — while `status` is written as an **ordinary field** under `projects.update`: D008 ships the
+  lifecycle field §3 assigns it and no transition machine, because C57's award conversion is D033's own route
+  (C67); and `docs/FOUNDATION_REPORT.md` §3's boundary scan still finds no vocabulary of the
   reference product's *other* domains in shipped code — a claim D003 had to narrow to keep true (`DECISIONS.md`
   C62), which is the shape this bullet predicted, and one D005 and D006 kept by calling these tables "reference
   tables" and their group "Reference Data" rather than the phrase the narrowed list still forbids. Those four
@@ -296,4 +304,4 @@ find the rule instead of re-deriving a shape from the columns:
 | `ARCHITECTURE.md` §8 | the **foundation's** tables — this document is the domain's, hung off them |
 | `ADDING_A_MODULE.md` | the **recipe** for one module — this document is the whole set at once, with the boundaries between them |
 | `PRODUCT_SPEC.md` §3–§10 | the **requirements** — this document is their shape in tables and codes, and it adds no rule of its own |
-| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C66`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |
+| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C67`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |

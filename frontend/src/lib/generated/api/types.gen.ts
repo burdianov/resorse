@@ -283,6 +283,41 @@ export type CreatePermissionRequest = {
 };
 
 /**
+ * CreateProjectRequest
+ *
+ * A new project.
+ *
+ * Field order matters: `start_date` precedes the two completions so the pair
+ * check can read it out of ``info.data``.
+ */
+export type CreateProjectRequest = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Contractual Completion
+     */
+    contractual_completion: string;
+    /**
+     * Forecast Completion
+     */
+    forecast_completion: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Start Date
+     */
+    start_date: string;
+    /**
+     * Status
+     */
+    status?: 'tender' | 'awarded' | 'retired';
+};
+
+/**
  * CreateRoleRequest
  */
 export type CreateRoleRequest = {
@@ -824,6 +859,81 @@ export type PreferencesResponse = {
 };
 
 /**
+ * ProjectItem
+ *
+ * One project, as the list and the detail screen show it.
+ *
+ * The dates are ISO calendar days (D007's rule), and `responsible_user_id` is
+ * present but **read-only** — the screen needs to render who is answerable,
+ * and no request shape accepts it (D019 owns the write, §3's matrix).
+ */
+export type ProjectItem = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Contractual Completion
+     */
+    contractual_completion: string;
+    /**
+     * Forecast Completion
+     */
+    forecast_completion: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Responsible User Id
+     */
+    responsible_user_id: string | null;
+    /**
+     * Start Date
+     */
+    start_date: string;
+    /**
+     * Status
+     */
+    status: 'tender' | 'awarded' | 'retired';
+};
+
+/**
+ * ProjectListResponse
+ *
+ * One page of projects, and the total the filters match.
+ *
+ * Paginated, unlike the reference tables' lists, and for the reason those are
+ * not: a vocabulary is bounded and an operator curates it, while projects
+ * accumulate — a list that renders all of them is a list that stops working
+ * the year the company wins enough work. `total` counts everything the filters
+ * match, so the footer cannot disagree with the page it describes
+ * (ARCHITECTURE §10).
+ */
+export type ProjectListResponse = {
+    /**
+     * Items
+     */
+    items: Array<ProjectItem>;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Page Size
+     */
+    page_size: number;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
  * PutPreferenceRequest
  */
 export type PutPreferenceRequest = {
@@ -1066,6 +1176,44 @@ export type UpdatePermissionRequest = {
      * Description
      */
     description?: string | null;
+};
+
+/**
+ * UpdateProjectRequest
+ *
+ * A partial edit: the name, the status and the three dates.
+ *
+ * The **code is not editable** — it is the identity (D002's rule, carried by
+ * every table since), and `extra="forbid"` turns an attempted rename into a
+ * 422 at the unknown field rather than a 200 that quietly did nothing.
+ * `responsible_user_id` is forbidden for a different reason: that action has
+ * its own code and its own task (D019), so this shape does not reach it at all.
+ *
+ * The pair check runs only when the payload carries both dates; a payload that
+ * moves one side against the row's stored other is the service's to refuse,
+ * because the schema cannot see the row.
+ */
+export type UpdateProjectRequest = {
+    /**
+     * Contractual Completion
+     */
+    contractual_completion?: string | null;
+    /**
+     * Forecast Completion
+     */
+    forecast_completion?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Start Date
+     */
+    start_date?: string | null;
+    /**
+     * Status
+     */
+    status?: 'tender' | 'awarded' | 'retired' | null;
 };
 
 /**
@@ -3303,6 +3451,231 @@ export type MarkReadApiV1NotificationsNotificationIdReadPostResponses = {
 };
 
 export type MarkReadApiV1NotificationsNotificationIdReadPostResponse = MarkReadApiV1NotificationsNotificationIdReadPostResponses[keyof MarkReadApiV1NotificationsNotificationIdReadPostResponses];
+
+export type ListProjectsApiV1ProjectsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Page Size
+         */
+        page_size?: number;
+        /**
+         * Search
+         */
+        search?: string | null;
+        /**
+         * Status
+         */
+        status?: 'tender' | 'awarded' | 'retired' | null;
+        /**
+         * Sort
+         */
+        sort?: 'code' | 'name' | 'status' | 'start_date' | 'contractual_completion' | 'forecast_completion' | 'created_at';
+        /**
+         * Order
+         */
+        order?: 'asc' | 'desc';
+    };
+    url: '/api/v1/projects';
+};
+
+export type ListProjectsApiV1ProjectsGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the projects.read permission.
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListProjectsApiV1ProjectsGetError = ListProjectsApiV1ProjectsGetErrors[keyof ListProjectsApiV1ProjectsGetErrors];
+
+export type ListProjectsApiV1ProjectsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProjectListResponse;
+};
+
+export type ListProjectsApiV1ProjectsGetResponse = ListProjectsApiV1ProjectsGetResponses[keyof ListProjectsApiV1ProjectsGetResponses];
+
+export type CreateProjectApiV1ProjectsPostData = {
+    body: CreateProjectRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/projects';
+};
+
+export type CreateProjectApiV1ProjectsPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the projects.create permission.
+     */
+    403: unknown;
+    /**
+     * A live project already uses this code.
+     */
+    409: unknown;
+    /**
+     * Shape errors, or a completion before the start date.
+     */
+    422: unknown;
+};
+
+export type CreateProjectApiV1ProjectsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: ProjectItem;
+};
+
+export type CreateProjectApiV1ProjectsPostResponse = CreateProjectApiV1ProjectsPostResponses[keyof CreateProjectApiV1ProjectsPostResponses];
+
+export type DeleteProjectApiV1ProjectsProjectIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Project Id
+         */
+        project_id: string;
+    };
+    query?: never;
+    url: '/api/v1/projects/{project_id}';
+};
+
+export type DeleteProjectApiV1ProjectsProjectIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the projects.update permission.
+     */
+    403: unknown;
+    /**
+     * No such project.
+     */
+    404: unknown;
+    /**
+     * The project still has forecasts or assignments.
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteProjectApiV1ProjectsProjectIdDeleteError = DeleteProjectApiV1ProjectsProjectIdDeleteErrors[keyof DeleteProjectApiV1ProjectsProjectIdDeleteErrors];
+
+export type DeleteProjectApiV1ProjectsProjectIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteProjectApiV1ProjectsProjectIdDeleteResponse = DeleteProjectApiV1ProjectsProjectIdDeleteResponses[keyof DeleteProjectApiV1ProjectsProjectIdDeleteResponses];
+
+export type GetProjectApiV1ProjectsProjectIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Project Id
+         */
+        project_id: string;
+    };
+    query?: never;
+    url: '/api/v1/projects/{project_id}';
+};
+
+export type GetProjectApiV1ProjectsProjectIdGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the projects.read permission.
+     */
+    403: unknown;
+    /**
+     * No such project.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetProjectApiV1ProjectsProjectIdGetError = GetProjectApiV1ProjectsProjectIdGetErrors[keyof GetProjectApiV1ProjectsProjectIdGetErrors];
+
+export type GetProjectApiV1ProjectsProjectIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProjectItem;
+};
+
+export type GetProjectApiV1ProjectsProjectIdGetResponse = GetProjectApiV1ProjectsProjectIdGetResponses[keyof GetProjectApiV1ProjectsProjectIdGetResponses];
+
+export type UpdateProjectApiV1ProjectsProjectIdPatchData = {
+    body: UpdateProjectRequest;
+    path: {
+        /**
+         * Project Id
+         */
+        project_id: string;
+    };
+    query?: never;
+    url: '/api/v1/projects/{project_id}';
+};
+
+export type UpdateProjectApiV1ProjectsProjectIdPatchErrors = {
+    /**
+     * An empty edit (no values submitted).
+     */
+    400: unknown;
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the projects.update permission.
+     */
+    403: unknown;
+    /**
+     * No such project.
+     */
+    404: unknown;
+    /**
+     * Shape errors, or a date that would precede the start.
+     */
+    422: unknown;
+};
+
+export type UpdateProjectApiV1ProjectsProjectIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProjectItem;
+};
+
+export type UpdateProjectApiV1ProjectsProjectIdPatchResponse = UpdateProjectApiV1ProjectsProjectIdPatchResponses[keyof UpdateProjectApiV1ProjectsProjectIdPatchResponses];
 
 export type ReadyApiV1ReadyGetData = {
     body?: never;
