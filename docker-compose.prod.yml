@@ -1,0 +1,126 @@
+# Production stack (F059, BIG-PROMPT §11.2). Caddy serves the built SPA and
+# proxies /api to the API. The API, PostgreSQL and Gotenberg sit on an internal
+# network with no published ports; only Caddy (80/443) faces the internet.
+#
+# Run from the repository root with a production env file created on the server
+# (see .env.production.example). Nothing here has a default, so a missing value
+# stops `docker compose` loudly:
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait
+#
+# The development file docker-compose.yml is separate and unchanged.
+
+name: resors-prod
+
+x-backend-environment: &backend-environment
+  ENVIRONMENT: production
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER in .env.production}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env.production}
+  # Same origin as the browser sees it (Caddy serves the SPA and the API from
+  # one name), so this is the only origin the CSRF check accepts.
+  ALLOWED_ORIGINS: https://${SITE_ADDRESS:?set SITE_ADDRESS in .env.production}
+  STORAGE_ROOT: /var/lib/resors/uploads
+  GOTENBERG_URL: http://gotenberg:3000
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env.production}
+    volumes:
+      # PostgreSQL 18+ keeps data in a version subdirectory of this mount
+      # (docker-library/postgres#1259), as in docker-compose.yml.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [internal]
+
+  gotenberg:
+    # Pinned by minor version, as in docker-compose.yml: a conversion that changes
+    # between builds is a report with no fixed point (app/services/conversion.py).
+    image: gotenberg/gotenberg:8.37
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [internal]
+
+  # Runs once per deployment, before the API starts: `alembic upgrade head`.
+  # Exits 0 and stays stopped; `backend` waits for that.
+  migrate:
+    build: ./backend
+    image: resors-backend:latest
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    environment: *backend-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  backend:
+    build: ./backend
+    image: resors-backend:latest
+    restart: unless-stopped
+    environment: *backend-environment
+    volumes:
+      - uploads:/var/lib/resors/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      gotenberg:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks: [internal]
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web/Dockerfile
+    image: resors-web:latest
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Certificates and ACME account state. Losing these re-issues certificates
+      # and can hit the issuer's rate limits, so they are named volumes.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [edge, internal]
+
+networks:
+  # Outbound-capable, reachable from outside: Caddy only. It needs the internet
+  # for certificate issuance.
+  edge:
+  # No route to the internet. Postgres, Gotenberg and the API cannot phone home
+  # even if one of them were compromised.
+  internal:
+    internal: true
+
+volumes:
+  postgres_data:
+  uploads:
+  caddy_data:
+  caddy_config:

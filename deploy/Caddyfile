@@ -1,0 +1,35 @@
+# The public edge (F059). One site, one origin: the SPA and the API share it, so
+# the browser's relative /api/v1 needs no CORS (ARCHITECTURE §1). SITE_ADDRESS
+# comes from the environment (docker-compose.prod.yml requires it); Caddy obtains
+# and renews the certificate itself for a public name.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# The only route to the API: the backend publishes no port of its own.
+	handle /api/* {
+		# Caddy's own default body cap would reject a legitimate upload before the
+		# API sees it. This sits above the API's per-file cap
+		# (STORAGE_MAX_UPLOAD_BYTES, 10 MiB) so the API's refusal is the one a user
+		# reads, and multipart overhead has room.
+		request_body {
+			max_size 16MB
+		}
+		reverse_proxy backend:8000
+	}
+
+	# Built assets are content-hashed. A missing one is a 404, not index.html: a
+	# tab left open across a deploy would otherwise run HTML as a script.
+	handle /assets/* {
+		root * /srv
+		file_server
+	}
+
+	# Everything else is the SPA. A file that exists is served as is; any other
+	# path (a deep link, a browser refresh) gets index.html and the router takes
+	# over (BP-4.11).
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

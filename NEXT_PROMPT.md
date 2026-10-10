@@ -8,30 +8,29 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F059
-in claude_code_pack/TASKS.md. Implement F059 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F060
+in claude_code_pack/TASKS.md. Implement F060 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F060.
+me the operator checks. Do not push. Do not start F061.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F058 — Accessibility and visuals (record: **C46**, `ARCHITECTURE.md` §5 and §12; stack in
-  `docs/STACK_VERSIONS.md` §6). Two files in the `quality` project, which depends on `workflow`: `accessibility.spec.ts`
-  — **fourteen** axe scans (five screens in both themes, plus 403, 404, the unreachable-server state and the mobile
-  drawer), WCAG 2.2 A/AA, `critical` **and** `serious`, no rule suppressed; `visual.spec.ts` — **94 committed baselines**
-  (seventeen states × light/dark × the widths each exists at), `maxDiffPixels: 0`. Application code changed for the five
-  findings F057 recorded (palette header, breadcrumb separator, three link-buttons, `meta.label`) and for the palette's
-  tokens (dark `--primary-text` / `--destructive-text`, dark `--muted-foreground` 0.55 → 0.68).
-- **Previous tasks:** F057 — Browser E2E (**C45**); F056 — Backend quality gate (**C44**, §7); F055 (**C43**); F054 (**C42**).
-- **Next: F059 — Production Docker.** TASKS.md ~line 239: "Static Vite Caddy FastAPI Postgres Gotenberg", accept
-  "Production compose boots". Nothing F058 did blocks it; the one new note is the platform-tagged baselines (§5).
+- **Last completed:** F059 — Production Docker (record: **C47**, `DECISIONS.md`; stack in `docker-compose.prod.yml`).
+  Only Caddy publishes ports; postgres, gotenberg, `migrate` (`alembic upgrade head`) and the non-root API sit on an
+  `internal: true` network. **Agent-checked** (scratch env, `resors-prod` project, `down -v` after): config validates, both
+  images build, five services healthy, `/` and `/admin/users` 200, `/api/v1/health` `environment: production`, missing
+  asset 404, foreign-Origin POST 403, `alembic current` `0009 (head)`. **Not checked:** a real domain and certificate
+  (`localhost` used Caddy's local CA); uploads-volume ownership on a Linux host.
+- **Previous tasks:** F058 — Accessibility and visuals (**C46**; `docs/STACK_VERSIONS.md` §6); F057 — Browser E2E (**C45**);
+  F056 — Backend quality gate (**C44**, §7); F055 (**C43**); F054 (**C42**).
+- **Next: F060 — Security hardening** (TASKS.md ~line 243; owns the `X-Forwarded-For` trust and the placeholder refusal, C17/C47).
 - **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (new — G-A1/G-A2
   have no dated run recorded). **G-A3 (after F048) is due and is the operator's to run**, then G-A4 after F063.
 - **Blockers:** none recorded.
-- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules. None blocks F059; never treat one
-  as approved, and if a task depends on one, stop and ask. Confirmed: C11–**C46** (C46 is F058's).
+- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules. None blocks F060; never treat one
+  as approved, and if a task depends on one, stop and ask. Confirmed: C11–**C47** (C47 is F059's).
 - **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can
   be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any
   migration task; it reads `0009 (head)` today.
@@ -131,11 +130,11 @@ or a group below its floor.
 **Gaps:** none in either gate. The frontend's `typecheck` covers `tests/` (F055 follow-up), and the backend's two
 database-dependent checks **fail** rather than skip — start the container, don't run the other leg and call it a gate.
 
-**Not yet available:** production Compose (F059) — do not hand it to the operator as runnable until it lands. **Test counts are historical**; both quality suites are live as of F058.
+**Production Compose (F059)** is `docker-compose.prod.yml`; its boot check is in §7. **Test counts are historical**; both quality suites are live as of F058.
 
 ## 7. Operator verification commands
 
-Run these before F059 starts. The record column is **historical and the agent's own observation**, never the operator's gate result.
+The record column is **historical and the agent's own observation**, never the operator's gate result.
 
 | Check | Command | Record (F056 unless marked) |
 |---|---|---|
@@ -152,6 +151,7 @@ Run these before F059 starts. The record column is **historical and the agent's 
 | **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **F055 record**: no match — the lab page and recharts are absent from `dist/`. A match means the exclusion broke |
 | Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check. F055 record**: 563 passed (F047: 498) |
 | OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F057 changes no API. **F055 record**: re-run produced **no diff** |
+| **Production stack (F059)** | Create `.env.production` from `.env.production.example` (real values, git-ignored), then `cd D:\resors; docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait` | Agent's record (scratch env, `SITE_ADDRESS=localhost`): all five services healthy, `migrate` exit 0. The operator's check: `curl -k https://<SITE_ADDRESS>/api/v1/health` → `"environment":"production"`; `docker compose -f docker-compose.prod.yml --env-file .env.production down` leaves volumes intact (`down -v` deletes them) |
 | Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)`. Run this after any migration task — a dev database behind head serves 500s while every test is green |
 | Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F057 adds no migration). F049 record: clean, ending at `0009` |
 
@@ -162,8 +162,8 @@ Run these before F059 starts. The record column is **historical and the agent's 
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F059 is at about line 239 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C46; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F060 is at about line 243 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C47; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |
 | `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's and the F057/F058 browser suites), §6 authorization, §7 boundaries, §12 traps |

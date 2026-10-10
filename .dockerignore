@@ -1,0 +1,15 @@
+# Build context for deploy/web/Dockerfile (repository root). The web image needs
+# only frontend/ and deploy/. Secrets are excluded by name, not just by git.
+**/node_modules
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+.git
+.env
+.env.*
+LOCAL_CREDENTIALS.md
+backend
+docs
+claude_code_pack
+data

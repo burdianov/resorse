@@ -51,6 +51,7 @@ frontend/tests/e2e/.state/
 .env
 .env.*
 !.env.example
+!.env.production.example
 *.pem
 *.key
 

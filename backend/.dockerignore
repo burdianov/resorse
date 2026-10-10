@@ -1,0 +1,12 @@
+# Build context for backend/Dockerfile: only what the image runs. A whitelist, so
+# a new local file (a .env, a credentials note, a test database dump) cannot
+# reach an image layer by accident.
+*
+!app
+!migrations
+!alembic.ini
+!pyproject.toml
+!uv.lock
+!.python-version
+**/__pycache__
+**/*.py[cod]
