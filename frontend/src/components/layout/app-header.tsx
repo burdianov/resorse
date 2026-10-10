@@ -7,18 +7,20 @@ import { APP_MARK, APP_NAME } from '@/config/branding'
 
 import { ContextSwitcherSlot } from './context-switcher-slot'
 import type { ContextSwitcherAdapter } from './context-switcher-slot'
+import { NotificationBell } from './notification-bell'
 import { UserMenu } from './user-menu'
 
 /**
  * The 64px top bar (BIG-PROMPT §1.2): `h-16`, `px-4 md:px-6`, bottom border,
- * desktop search trigger, theme control, the optional context-selector slot,
- * and the account menu (F032 — real since a real session backs it).
+ * desktop search trigger, the notification bell (F046), theme control, the
+ * optional context-selector slot, and the account menu (F032 — real since a
+ * real session backs it).
  *
  * Only controls whose backing feature exists are rendered. The search trigger
  * appears when a real `onSearchClick` is supplied — the shell passes one and
- * owns the palette it opens (F016). Notifications (F046) are **absent rather
- * than inert**: CLAUDE_MASTER forbids placeholder controls, and a bell with no
- * inbox behind it is exactly that. Their owners add them here.
+ * owns the palette it opens (F016). The bell (F046) renders itself only for
+ * a signed-in caller holding `notifications.read`; without one, or without
+ * the code, it is absent rather than inert.
  */
 export interface AppHeaderProps {
   /** Supplied by the shell, which owns the palette (F016). */
@@ -69,6 +71,7 @@ export function AppHeader({ onSearchClick, contextAdapter }: AppHeaderProps) {
 
       <div className="ml-auto flex items-center gap-2">
         {contextAdapter ? <ContextSwitcherSlot adapter={contextAdapter} /> : null}
+        <NotificationBell />
         <ThemeToggle />
         <UserMenu />
       </div>

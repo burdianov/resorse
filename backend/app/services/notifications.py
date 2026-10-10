@@ -92,16 +92,30 @@ async def notify(
 
 
 async def list_notifications(
-    session: AsyncSession, user_id: uuid.UUID, *, page: int, page_size: int
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    page: int,
+    page_size: int,
+    is_read: bool | None = None,
 ) -> tuple[list[Notification], int, int]:
     """One page of the caller's inbox (newest first), its total, and the
-    unread count — the bell and the list in one request."""
-    criteria = (Notification.user_id == user_id,)
+    unread count — the bell and the list in one request.
+
+    ``is_read`` is F046's read/unread filter, applied **in SQL**: the page and
+    the total honour it (a client-side filter over a server page would be
+    quietly wrong). The unread count deliberately does **not** — it is the
+    account's number, the one the bell's badge means, whatever filter the
+    page happens to show.
+    """
+    criteria = [Notification.user_id == user_id]
+    if is_read is not None:
+        criteria.append(Notification.is_read.is_(is_read))
     total = await session.scalar(select(func.count()).select_from(Notification).where(*criteria))
     unread = await session.scalar(
         select(func.count())
         .select_from(Notification)
-        .where(*criteria, Notification.is_read.is_(False))
+        .where(Notification.user_id == user_id, Notification.is_read.is_(False))
     )
     rows = await session.scalars(
         select(Notification)

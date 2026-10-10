@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F045.
+> Last updated: 2026-10-10 — after task F046.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F046 in
-claude_code_pack/TASKS.md. Implement F046 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F047 in
+claude_code_pack/TASKS.md. Implement F047 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F046` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F047` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,36 +67,37 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F045 — Notifications backend** (`notifications`, **migration `0008`** — title,
-  message, optional `link`, `is_read`, `ON DELETE CASCADE` from the user). **No public create
-  endpoint** (C34): producers call `services/notifications.py::notify`, which *adds* to the caller's
-  transaction and **never commits** (F043's discipline); readers get six endpoints under
-  `/api/v1/notifications`, gated by the C16 codes (`notifications.read` for list + count,
-  `notifications.manage_own` for mutations). The list is F033-shaped (newest-first with an `id`
-  tiebreaker; `{items, total, unread_count, page, page_size}` — the count travels with the page);
-  `GET /unread-count` is the bell's cheap poll (F046's ~30 s); `POST /{id}/read` (200 with the
-  item, idempotent for the owner), `POST /read-all` (`{updated}`), `DELETE /{id}` (204; repeat →
-  **404** — never 403 for a foreign id, so nothing enumerates), `DELETE ""` (clear all,
-  `{deleted}`). **Links are paths, not URLs** (`^/[A-Za-z0-9]` at the door and in the table's
-  CHECK — `//host`, `/\host` and percent-decode tricks all refused); **cross-user denial is the
-  `(id AND user_id)` SQL filter itself** — there is no user-id parameter to get wrong. **No audit
-  rows** — inbox operations are not administrative mutations (recorded in C34). **One producer
-  wired**: the admin password reset notifies its target inside the reset's transaction.
-  DECISIONS C34; +9 backend tests (**245 passing**); frontend unchanged (**485**); `openapi.json`
-  + types regenerated.
-- **Next task: F046 — Notifications UI.** "Inbox bell count mark/delete clear and polling." Accept
-  (TASKS.md): "UI state tests". The header bell (F015 deliberately withheld it) over F045's six
-  endpoints: unread count from `GET /api/v1/notifications/unread-count` with **~30 s polling**
-  (consider pausing or backing off while the tab is hidden — a hidden tab polling forever is
-  noise), the list newest-first with its `unread_count`, mark-one / mark-all / delete-one /
-  clear-all wired to F045's shapes — clear-all behind F019's `ConfirmDialog` (§7.7's "clear-all
-  with confirm"), and delete-one treating the 404-on-repeat as done (the row is gone either way).
-  **Links render through the router** (a notice's `link` is an internal path; never a raw `<a>` —
-  F045's whole point is that it cannot be a URL). Permission mirrors on `notifications.read`/
-  `notifications.manage_own`; the server refuses regardless. No route expected unless a real page
-  is added — F042/C31's menu-reached rules apply if one is.
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F045 sits on top of
-  `e424174` (F044).
+- Last completed: **F046 — Notifications UI** (`/notifications`, Overview group, `notifications.read` —
+  the route was registered, so the sidebar/palette now list it). The source's list pattern ported: a
+  narrow centered column, the unread count as a **pill beside the title** (`PageHeader.title` now
+  takes a node), mark-all + **confirmed** clear-all at the upper right, unread cards carrying a
+  primary-tinted left accent, relative timestamps via `Intl.RelativeTimeFormat` (no hand-kept
+  table), per-item delete with a height-collapse exit animation (~200 ms before the request),
+  empty/loading/error states, All/Unread/Read tabs. **One honest pull-forward** (C35): F045's list
+  gained an `is_read` filter — the tabs are **server parameters** (page and `total` in SQL; a
+  client-side filter over a server page would lie — C23's lesson) while the pill stays the account's
+  global unread, and the pill and the bell badge read the **same `unreadCount` query key**. **The
+  bell** (F015's withheld control, `components/layout/notification-bell.tsx`): polls
+  `GET /notifications/unread-count` every ~30 s (`refetchInterval`; `refetchIntervalInBackground`
+  defaults false — a hidden tab pauses), renders nothing without `notifications.read`, and touches
+  no QueryClient before a signed-in permitted caller exists. **All four mutations are optimistic
+  with rollback** (one mechanism in `hooks/use-notifications.ts`: snapshot → edit → restore on error
+  → invalidate on settle); links navigate **through the router**. DECISIONS C35; +13 frontend tests
+  (**498 passing**), +1 backend (**246 passing**); `openapi.json` + types regenerated. En route, a
+  latent cold-cache race in F040's settings test surfaced (assertion ran before the snapshot
+  seeded) and was made deterministic.
+- **Next task: F047 — Dashboard.** "Real identity notifications and authorized quick links."
+  Accept (TASKS.md): "No fabricated stats". The page replaces `DashboardPlaceholder` — the registry
+  entry stays (F017's comment: swap the component, not the entry). Everything shown must be real:
+  identity from the session (`useAuth`), notices/unread from **F046's own hooks** (read
+  `queryKeys.notifications.unreadCount(userId)`, never a private key — C35), and quick links
+  **filtered through the registry** (`visibleNavigation`/`meetsAccess`, so an unauthorized link is
+  impossible — a hand-written link list would re-create dead links). **No invented statistics:**
+  the acceptance forbids them — no charts or KPI tiles until a real data source exists; an honest
+  empty state beats a fabricated number, and "no inert controls" (CLAUDE_MASTER) applies to tiles
+  as much as buttons.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F046 sits on top of
+  `8cc3e8c` (F045).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -215,8 +216,11 @@ the archive original — `sha256sum` both to check):
   columns in their current order, so F021's preferences decide the file; rows default to the current page, and a
   server-mode screen passes the full set explicitly. Client-side is CSV only — XLSX belongs to the backend
   (`openpyxl`, F051).
-- **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
-  the profile menu arrived with F032, and notifications arrive with F046 (`ARCHITECTURE.md` §12).
+- **The header's controls are all real now (F046).** CLAUDE_MASTER forbids inert buttons; the last
+  withheld control — the notification bell — arrived with F046
+  (`components/layout/notification-bell.tsx`: polls `unread-count` every ~30 s via `refetchInterval`,
+  pauses while the tab is hidden by the default `refetchIntervalInBackground: false`, and renders
+  only for a signed-in caller holding `notifications.read`).
 - **The inbox is live (F045):** `notifications` (**migration `0008`**, applied to `app_dev`) —
   per-user rows (title, message, optional `link`, `is_read`, `ON DELETE CASCADE`). Six endpoints
   under `/api/v1/notifications` (C34): list (F033 shape — `page`/`page_size` ≤100, newest-first
@@ -232,6 +236,19 @@ the archive original — `sha256sum` both to check):
   wired**: the admin password reset notifies its target inside the reset's transaction.
   **Tests:** +9 in `tests/test_notifications.py` (**245 backend**); frontend untouched (**485**);
   `openapi.json` + generated types regenerated.
+- **The inbox UI is live (F046):** `/notifications` (Overview group, `notifications.read`; visible in
+  the sidebar/palette) — the source's list pattern (narrow centered column, unread pill beside the
+  title, mark-all, **confirmed** clear-all via F019's `ConfirmDialog`, unread left accent, relative
+  timestamps via `Intl.RelativeTimeFormat`, per-item delete with a height-collapse exit, All/
+  Unread/Read tabs, empty/loading/error states). **C35:** the tabs are **server parameters** (F045's
+  list gained `is_read`; page + `total` in SQL) while the pill is the account's global unread — the
+  pill and the header bell badge read the **same `unreadCount` query key** (`queryKeys.notifications.*`,
+  user-scoped). All mutations are optimistic with rollback (`hooks/use-notifications.ts`); a card's
+  link renders **through the router**. The bell polls `unread-count` every ~30 s and pauses on a
+  hidden tab; without `notifications.read` it renders nothing and the route 403s. `PageHeader.title`
+  now takes a node. **Tests:** +13 in `tests/notifications/notifications.test.tsx` (**498 frontend**),
+  +1 backend filter test (**246**); `openapi.json` + generated types regenerated. A latent cold-cache
+  race in F040's settings test (assertion before seed) was found and made deterministic.
 - **The audit viewer is live (F044):** `GET /api/v1/admin/audit` (`audit.read`) — fixed newest-first
   order with an id tiebreaker; filters `action`/`entity_type` (validated against the vocabularies; a
   422 names the allowed set), escaped `search` (summary + actor email), `since`/`until`; the response
@@ -737,6 +754,13 @@ the archive original — `sha256sum` both to check):
   deliberate cheap path). A delete's repeat-404 is success as far as the UI is concerned (the row
   is gone); clear-all is the confirmed bulk (F019's `ConfirmDialog`). No audit rows for inbox
   operations.
+- **The inbox UI's seams are F047's foundation (F046, C35):** the unread number has exactly one
+  query key — `queryKeys.notifications.unreadCount(userId)` — and any new reader (F047's dashboard)
+  must read **that**, never refetch the endpoint under a private key; notification mutations go
+  through `useNotificationMutations` (never a hand-rolled optimistic update); the read/unread
+  filter stays a **server parameter**; a notice's `link` renders through the router only; the
+  bell's polling belongs to the bell — do not add a second poller for the same count.
+  `PageHeader.title` takes a node (string callers unchanged).
 - **Profile pages are menu-reached, never nav-listed (F042, C31):** any future personal page follows
   `showInNavigation: false` + `requiredPermissions: []` (the shell's boundary is the gate) and is
   linked from the account menu; the password form stays one component (`ChangePasswordForm`) — never
@@ -899,6 +923,35 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F046 — Notifications UI.** The inbox screen and the header bell (§7.7's screen, BP-4.3's route),
+  consuming C34's endpoints. `/notifications` (Overview group, `notifications.read` — registered, so
+  the sidebar and palette list it) ports the source's list pattern: a narrow centered column, the
+  unread count as a pill beside the title (`PageHeader.title` widened to a node for it), mark-all
+  and the confirmed clear-all at the upper right, cards with a primary-tinted left accent while
+  unread, **relative timestamps via `Intl.RelativeTimeFormat`** (the browser's own phrasing — no
+  hand-kept table, the C29 principle), a height-collapse **exit animation** on per-item delete
+  (~200 ms before the request fires), empty/loading/error states, and All/Unread/Read tabs. **One
+  honest pull-forward** (C35): F045's list gained an `is_read` filter — the tabs are **server
+  parameters**, because a client-side filter over a server page would quietly lie about the page
+  and its `total` (C23's lesson, applied beyond tables), while `unread_count` stays the account's
+  global number whatever the tab shows; the pill and the bell badge read the **same `unreadCount`
+  query key**, so two readers of one number cannot disagree. **The bell** — the header control F015
+  deliberately withheld — polls that key every ~30 s (TanStack `refetchInterval`;
+  `refetchIntervalInBackground` defaults false, so a hidden tab stops polling), renders nothing
+  without `notifications.read`, and mounts its polling half only for a signed-in permitted caller
+  (no QueryClient is touched before that — which keeps anonymous route-state tests provider-free).
+  **Every mutation is optimistic with rollback** (one mechanism in `hooks/use-notifications.ts`:
+  snapshot → edit → restore on error → invalidate on settle); in the Unread tab a marked card
+  leaves the list — the same edit the server would make — and a failed write pops the rows back
+  with the query layer's toast. Links navigate **through the router** (F045's stored path is
+  internal by a two-layer rule, so in-app navigation is structural, never a raw anchor). The four
+  shell-mounting test files gained the bell's unread-count handler. Checks run: `pnpm run typecheck`
+  clean; `pnpm exec vitest run` **498 passed** (13 new in `tests/notifications/notifications.test.tsx`,
+  verified across cold-cache runs); `pnpm run build` succeeds; backend **246 passed** (1 new filter
+  test); `ruff`/`format`/`mypy` clean; `openapi.json` + generated types regenerated. One latent
+  defect surfaced and was fixed en route: F040's settings test asserted the seeded value in the same
+  tick its label appeared — a race a cold cache exposed (the page renders the form before the
+  snapshot lands, then seeds via one `reset`); the assertion now waits for the seed. DECISIONS C35.
 - **F045 — Notifications backend.** The per-user inbox (§8.2; §7.7's API half), shaped so the
   acceptance — "cross-user denial tests" — is a property of the SQL rather than of remembering to
   check. `notifications` (**migration `0008`**, applied to `app_dev`) carries title, message, an
@@ -1696,7 +1749,7 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F044)** | `cd D:\resors\frontend; pnpm run test:run` | **485 passing** across 56 files |
+| **Frontend tests (F011–F046)** | `cd D:\resors\frontend; pnpm run test:run` | **498 passing** across 57 files |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
 | **API client tests (F018)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib` | **29 passing** in 3 files (MSW; no network) |
 | **Form kit tests (F019)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/form-fields.test.tsx tests/components/form-submission.test.tsx tests/components/confirm-dialog.test.tsx tests/components/unsaved-changes-guard.test.tsx` | **23 passing** in 4 files — validation, the `aria-describedby`/`aria-invalid` wiring, server 422 mapping with and without the toast opt-out, and the unsaved-changes prompt on a real data router |
@@ -1735,24 +1788,26 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Profile & preferences tests (F041)** | `cd D:\resors\backend; uv run pytest tests/test_profile_api.py` | **8 passed** — the gating split (only `GET /auth/me` survives a forced change); PATCH me trims, clears the phone with null, 400s an empty edit and **422s an email attempt** (extra=forbid); preference CRUD round-trips, upserts one row, deletes idempotently; key shapes and null/oversized values refused; **the acceptance: two users share one key and never see or touch each other's rows**; deleting a user cascades their preferences |
 | **Audit tests (F043)** | `cd D:\resors\backend; uv run pytest tests/test_audit.py` | **10 passed** — a failed mutation (409 duplicate) leaves **no** event while a successful one leaves exactly one with its before/after; `record` refuses credential-shaped keys recursively (and unknown actions) before any row is added; the reset event never carries the temporary and a submitted password never reaches the trail; role/matrix (`one event per save`, changed entries only), settings (per-key diffs), profile and preference (`key` only) events are asserted; `X-Request-Id` joins response and row, hostile ids are replaced not reflected, and service-level events have `correlation_id IS NULL` |
 | **Audit-viewer tests (F044)** | `cd D:\resors\backend; uv run pytest tests/test_admin_audit.py` | **6 passed** — 401/403 guards; newest-first order with the server-supplied vocabularies in the response; filters narrow exactly (action/entity), escaped search (`%` matches nothing), unknown action → 422 naming the vocabulary; pagination totals from the same criteria with no row on two pages; `since` bounds the timeline; the item carries everything the modal needs (details, correlation id) |
-| **Notification tests (F045)** | `cd D:\resors\backend; uv run pytest tests/test_notifications.py` | **9 passed** — the guards (401; a read-only caller's mutation answered with the generic 403; the forced change gating the inbox); pagination newest-first with the unread count; mark-read idempotent for the owner; read-all/clear-all counts and the empty-clear idempotence; delete-one's repeat 404; **the acceptance — two real users: each sees only their own rows, foreign ids are 404 for read and delete, bulk operations stay scoped**; the link rule at both layers (the service refusing `https://…`, `//evil.example`, `/\evil`, `/%2Fevil`…; the CHECK rejecting a hand-inserted bad row); and the reset producer end to end (the notice lands in the *target's* inbox, same transaction, gated until the forced change completes) |
+| **Notification tests (F045)** | `cd D:\resors\backend; uv run pytest tests/test_notifications.py` | **10 passed** — the guards (401; a read-only caller's mutation answered with the generic 403; the forced change gating the inbox); pagination newest-first with the unread count; mark-read idempotent for the owner; read-all/clear-all counts and the empty-clear idempotence; delete-one's repeat 404; **the acceptance — two real users: each sees only their own rows, foreign ids are 404 for read and delete, bulk operations stay scoped**; the link rule at both layers (the service refusing `https://…`, `//evil.example`, `/\evil`, `/%2Fevil`…; the CHECK rejecting a hand-inserted bad row); the reset producer end to end (the notice lands in the *target's* inbox, same transaction, gated until the forced change completes); and F046's `is_read` filter (the page and total narrow in SQL; the unread count stays the account's) |
+| **Notification UI tests (F046)** | `cd D:\resors\frontend; pnpm exec vitest run tests/notifications/notifications.test.tsx` | **13 passed** — the list renders only what the API sent (pill, unread accent, relative timestamps, one row per notice); the empty state hides the bulk controls; the tabs are real server parameters (`is_read=false` on the wire); mark-one flips optimistically and **a failed mark-read rolls back**; mark-all is one request; delete-one animates out then removes, and a failed delete restores the card; clear-all confirms first (Cancel sends nothing) and then empties; a notice's link navigates in-app and marks it read; the bell badges the count and opens the inbox; **the bell polls (~30 s, fake-timer proof)**; without `notifications.read` there is no bell and the route answers 403 |
 | **Audit viewer UI tests (F044)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/audit.test.tsx` | **5 passed** — the table renders read-only with no sort buttons or mutation controls; the action/entity selects offer the **server's** vocabulary and the period select sends a real `since`; pagination counts from the server total; the detail modal renders the before/after diff and the correlation id without a second request, and the `changes` shape per key with "— (no request)" for service-level events |
 | **Profile UI tests (F042)** | `cd D:\resors\frontend; pnpm exec vitest run tests/profile/profile.test.tsx` | **8 passed** — the page renders identity/roles/grouped permissions; a save PATCHes the owned fields and the **session refresh moves the header menu**; clearing the phone sends null; the server's 422 lands on the named field; the menu leads to `/profile` and `/profile/security` and the sidebar never lists them; the forced-change redirect outranks `/profile`; the reused password form submits for real |
 | **Permissions UI tests (F038)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/permissions.test.tsx` | **9 passed** — the table renders and sorts/searches in the browser; no management controls without `permissions.manage`; create posts the dialog and closes; a malformed code is refused locally with **no request**; server 422/409 refusals render in the right surfaces (field, dialog root alert, confirmation-then-toast) with the draft intact |
 | **Settings smoke (F039)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): read: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/admin/settings`; write: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PUT http://localhost:8000/api/v1/admin/settings -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"branding.app_name":"Resors","display.date_format":"YYYY-MM-DD"}'` | read: **200** with all four registry keys at their defaults. write: **200** echoing the fresh snapshot; re-read returns the new values — and they **survive an API restart** (stop/start uvicorn; the row is in PostgreSQL). Refusals: `{"nope.key":"x"}` → **422** at `nope.key`; `{"display.date_format":"31/12/2026"}` → **422** at that key |
 | **Audit smoke (F043)** | with the bootstrap jar (same `<csrf>`): do any mutation — e.g. `PATCH http://localhost:8000/api/v1/auth/me` with `{"full_name":"Audited Operator"}` — then inspect the trail in psql: `docker exec -it resors-postgres psql -U app -d app_dev -c "select action, actor_email, correlation_id, summary from audit_logs order by created_at desc limit 5;"` | the newest row is `profile.update` with the admin's email, the `X-Request-Id` the response carried (run the call with `-i` to see it), and a summary; `select details from audit_logs ...` shows the before/after of the changed field only — **no password or token material anywhere**, by design. A failed mutation (e.g. duplicate email on create) adds **no row** |
 | **Notifications smoke (F045)** | needs a second account **holding at least `viewer`** (both seeded roles carry the notification codes; create one via the F033 row — give it the `viewer` role — or any existing non-super-admin account). With the bootstrap jar (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`) and that account's id: reset it — `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/admin/users/<id>/reset-password -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>"` → **200** with a new temporary (record it at once). Sign that account into its own jar: `curl.exe -s -c $env:TEMP\resors-cookies-2.txt -o NUL -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"second@example.com","password":"<temporary>"}'`, read its `<csrf2>` from the jar (`Select-String __Host-csrf $env:TEMP\resors-cookies-2.txt`, last column), then complete the forced change: `curl.exe -i -b $env:TEMP\resors-cookies-2.txt -c $env:TEMP\resors-cookies-2.txt -X POST http://localhost:8000/api/v1/auth/change-password -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf2>" -d '{"current_password":"<temporary>","new_password":"<new, policy-passing>"}'` | before the change, `GET http://localhost:8000/api/v1/notifications` on jar 2 is **403** `Your password must be changed before continuing.` After it (**204**; the jar now holds the rotated pair, and **update `LOCAL_CREDENTIALS.md`**): `GET /api/v1/notifications` → **200** with the reset notice — `title` "Your password was reset", `link` `/change-password`, `is_read:false` — plus `total:1` and `unread_count:1`; `GET /api/v1/notifications/unread-count` → `{"unread_count":1}`. Mutations on jar 2 (Origin + **`<csrf2>`** from the *fresh* jar read): `POST /api/v1/notifications/<notice id>/read` → 200 `is_read:true`; `DELETE /api/v1/notifications/<id>` → **204**, the repeat → **404** (never 403 — a foreign id answers the same 404); `DELETE /api/v1/notifications` → `{"deleted":n}`. Cross-user check: the admin's own `GET /api/v1/notifications` never lists the second account's notice |
+| **Notifications UI smoke (F046)** | backend + frontend running; sign in with the bootstrap account and click the **bell** in the header (its badge shows the unread count; the count re-polls every ~30 s) | the inbox opens at `/notifications`: unread cards carry the primary left accent and a `n unread` pill sits beside the title; timestamps are relative ("5 minutes ago"); **Mark all as read** zeroes the pill (and the badge); a card's link navigates in-app and marks it read; **Clear all** opens the confirmation first; the per-item **×** animates the card out; the **All/Unread/Read** tabs filter server-side (network tab: `is_read=false`/`true`); a second account's notices never appear (F045's SQL scoping). With the reset from the F045 smoke, "Your password was reset" shows here with its `/change-password` link |
 | **Profile & preferences smoke (F041)** | with the bootstrap jar (same `<csrf>`): profile: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PATCH http://localhost:8000/api/v1/auth/me -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"full_name":"Renamed Operator"}'`; preferences: `... -X PUT http://localhost:8000/api/v1/auth/me/preferences/table.rows ... -d '{"value":25}'` | PATCH: **200** with the full MeResponse (identity + roles + permissions); `{"email":"x@y.z"}` → **422** (`extra_forbidden`); `{}` → **400**. PUT → **200** `{"key":"table.rows","value":25}`; `GET /api/v1/auth/me/preferences` lists it; `DELETE` → **204** and again → **204**; `PUT .../BadKey` → **422** at the path key |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **485 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **498 tests passing**, ~92.6% statements overall. The threshold gate is F055/F061's |
 | **Frontend auth-flow tests (F032)** | `cd D:\resors\frontend; pnpm exec vitest run tests/auth/auth-flows.test.tsx` | **14 passed** — the session boundary (anonymous redirect with intended-path return; network failure → Retry, **not** login), sign-in failures shown verbatim, local validation without a request, the forced-change landing/bounce/completion with the CSRF header asserted on the wire, 422 field mapping, mismatch refusal, both sign-out flows, the registered 401 re-resolution (one retry), and `readCsrfToken` |
 | API liveness (F007) | `curl http://localhost:8000/api/v1/health` | `{"status":"ok","name":"Application Platform",...}` |
 | **Layout shell (F015)** | open the app, then narrow the window (or use devtools device mode) through **1440px → 900px → 390px** | 1440: 260px sidebar + 64px header. 900: the sidebar starts as the 64px icon rail. 390: no pinned sidebar; a hamburger opens the 260px drawer (Escape closes it) |
 | **Sidebar preference (F015)** | click the round chevron on the sidebar edge, then press **F5** | it stays collapsed after reload; console: `localStorage.getItem('app.sidebar')` → `"collapsed"` |
 | **Nav behaviour (F015)** | inside the collapsed rail, hover the **Dashboard** row; click the **Overview** group label | the label appears as a tooltip in the rail; the group collapses/expands and the choice survives **F5** (`app.sidebar.groups`) |
 | **Context slot is off (F015)** | look at the header on desktop | **no** context selector is rendered — the slot is disabled by default (BIG-PROMPT §3.2a); it appears only when a module injects an enabled adapter |
-| **Command palette (F016)** | press **Ctrl+K** (or Cmd+K), or click the **Search anything** box in the header | the palette opens listing `Overview → Dashboard`; typing filters; **Enter** jumps to the highlighted page; **Escape** closes and focus returns to where it was |
+| **Command palette (F016)** | press **Ctrl+K** (or Cmd+K), or click the **Search anything** box in the header | the palette opens listing `Overview → Dashboard` and `Notifications`; typing filters; **Enter** jumps to the highlighted page; **Escape** closes and focus returns to where it was |
 | **Route states (F017; updated by F032/F034)** | **signed in**, visit **`/`**, **`/admin`**, **`/nonexistent`**, **`/403`**, **`/404`** in turn (anonymous, every one of these lands on `/login` with the path remembered — that is F032's boundary working) | `/` lands on `/dashboard` — the protected placeholder, which says plainly that the real screen is F047; **`/admin` now redirects to `/admin/users`** when the caller holds `users.read` (F034 registered the first administration route) and shows the **403** page otherwise; any unknown path shows **404 inside the shell** (navigation still usable); `/403` and `/404` render those pages directly |
-| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — **Dashboard**, plus **Users** (`users.read`), **Roles** (`roles.read`) and **Permissions** (`permissions.read`) for callers holding those codes (the Administration group appears for them, and only them: absent, not empty, for everyone else). The remaining administration pages arrive in F038–F044; an anonymous visitor never reaches the shell at all (F032 sends them to `/login`) |
+| **Nav filtering (F016)** | compare the sidebar with the palette, and inspect the registry in `docs/ROUTES_NAVIGATION.md` §2 | both list exactly the registered pages — **Dashboard** and **Notifications** (`notifications.read`), plus the **Administration** group (**Users**, **Roles**, **Permissions**, **Settings**, **Audit Trail**) for callers holding the matching read codes (the group appears for them, and only them: absent, not empty, for everyone else). Profile pages are menu-reached and deliberately unlisted; an anonymous visitor never reaches the shell at all (F032 sends them to `/login`) |
 | **Admin users screen smoke (F034)** | open http://localhost:5173, sign in with the bootstrap account, and look for the **Users** entry under Administration | the sidebar gains **Administration → Users**; the table lists accounts with role badges, status and created date; typing in search updates the URL-less query (watch the network tab: `search=…`); the **Status** select sends `is_active=false`; clicking a column header sends `sort`/`order`; **Add user** opens the dialog — create one and the **temporary password appears once** with a Copy button (record it, then sign in with it to see the forced-change flow); the row menu offers Edit / Reset password / Activate–Deactivate / Delete, each behind its confirmation where destructive — and on **your own row** Deactivate/Delete are disabled (the server would refuse them, C22) |
 | **Auth smoke (F032)** — the full round trip | backend + frontend running; open http://localhost:5173 in a browser | anonymous → the **Sign in** card (no shell). Sign in with the bootstrap account (`LOCAL_CREDENTIALS.md`): it has `must_change_password=true`, so the app lands on **Choose a new password** — try `/dashboard` and get bounced back; complete the change (**204**, cookies rotate) and the dashboard appears with your name in the header menu. Open the account menu: **Sign out** → login card; sign in again with the **new** password (update `LOCAL_CREDENTIALS.md` the moment you change it). Wrong password shows `Invalid email or password.`; five wrong ones → the 429 sentence. **Sign out everywhere…** asks for confirmation, then ends every session |
 | **Typed client, end to end (F018)** | with the backend running, open http://localhost:5173 and paste into the devtools console: `const { api } = await import('/src/lib/api.ts'); await api.get('/api/v1/health')` | the health JSON straight from FastAPI (`{"status":"ok","name":"Application Platform",…}`) — the SPA reached the API through the Vite proxy with the generated types. Then `await api.get('/api/v1/nope').catch(e => e.detail)` → **`The requested item was not found.`** — the normalised `ApiError`, not an Axios error. The app itself now makes exactly **one** API call on load — `GET /api/v1/auth/me` (F032; watch it in the network tab) — and no page fabricates data; F047's dashboard is the first real data consumer |

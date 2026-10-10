@@ -54,11 +54,13 @@ async def list_notifications(
     session: Annotated[AsyncSession, Depends(get_session)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
+    is_read: Annotated[bool | None, Query()] = None,
 ) -> NotificationListResponse:
     """Newest first, with the unread count alongside — the bell and the page
-    in one answer."""
+    in one answer. `is_read` narrows the page and the total (F046's filter,
+    server-side by design); the unread count stays the account's."""
     rows, total, unread = await notifications_service.list_notifications(
-        session, context.user.id, page=page, page_size=page_size
+        session, context.user.id, page=page, page_size=page_size, is_read=is_read
     )
     return NotificationListResponse(
         items=[NotificationItem.model_validate(row) for row in rows],

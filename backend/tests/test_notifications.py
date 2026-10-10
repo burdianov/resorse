@@ -217,6 +217,32 @@ async def test_delete_one_answers_404_once_it_is_gone(
     assert (await client.delete(f"{INBOX}/{row.id}")).status_code == 404
 
 
+async def test_the_read_filter_narrows_the_page_and_the_total_but_not_the_pill(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """F046's filter is server-side (SQL), so the page, the total and the
+    pill each keep their own honest meaning."""
+    user = await sign_in(client, session, "ada@example.com", both_codes())
+    await give(session, user, title="Unread one")
+    await give(session, user, title="Unread two")
+    read = await give(session, user, title="Already read")
+    assert (await client.post(f"{INBOX}/{read.id}/read")).status_code == 200
+
+    unread_only = (await client.get(INBOX, params={"is_read": "false"})).json()
+    assert [item["title"] for item in unread_only["items"]] == ["Unread two", "Unread one"]
+    assert unread_only["total"] == 2
+    # The pill is the account's number, whatever the page shows.
+    assert unread_only["unread_count"] == 2
+
+    read_only = (await client.get(INBOX, params={"is_read": "true"})).json()
+    assert [item["title"] for item in read_only["items"]] == ["Already read"]
+    assert read_only["total"] == 1
+    assert read_only["unread_count"] == 2
+
+    everything = (await client.get(INBOX)).json()
+    assert everything["total"] == 3
+
+
 # --- the acceptance: cross-user denial ------------------------------------------
 
 

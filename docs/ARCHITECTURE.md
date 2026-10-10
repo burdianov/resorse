@@ -673,6 +673,34 @@ personal data with no audit value (the F041 preference edge, not the audit trail
   transaction. Future producers (user created, role changed) arrive with their tasks and call the
   same `notify`.
 
+### Notifications UI (F046)
+
+`/notifications` (BP-4.3's route; Overview group, `notifications.read`) is the screen behind the
+header bell, ported from the source's list pattern: a narrow centered column of cards, the unread
+count as a pill beside the title, mark-all and a confirmed clear-all at the upper right, relative
+timestamps, a per-card delete with a height-collapse exit animation, and a primary-tinted left
+accent on notices that still need attention. Three decisions carry the behaviour:
+
+- **The unread number is one cache entry.** The pill and the bell's badge both read
+  `queryKeys.notifications.unreadCount(userId)` — F045's list response carries the count too, but a
+  single shared key is what makes "two readers cannot disagree" structural rather than careful. The
+  bell polls that key every ~30 s (TanStack `refetchInterval`; `refetchIntervalInBackground`
+  defaults to `false`, so the poll pauses while the tab is hidden). The bell resolves the session
+  and the permission with context reads and mounts its polling half only when both exist — no
+  QueryClient is even required before then, which is also what keeps anonymous shells and
+  route-state tests provider-free.
+- **The read/unread filter is the server's.** F046 added `is_read` to F045's list endpoint: the
+  page and its `total` are filtered in SQL, while `unread_count` stays the account's overall unread
+  — the bell's number — whatever tab is showing. Relative timestamps come from
+  `Intl.RelativeTimeFormat` (the platform's phrasing, not a hand-kept table — the C29 principle).
+- **Every write is optimistic with rollback.** `hooks/use-notifications.ts` snapshots the cached
+  list and count, applies the edit immediately, restores on failure and invalidates on settle; in
+  the Unread tab a marked-read card leaves the list because it no longer matches — the same edit
+  the server would make. Deletes and clear-all play their ~200 ms exit animation before the request
+  fires, and a failed write pops the affected rows back (with the query layer's toast). A notice's
+  `link` navigates **through the router**: the backend already validated it as an internal path
+  (F045's two-layer rule), so an in-app navigation is structural, never a raw anchor.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1348,4 +1376,6 @@ owning every row it touches.
   one-request modal, a screen with nothing mutable — C33, §5), and **F045 the notifications
   backend** (the producer/reader split with no create endpoint, path-not-URL links pinned in the
   database, SQL-scoped cross-user denial answering 404-never-403, the count-with-the-page list,
-  no audit rows — C34, §5).
+  no audit rows — C34, §5), and **F046 the notifications UI** (the server-side `is_read` filter,
+  the one shared unread-count key behind the polling bell, optimistic writes with rollback, links
+  through the router — C35, §5).

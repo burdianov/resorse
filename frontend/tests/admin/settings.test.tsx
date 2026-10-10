@@ -55,6 +55,8 @@ function renderSettings(options: { meUser?: MeResponse; snapshot?: Record<string
   const captured: Captured = { puts: 0, body: null }
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(options.meUser ?? me())),
+    // The shell's bell polls this on every authenticated page (F046).
+    http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),
     http.get('/api/v1/admin/settings', () =>
       HttpResponse.json({ values: { ...SNAPSHOT, ...(options.snapshot ?? {}) } }),
     ),
@@ -90,7 +92,13 @@ describe('reload: the form is seeded from the server', () => {
     renderSettings({ snapshot: { 'branding.app_name': 'Acme Manpower', 'display.date_format': 'YYYY-MM-DD' } })
 
     await screen.findByRole('heading', { name: 'Settings' })
-    expect(await screen.findByLabelText(/Application name/)).toHaveValue('Acme Manpower')
+    // The page renders the form first and seeds it when the snapshot lands
+    // (one `reset`); wait for the seed instead of racing it — a cold-cache
+    // run exposed the race because the label exists a beat before the value.
+    const appName = await screen.findByLabelText(/Application name/)
+    await waitFor(() => {
+      expect(appName).toHaveValue('Acme Manpower')
+    })
     expect(screen.getByLabelText(/Date format/)).toHaveTextContent('YYYY-MM-DD')
     expect(screen.getByLabelText(/Timezone/)).toHaveValue('Asia/Dubai')
     // Card sections, both present.

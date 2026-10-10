@@ -1,6 +1,6 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { FileText, LayoutDashboard, Lock, Settings, Shield, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { Bell, FileText, LayoutDashboard, Lock, Settings, Shield, ShieldCheck, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
@@ -86,6 +86,11 @@ const DashboardPlaceholder = lazy(async () => {
   return { default: module.DashboardPlaceholder }
 })
 
+const NotificationsPage = lazy(async () => {
+  const module = await import('@/pages/notifications')
+  return { default: module.NotificationsPage }
+})
+
 const AdminUsersPage = lazy(async () => {
   const module = await import('@/pages/admin/users')
   return { default: module.AdminUsersPage }
@@ -140,6 +145,20 @@ export const APP_ROUTES: readonly RouteDefinition[] = [
     icon: LayoutDashboard,
     group: 'overview',
     component: DashboardPlaceholder,
+  },
+  {
+    // The inbox (F046, §7.7/BP-4.3): a protected user page in the Overview
+    // group. `notifications.read` is what the API enforces on the list and
+    // the count (F045); the guard and the visibility rule read the same
+    // code, so a caller without it sees neither the entry nor a working
+    // inbox — and the server would refuse regardless (§6.3d).
+    id: 'notifications',
+    path: '/notifications',
+    label: 'Notifications',
+    icon: Bell,
+    group: 'overview',
+    requiredPermissions: ['notifications.read'],
+    component: NotificationsPage,
   },
   {
     id: 'admin-users',

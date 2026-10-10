@@ -14,7 +14,12 @@ import { cn } from '@/lib/utils'
  * hand-built trail when it is not a registry route.
  */
 export interface PageHeaderProps {
-  title: string
+  /**
+   * The page title. A node rather than a string so a page can pair the title
+   * with a marker on the same line — F046's unread-count pill beside
+   * "Notifications".
+   */
+  title: ReactNode
   description?: string
   /** Primary actions, laid out at the upper right on wide screens. */
   actions?: ReactNode

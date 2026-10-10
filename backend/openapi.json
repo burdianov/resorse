@@ -2647,7 +2647,7 @@
         ]
       },
       "get": {
-        "description": "Newest first, with the unread count alongside — the bell and the page\nin one answer.",
+        "description": "Newest first, with the unread count alongside — the bell and the page\nin one answer. `is_read` narrows the page and the total (F046's filter,\nserver-side by design); the unread count stays the account's.",
         "operationId": "list_notifications_api_v1_notifications_get",
         "parameters": [
           {
@@ -2671,6 +2671,22 @@
               "minimum": 1,
               "title": "Page Size",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_read",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Read"
             }
           }
         ],

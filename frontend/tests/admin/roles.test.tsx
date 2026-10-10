@@ -83,6 +83,8 @@ interface MatrixFixture {
 function handlers(captured: Captured, fixture: MatrixFixture = {}) {
   return [
     http.get('/api/v1/auth/me', () => HttpResponse.json(me())),
+    // The shell's bell polls this on every authenticated page (F046).
+    http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),
     http.get('/api/v1/admin/roles', () => {
       captured.rolesCalls += 1
       return HttpResponse.json({ items: [VIEWER, ADMIN, SUPER] })

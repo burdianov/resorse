@@ -35,10 +35,18 @@ Only routes whose page exists are registered — a registered route is a real li
 | Group | Route | Path | Requirements | Since |
 |---|---|---|---|---|
 | Overview | Dashboard | `/dashboard` | none | F017 (protected placeholder; F047 replaces the page) |
+| Overview | Notifications | `/notifications` | `notifications.read` | F046 |
+| (avatar menu, not listed) | Profile | `/profile` | own account | F042 |
+| (avatar menu, not listed) | Security | `/profile/security` | own account | F042 |
+| Administration | Users | `/admin/users` | `users.read` + admin area | F034 |
+| Administration | Roles | `/admin/roles` | `roles.read` + admin area | F036 |
+| Administration | Permissions | `/admin/permissions` | `permissions.read` + admin area | F038 |
+| Administration | Settings | `/admin/settings` | `settings.read` + admin area | F040 |
+| Administration | Audit Trail | `/admin/audit` | `audit.read` + admin area | F044 |
 
 The groups themselves are also declarative: `Overview` and `Administration` exist from the start, and a group with
-no visible item **renders nothing** (§4.8: no fake empty groups) — which is why the Administration group is
-invisible today, before its pages exist.
+no visible item **renders nothing** (§4.8: no fake empty groups) — the Administration group appears for exactly
+the callers holding a read code in its namespaces, and is absent (not empty) for everyone else.
 
 `/` is deliberately **not** a registry entry: the router redirects it (§4.1). F032 makes that redirect auth-aware.
 
@@ -74,7 +82,7 @@ carry the same warning: they are UX, never the security boundary.
 | State | Behaviour |
 |---|---|
 | Root `/` | redirects to `/dashboard` (F032 makes it auth-aware: `/login` when there is no session) |
-| `/admin` | redirects to the first `/admin/*` section the caller may open, else the 403 page. Today the registry holds no admin route, so everyone gets the 403 — the true answer, not a workaround |
+| `/admin` | redirects to the first `/admin/*` section the caller may open, in registry order (Users first), else the 403 page — the true answer, not a workaround |
 | `/403`, `/404` | direct-visible state pages; `*` renders the 404 for any unknown path |
 | A page that throws | the route error boundary replaces the *page*, never the frame: sidebar, header and navigation stay usable, and the error state offers **Retry** |
 | A gated route opened directly | `buildRouteObjects` wraps every route with `requiredPermissions`/`adminOnly` in `RouteGuard`, which renders the 403 — so a route cannot be registered without its denial state |
@@ -90,18 +98,11 @@ stops a permission error from being misread as "log in again".
 
 ## 5. Not yet registered (planned pages)
 
-Listed here so the mapping is not lost; each joins the registry with its own task, not before. (Dashboard is
-already registered against F017's protected placeholder; F047 swaps the page component, not the entry.)
+Every page the requirements plan (BIG-PROMPT §4) is registered as of **F046**; what remains is the dev-only
+Component Lab, listed here so the mapping is not lost. (F047 swaps the dashboard *component*, not its entry.)
 
 | Group | Page | Path | Required permissions | Task |
 |---|---|---|---|---|
-| Overview | Notifications | `/notifications` | `notifications.read` | F046 |
-| (avatar menu) | Profile / Security | `/profile`, `/profile/security` | own account | F042 |
-| Administration | Users | `/admin/users` | `users.read` | F034 |
-| Administration | Roles | `/admin/roles` | `roles.read` | F036 |
-| Administration | Permissions | `/admin/permissions` | `permissions.read` | F038 |
-| Administration | Settings | `/admin/settings` | `settings.read` | F040 |
-| Administration | Audit Trail | `/admin/audit` | `audit.read` | F044 |
 | (dev only) | Component Lab | `/tools/components` | dev-mode/admin | F054 |
 
 ## 6. Extension slot

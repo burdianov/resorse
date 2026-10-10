@@ -29,9 +29,31 @@ export interface AdminUsersParams {
 
 const adminUsersRoot = ['admin', 'users'] as const
 
+/** The active filter of the inbox list (F046) — part of a list key. */
+export type NotificationFilter = 'all' | 'unread' | 'read'
+
+const notificationsRoot = (userId: string) => ['notifications', userId] as const
+
 export const queryKeys = {
   /** Liveness of the API — GET /api/v1/health. */
   health: ['health'] as const,
+  /**
+   * The signed-in user's inbox (F046). The user id is in the key by the
+   * identity rule above — notifications are per-user data by definition.
+   */
+  notifications: {
+    /** Invalidation root for every inbox mutation. */
+    root: (userId: string) => notificationsRoot(userId),
+    /**
+     * The unread count — the bell's badge and the page's pill read **this one
+     * entry**, so the two can never disagree about the same number.
+     */
+    unreadCount: (userId: string) => [...notificationsRoot(userId), 'unread-count'] as const,
+    /** Prefix of every filtered list, for prefix invalidation. */
+    listRoot: (userId: string) => [...notificationsRoot(userId), 'list'] as const,
+    list: (userId: string, filter: NotificationFilter) =>
+      [...notificationsRoot(userId), 'list', filter] as const,
+  },
   admin: {
     /** Invalidate this to refetch every page/filter of the user directory. */
     usersRoot: adminUsersRoot,

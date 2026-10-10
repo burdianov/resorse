@@ -1943,6 +1943,10 @@ export type ListNotificationsApiV1NotificationsGetData = {
          * Page Size
          */
         page_size?: number;
+        /**
+         * Is Read
+         */
+        is_read?: boolean | null;
     };
     url: '/api/v1/notifications';
 };

@@ -64,6 +64,9 @@ function renderAudit(items: AuditItem[] = [item()], total = items.length) {
   const captured: Captured = { params: [] }
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(me())),
+    // The shell's bell polls this on every authenticated page (F046); this
+    // file does not exercise notifications, so it stands at zero.
+    http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),
     http.get('/api/v1/admin/audit', ({ request }) => {
       const params = new URL(request.url).searchParams
       captured.params.push(params)
