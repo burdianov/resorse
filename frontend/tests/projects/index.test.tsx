@@ -92,9 +92,21 @@ interface CapturedRequests {
   listParams: URLSearchParams[]
 }
 
-function renderProjects(init: { rows?: ProjectItem[]; total?: number; meUser?: MeResponse } = {}) {
+function renderProjects(
+  init: {
+    rows?: ProjectItem[]
+    total?: number
+    meUser?: MeResponse
+    /** When set, the register's own GET answers this (a status, or `'network'`
+     * for no response at all) until the returned `recover()` is called. */
+    listFails?: number | 'network'
+  } = {},
+) {
   const rows = init.rows ?? ROWS
   const requests: CapturedRequests = { listParams: [] }
+  // A mutable box rather than a captured value: the error tests turn the
+  // failure off mid-test to watch Retry actually ask again.
+  const failure = { current: init.listFails }
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(init.meUser ?? me())),
     http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
@@ -102,6 +114,13 @@ function renderProjects(init: { rows?: ProjectItem[]; total?: number; meUser?: M
     http.get('/api/v1/projects', ({ request }) => {
       const params = new URL(request.url).searchParams
       requests.listParams.push(params)
+      if (failure.current === 'network') return HttpResponse.error()
+      if (typeof failure.current === 'number') {
+        return HttpResponse.json(
+          { detail: 'The register is unavailable.' },
+          { status: failure.current },
+        )
+      }
       return HttpResponse.json({
         items: rows,
         total: init.total ?? rows.length,
@@ -123,7 +142,13 @@ function renderProjects(init: { rows?: ProjectItem[]; total?: number; meUser?: M
       <RouterProvider router={router} />
     </AppProviders>,
   )
-  return { router, requests }
+  return {
+    router,
+    requests,
+    recover: () => {
+      failure.current = undefined
+    },
+  }
 }
 
 async function waitForRows() {
@@ -227,6 +252,33 @@ describe('the register', () => {
 
     expect(await screen.findByText('No projects yet')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Add project/ })).toBeNull()
+  })
+
+  it('shows the error state when the register cannot be read, and Retry asks again', async () => {
+    // The app retries a 5xx once silently (query-provider), so the endpoint has
+    // to keep failing through that retry before the page owns the failure.
+    const { requests, recover } = renderProjects({ listFails: 503 })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    // The page still says which page it could not fill.
+    expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument()
+
+    const asked = requests.listParams.length
+    recover()
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    await waitForRows()
+    expect(requests.listParams.length).toBeGreaterThan(asked)
+  })
+
+  it('names the connection, not the server, when no response arrives at all', async () => {
+    // A dropped connection is not a 5xx: nothing answered, so the copy points
+    // at the connection and the button offers a plain Retry.
+    renderProjects({ listFails: 'network' })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Can’t reach the server')
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 
   it('answers the 403 page for a caller without projects.read', async () => {

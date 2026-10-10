@@ -120,11 +120,20 @@ async def test_it_serves_newest_first_with_the_vocabulary(
     assert body["total"] == 3
     actions = [item["action"] for item in body["items"]]
     assert actions == ["preference.set", "user.create", "user.create"]  # newest first
-    # The filter vocabulary comes from the server's own constants (C33).
-    assert "user.create" in body["actions"]
-    # `file` arrived with the private storage core (F049); this set is spelled
-    # out rather than compared with the constant so that widening the
-    # vocabulary is a deliberate edit here too.
+    # The filter vocabulary comes from the server's own constants (C33), and one
+    # verb per group is named here, so a group that reaches this endpoint
+    # without being named is a test that needed editing.
+    assert {
+        "user.create",
+        "file.create",  # the private storage core (F049)
+        "discipline.create",  # the reference tables (D005, migration 0013)
+        "department.create",
+        "designation.create",
+        "project.create",  # projects (D008, migration 0015)
+    } <= set(body["actions"])
+    # The entity half is the whole set, spelled out rather than compared with
+    # the constant so that widening the vocabulary is a deliberate edit here
+    # too — which is how it registered D005's and D008's widenings.
     assert set(body["entity_types"]) == {
         "user",
         "profile",
@@ -133,6 +142,13 @@ async def test_it_serves_newest_first_with_the_vocabulary(
         "permission",
         "setting",
         "file",
+        # The reference tables (D005). Singular, like the constant: the entity
+        # type names the kind of row the event is about.
+        "discipline",
+        "department",
+        "designation",
+        # Projects (D008) — the first entity other modules will point at.
+        "project",
     }
     newest = body["items"][0]
     assert newest["details"] == {"key": "theme.name"}

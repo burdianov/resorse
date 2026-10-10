@@ -58,13 +58,29 @@ interface Captured {
   deletes: string[]
 }
 
-function renderDepartments(meUser: MeResponse = me()) {
+function renderDepartments(
+  meUser: MeResponse = me(),
+  init: { departments?: DepartmentItem[]; listFails?: number | 'network' } = {},
+) {
+  const rows = init.departments ?? [HQ, YARD]
   const captured: Captured = { creates: null, patches: [], deletes: [] }
+  // A mutable box rather than a captured value: the error test turns the
+  // failure off mid-test to watch Retry actually ask again.
+  const failure = { current: init.listFails }
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(meUser)),
     http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),
-    http.get('/api/v1/masters/departments', () => HttpResponse.json({ items: [HQ, YARD] })),
+    http.get('/api/v1/masters/departments', () => {
+      if (failure.current === 'network') return HttpResponse.error()
+      if (typeof failure.current === 'number') {
+        return HttpResponse.json(
+          { detail: 'The list is unavailable.' },
+          { status: failure.current },
+        )
+      }
+      return HttpResponse.json({ items: rows })
+    }),
     http.post('/api/v1/masters/departments', async ({ request }) => {
       captured.creates = (await request.json()) as Record<string, unknown>
       return HttpResponse.json(
@@ -98,7 +114,13 @@ function renderDepartments(meUser: MeResponse = me()) {
       <RouterProvider router={router} />
     </AppProviders>,
   )
-  return { router, captured }
+  return {
+    router,
+    captured,
+    recover: () => {
+      failure.current = undefined
+    },
+  }
 }
 
 async function waitForTable() {
@@ -126,6 +148,49 @@ describe('the table', () => {
       expect(screen.queryByText('Site Yard')).toBeNull()
     })
     expect(screen.getByText('Headquarters')).toBeInTheDocument()
+  })
+
+  it('reads a retired row as inactive and offers to bring it back', async () => {
+    // Both fixtures are active, so the retired state — the badge, the menu item
+    // and the sentence the toggle answers with — is arranged here.
+    const { captured } = renderDepartments(me(), {
+      departments: [HQ, { ...YARD, is_active: false }],
+    })
+    await waitForTable()
+
+    expect(screen.getByText('Inactive')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for yard' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Activate' }))
+
+    await waitFor(() => {
+      expect(captured.patches).toContainEqual({ url: YARD.id, body: { is_active: true } })
+    })
+    expect(await screen.findByText('Department activated')).toBeInTheDocument()
+
+    // The column's accessor is the word the badge says, not the boolean: a
+    // search for "inactive" is a search over states, answered in the browser.
+    await userEvent.type(screen.getByPlaceholderText(/Search codes or names/), 'inactive')
+    await waitFor(() => {
+      expect(screen.queryByText('head_office')).toBeNull()
+    })
+    expect(screen.getByText('yard')).toBeInTheDocument()
+  })
+
+  it('shows the error state when the table cannot be read, and Retry asks again', async () => {
+    // The app retries a 5xx once silently (query-provider), so the endpoint has
+    // to keep failing through that retry before the page owns the failure.
+    const { recover } = renderDepartments(me(), { listFails: 503 })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    // The page still says which page it could not fill.
+    expect(screen.getByRole('heading', { name: 'Departments' })).toBeInTheDocument()
+
+    recover()
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    await waitForTable()
   })
 
   it('renders no management controls without departments.manage', async () => {

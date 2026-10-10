@@ -103,8 +103,15 @@ interface Captured {
   deletes: string[]
 }
 
-function renderDesignations(meUser: MeResponse = me()) {
+function renderDesignations(
+  meUser: MeResponse = me(),
+  init: { designations?: DesignationItem[]; listFails?: number | 'network' } = {},
+) {
+  const rows = init.designations ?? [SITE_CIVIL, LEGACY]
   const captured: Captured = { creates: null, patches: [], deletes: [] }
+  // A mutable box rather than a captured value: the error test turns the
+  // failure off mid-test to watch Retry actually ask again.
+  const failure = { current: init.listFails }
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(meUser)),
     http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
@@ -113,9 +120,16 @@ function renderDesignations(meUser: MeResponse = me()) {
       HttpResponse.json({ items: [HEAD_OFFICE, RETIRED] }),
     ),
     http.get('/api/v1/masters/disciplines', () => HttpResponse.json({ items: [CIVIL, SURVEY] })),
-    http.get('/api/v1/masters/designations', () =>
-      HttpResponse.json({ items: [SITE_CIVIL, LEGACY] }),
-    ),
+    http.get('/api/v1/masters/designations', () => {
+      if (failure.current === 'network') return HttpResponse.error()
+      if (typeof failure.current === 'number') {
+        return HttpResponse.json(
+          { detail: 'The list is unavailable.' },
+          { status: failure.current },
+        )
+      }
+      return HttpResponse.json({ items: rows })
+    }),
     http.post('/api/v1/masters/designations', async ({ request }) => {
       captured.creates = (await request.json()) as Record<string, unknown>
       return HttpResponse.json(
@@ -150,7 +164,13 @@ function renderDesignations(meUser: MeResponse = me()) {
       <RouterProvider router={router} />
     </AppProviders>,
   )
-  return { router, captured }
+  return {
+    router,
+    captured,
+    recover: () => {
+      failure.current = undefined
+    },
+  }
 }
 
 async function waitForTable() {
@@ -194,6 +214,60 @@ describe('the table', () => {
       expect(screen.queryByText('civil_engineer')).toBeNull()
     })
     expect(screen.getByText('Legacy Title')).toBeInTheDocument()
+  })
+
+  it('reads a retired row as inactive, and toggles both ways from the menu', async () => {
+    // Both fixtures are active, so the retired state — the badge, the menu item
+    // and the sentence the toggle answers with — is arranged here.
+    const { captured } = renderDesignations(me(), {
+      designations: [SITE_CIVIL, { ...LEGACY, is_active: false }],
+    })
+    await waitForTable()
+
+    expect(screen.getByText('Inactive')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for legacy_title' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Activate' }))
+    await waitFor(() => {
+      expect(captured.patches).toContainEqual({ url: LEGACY.id, body: { is_active: true } })
+    })
+    expect(await screen.findByText('Designation activated')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for civil_engineer' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Deactivate' }))
+    await waitFor(() => {
+      expect(captured.patches).toContainEqual({
+        url: SITE_CIVIL.id,
+        body: { is_active: false },
+      })
+    })
+
+    // The column's accessor is the word the badge says, not the boolean: a
+    // search for "inactive" is a search over states, answered in the browser.
+    await userEvent.type(
+      screen.getByPlaceholderText(/Search codes, names or departments/),
+      'inactive',
+    )
+    await waitFor(() => {
+      expect(screen.queryByText('civil_engineer')).toBeNull()
+    })
+    expect(screen.getByText('legacy_title')).toBeInTheDocument()
+  })
+
+  it('shows the error state when the table cannot be read, and Retry asks again', async () => {
+    // The app retries a 5xx once silently (query-provider), so the endpoint has
+    // to keep failing through that retry before the page owns the failure.
+    const { recover } = renderDesignations(me(), { listFails: 503 })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    // The page still says which page it could not fill.
+    expect(screen.getByRole('heading', { name: 'Designations' })).toBeInTheDocument()
+
+    recover()
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    await waitForTable()
   })
 })
 

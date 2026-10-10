@@ -72,21 +72,34 @@ function renderProject(
     refusal?: { status: number; detail: string }
     /** Serve 404 for the record, whatever id is asked for. */
     notFound?: boolean
+    /** When set, reading the record answers this (a status, or `'network'` for
+     * no response at all) until the returned `recover()` is called. */
+    recordFails?: number | 'network'
   } = {},
 ) {
   // The handler serves one row and the PATCH mutates it — see the docstring.
   let current: ProjectItem = init.project ?? PROJECT
   const requests: CapturedRequests = { patches: [] }
+  // A mutable box rather than a captured value: the error tests turn the
+  // failure off mid-test to watch Retry actually ask again.
+  const failure = { current: init.recordFails }
 
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(init.meUser ?? me())),
     http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),
-    http.get('/api/v1/projects/:id', ({ params }) =>
-      init.notFound !== true && params.id === current.id
+    http.get('/api/v1/projects/:id', ({ params }) => {
+      if (failure.current === 'network') return HttpResponse.error()
+      if (typeof failure.current === 'number') {
+        return HttpResponse.json(
+          { detail: 'The record is unavailable.' },
+          { status: failure.current },
+        )
+      }
+      return init.notFound !== true && params.id === current.id
         ? HttpResponse.json(current)
-        : HttpResponse.json({ detail: 'Project not found.' }, { status: 404 }),
-    ),
+        : HttpResponse.json({ detail: 'Project not found.' }, { status: 404 })
+    }),
     http.patch('/api/v1/projects/:id', async ({ request, params }) => {
       const body = (await request.json()) as Record<string, unknown>
       requests.patches.push({ url: String(params.id), body })
@@ -107,7 +120,13 @@ function renderProject(
       <RouterProvider router={router} />
     </AppProviders>,
   )
-  return { router, requests }
+  return {
+    router,
+    requests,
+    recover: () => {
+      failure.current = undefined
+    },
+  }
 }
 
 async function waitForRecord() {
@@ -147,6 +166,29 @@ describe('the record', () => {
 
     expect(await screen.findByText('Project not found')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to projects' })).toBeInTheDocument()
+  })
+
+  it('shows the error state — not "not found" — when the record cannot be read', async () => {
+    // A 5xx is a different sentence from D008's 404: the record may well exist,
+    // so the page offers Retry instead of a walk back to the register.
+    const { recover } = renderProject({ recordFails: 503 })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
+    expect(screen.queryByText('Project not found')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+
+    recover()
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    await waitForRecord()
+  })
+
+  it('names the connection, not the server, when no response arrives at all', async () => {
+    renderProject({ recordFails: 'network' })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Can’t reach the server')
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.queryByText('Project not found')).toBeNull()
   })
 })
 

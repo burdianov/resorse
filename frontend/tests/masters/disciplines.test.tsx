@@ -60,15 +60,28 @@ interface Captured {
   deletes: string[]
 }
 
-function renderDisciplines(meUser: MeResponse = me()) {
+function renderDisciplines(
+  meUser: MeResponse = me(),
+  init: { listFails?: number | 'network' } = {},
+) {
   const captured: Captured = { creates: null, patches: [], deletes: [] }
+  // A mutable box rather than a captured value: the error test turns the
+  // failure off mid-test to watch Retry actually ask again.
+  const failure = { current: init.listFails }
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(meUser)),
     http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),
-    http.get('/api/v1/masters/disciplines', () =>
-      HttpResponse.json({ items: [CIVIL, ELECTRICAL] }),
-    ),
+    http.get('/api/v1/masters/disciplines', () => {
+      if (failure.current === 'network') return HttpResponse.error()
+      if (typeof failure.current === 'number') {
+        return HttpResponse.json(
+          { detail: 'The list is unavailable.' },
+          { status: failure.current },
+        )
+      }
+      return HttpResponse.json({ items: [CIVIL, ELECTRICAL] })
+    }),
     http.post('/api/v1/masters/disciplines', async ({ request }) => {
       captured.creates = (await request.json()) as Record<string, unknown>
       return HttpResponse.json(
@@ -101,7 +114,13 @@ function renderDisciplines(meUser: MeResponse = me()) {
       <RouterProvider router={router} />
     </AppProviders>,
   )
-  return { router, captured }
+  return {
+    router,
+    captured,
+    recover: () => {
+      failure.current = undefined
+    },
+  }
 }
 
 async function waitForTable() {
@@ -127,6 +146,39 @@ describe('the table', () => {
       expect(screen.queryByText('civil')).toBeNull()
     })
     expect(screen.getByText('electrical')).toBeInTheDocument()
+  })
+
+  it('reads the status as the word, so "inactive" finds the retired row', async () => {
+    renderDisciplines()
+    await waitForTable()
+
+    expect(screen.getByText('Inactive')).toBeInTheDocument()
+
+    // The column's accessor is the word the badge says, not the boolean: a
+    // search for "inactive" is a search over states, and it is answered without
+    // asking the server (the table filters in the browser).
+    await userEvent.type(screen.getByPlaceholderText(/Search codes or names/), 'inactive')
+
+    await waitFor(() => {
+      expect(screen.queryByText('civil')).toBeNull()
+    })
+    expect(screen.getByText('electrical')).toBeInTheDocument()
+  })
+
+  it('shows the error state when the table cannot be read, and Retry asks again', async () => {
+    // The app retries a 5xx once silently (query-provider), so the endpoint has
+    // to keep failing through that retry before the page owns the failure.
+    const { recover } = renderDisciplines(me(), { listFails: 503 })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    // The page still says which page it could not fill.
+    expect(screen.getByRole('heading', { name: 'Disciplines' })).toBeInTheDocument()
+
+    recover()
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    await waitForTable()
   })
 
   it('renders no management controls without disciplines.manage', async () => {
