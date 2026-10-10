@@ -12,11 +12,13 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 
+/** `side` is spread conditionally: `exactOptionalPropertyTypes` refuses an
+ * explicit `undefined` for a prop the wrapper declares optional. */
 function Harness({ side }: { side?: 'top' | 'right' | 'bottom' | 'left' }) {
   return (
     <Sheet>
       <SheetTrigger render={<Button>Open panel</Button>} />
-      <SheetContent side={side}>
+      <SheetContent {...(side ? { side } : {})}>
         <SheetHeader>
           <SheetTitle>Filters</SheetTitle>
           <SheetDescription>Narrow the table.</SheetDescription>

@@ -17,14 +17,18 @@ me the operator checks. Do not push. Do not start F057.
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F055 — Frontend quality gate. Committed with this handoff; the full record is **C43** and
-  `ARCHITECTURE.md` §5. In short: four commands, one job each (`pnpm run lint` — ESLint 10 flat config, deliberately
-  **not type-aware**; `pnpm run format:check` — Prettier, after a **one-time 108-file** pass; `pnpm run typecheck`;
-  `pnpm run coverage`), two React rules off with the reason recorded, and thresholds = BP §10.5's **85** for
-  `src/lib/**` plus a **global ratchet** (92/80/91/93) set at the measurement: **All files 92.65 / 80.49 / 91.14 /
-  93.71**, `src/lib` **94.04 / 85.71 / 90.32 / 95.65** (67 files, 564 tests, exit 0). One flake was repaired rather
-  than tolerated (the lab's lazy chunk needed a 10 s timeout under coverage). **Gap left open:** `tsconfig.json`
-  includes only `src` and `vite.config.ts`, so `typecheck` does **not** cover `tests/`.
+- **Last completed:** F055 — Frontend quality gate, **plus its follow-up** (both in this commit; full record: **C43** and
+  `ARCHITECTURE.md` §5). The gate is four commands, one job each (`pnpm run lint` — ESLint 10, deliberately **not
+  type-aware**; `format:check` — Prettier, after a **one-time 108-file** pass; `typecheck`; `coverage`), with BP §10.5's
+  **85** for `src/lib/**` plus a global ratchet at the measurement — All files **92.65 / 80.49 / 91.14 / 93.71**,
+  `src/lib` **94.04 / 85.71 / 90.32 / 95.65**.
+- **The follow-up** (operator: "clear all the blockers before continuing with f056"): `tsconfig.json` now includes
+  `tests/`, so `typecheck` covers the test tree and found **20 real errors** lint and coverage had both walked past
+  (inventory in C43); one test was **deleted rather than fixed** (`scroll-area.test.tsx` asserted an `orientation` the root
+  does not carry — jsdom does no layout, so F057's browser pass is the real check); and **`test.testTimeout` is 15 s**,
+  because under the 5 s default three unrelated tests died at 5089 / 5098 / 5146 ms that pass in ~1.5 s standalone — the
+  lab's 10 s finder timeout could never fire under a 5 s budget, so F055's flake repair was incomplete. Suite: 67 files /
+  **563** tests (one deleted, none added).
 - **Previous tasks:** F054 — Frontend component lab **`ab3c11a`** (C42); F053 — `cbad877` (C41).
 - **Next: F056 — Backend quality gate.** TASKS.md ~line 227: "Ruff typing pytest Postgres integration coverage"; the
   accept line is "Recorded actual results." Ruff and mypy already run (F053 used them as focused checks); this task
@@ -36,9 +40,8 @@ me the operator checks. Do not push. Do not start F057.
   within a month, revision semantics, and others). None blocks F056; never treat one as approved, and if a task depends
   on one, stop and ask one precise question. Confirmed: C11–C43 (C43 is F055's).
 - **Fixed during F055 — the dev database was behind head.** `app_dev` sat at Alembic `0008` while `0009` (which creates
-  `file_assets`) had shipped, so the first page to call `GET /api/v1/files` — F054's lab — answered **500**,
-  `relation "file_assets" does not exist`, with every test green: migrations are exercised on `app_test`, and nothing
-  had called that endpoint until then. `uv run alembic upgrade head` was applied; `alembic current` now reads `0009 (head)`.
+  `file_assets`) had shipped, so the first page to call `GET /api/v1/files` — F054's lab — answered **500**, with every
+  test green: migrations are exercised on `app_test`. `alembic upgrade head` was applied; `alembic current` reads `0009 (head)`.
 - **Open item — `/ready` is not built (BP-8.4b):** `conversion.health()` belongs behind it, but no readiness route
   exists — F053's `reports/engine-health` answers a different question. Read `health()`, don't re-implement it.
 - **Open item — orphan objects:** the object is unlinked only *after* the caller's commit (and when it raises), so the
@@ -115,46 +118,43 @@ leaves the listbox mounted — possibly a layout-less artefact, so tests neither
 
 **Gate checks** (the operator runs these; the agent supplies the commands and never reports their results):
 `cd D:\resors\frontend;` → `pnpm run lint`, `pnpm run format:check`, `pnpm run typecheck`, `pnpm run build`,
-`pnpm exec vitest run`, `pnpm run coverage` (exit non-zero means a threshold was missed);
-`cd D:\resors\backend; uv run pytest`.
+`pnpm exec vitest run`, `pnpm run coverage` (exit non-zero means a threshold was missed); `cd D:\resors\backend; uv run pytest`.
 
-**Two gaps:** `pnpm run typecheck` does **not** cover `tests/`; and a check that passes alone can fail in the parallel
-coverage run (F055's lab-timeout flake) — flag a timing-sensitive check rather than handing it over silently.
+**Gaps:** none outstanding in the frontend gate. `typecheck` now covers `tests/` (F055 follow-up), and the parallel-load
+flake has a suite-level budget of 15 s (`test.testTimeout`) — a check that passes alone but fails in the full run, or the
+reverse, is worth flagging rather than handing over silently.
 
-**Ruff and mypy are runnable** — `uv run ruff format --check <files>` / `uv run ruff check <files>` / `uv run mypy
-<files>` from `backend/` — and F053 ran all three as focused checks. They are still **not operator gate checks** until
-F056 lands (`OPERATOR_GUIDE.md` lines 38–39).
+**Ruff and mypy are runnable** from `backend/` (`uv run ruff format --check <files>` / `uv run ruff check <files>` /
+`uv run mypy <files>`), and F053 ran them as focused checks — **not** operator gate checks until F056 lands (`OPERATOR_GUIDE.md` 38–39).
 
 **Not yet available:** Playwright E2E (F057), axe (F058), production Compose (F059) — do not hand these to the operator
 as runnable until their task lands. **Test counts are historical**: report the count you observe.
 
 ## 7. Operator verification commands
 
-Run these before F056 starts. The "F055 record" column is historical, not a current result.
+Run these before F056 starts. The record column is **historical and the agent's own observation**, never the operator's gate result.
 
-| Check | Command | F055 record (historical) |
+| Check | Command | F055 + follow-up record (historical) |
 |---|---|---|
-| Working tree | `git -C D:\resors status --short` | clean after F055's commit |
-| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F055): frontend quality gate` (implementation + handoff together). Previous: `ab3c11a feat(F054): ...` |
-| Frontend lint | `cd D:\resors\frontend; pnpm run lint` | exit 0, no problems (observed at F055; a gate check, so the operator owns the current result) |
-| Frontend format | `cd D:\resors\frontend; pnpm run format:check` | `All matched files use Prettier code style!` (observed at F055, after the one-time 108-file reformat) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | exit **0**; 67 files / 564 passed; All files **92.65 | 80.49 | 91.14 | 93.71**, `src/lib` **94.04 | 85.71 | 90.32 | 95.65** (observed at F055) |
-| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no diagnostics (observed at F055; `pnpm run build` runs that same `tsc --noEmit` first) |
+| Working tree & HEAD | `git -C D:\resors status --short`; `git -C D:\resors log -1 --format="%h %s"` | clean after the commit; HEAD = `feat(F055): frontend quality gate` **plus the follow-up** (`fix(F055): ...`), implementation and handoff in the same commit |
+| Frontend lint | `cd D:\resors\frontend; pnpm run lint` | exit 0, no problems (observed at F055, re-observed in the follow-up after the config changes; a gate check, so the operator owns the current result) |
+| Frontend format | `cd D:\resors\frontend; pnpm run format:check` | `All matched files use Prettier code style!` (observed at F055 after the one-time 108-file reformat; clean again in the follow-up) |
+| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | exit **0**; 67 files / **563** passed; All files **92.65 | 80.49 | 91.14 | 93.71**, `src/lib` **94.04 | 85.71 | 90.32 | 95.65** (run again in the follow-up: same numbers, one fewer test) |
+| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no diagnostics over **`src` and `tests`** (the follow-up widened `include` and cleared the 20 errors it exposed; `pnpm run build` runs that same `tsc --noEmit`, and `pnpm run build` exited 0 afterwards) |
 | **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **no match** (re-observed at F055 after the toolchain install): the lab page and recharts are absent from `dist/`. A match means the exclusion broke |
 | OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F055 changes no API. Re-run after installing the toolchain produced **no diff** (observed at F055) |
-| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check: the operator owns the result.** The agent ran the same suite with coverage at F055: 67 files, 564 passed. F047 record: 498 passed (historical) |
+| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check: the operator owns the result.** The agent ran it repeatedly: the pre-follow-up state passed 564/564 in 15.0 s, and with the follow-up **563** passed in four runs (20.3 / 22.9 / 24.8 s, plus the coverage run) and one run saw **560 / 563**, when a `git stash` rewriting 16 files had three tests die at 5089 / 5098 / 5146 ms against the old 5 s default — that run is what produced the 15 s budget. F047 record: 498 passed (historical) |
 | Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)` — it read `0008` before F055's fix, which is why `GET /api/v1/files` answered 500. Run this after any migration task |
 | Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F055 adds no migration). F049 record: clean, ending at `0009` |
 | Backend suite | `cd D:\resors\backend; uv run pytest` | **a gate check; not run by the agent at F055.** F047 record: 246 passed (historical) |
 
-**The F055 end-to-end check — F055 changes no behaviour, so this is F054's check, now unblocked.** In a **dev** build
-(`pnpm run dev`), signed in as an `admin`, the sidebar should show a **Tools** group holding **Component Lab**, and
-`/tools/components` should render the primitives, the charts and the files section — which should now work end to end
-(upload a real file, preview the text one, download it under the server's own name, delete it through the confirm
-dialog), because the `file_assets` table the 500 complained about exists as of F055's `alembic upgrade head`. In a
-**production** build the same path must 404 — the build row above checks that without a browser. F053's export check
-(`/admin/users` → **Export PDF** → `user-directory-<date>.pdf`, and the 1,000-row sentence) and F050's download checks
-(`nosniff` and `private, no-store`; a foreign file id → **404**) are worth running by hand at `localhost:8000/docs`.
+**The end-to-end check (F054's, unblocked by F055's `alembic upgrade head`).** In a **dev** build (`pnpm run dev`), signed
+in as an `admin`: the sidebar should show a **Tools** group holding **Component Lab**, and `/tools/components` should
+render the primitives, the charts and the files section — which should work end to end (upload a real file, preview the
+text one, download it under the server's own name, delete it through the confirm dialog), because the `file_assets` table
+the 500 complained about exists. In a **production** build the same path must 404 — the build row above checks that without
+a browser. By hand at `localhost:8000/docs`: F053's export (`/admin/users` → **Export PDF** →
+`user-directory-<date>.pdf`, the 1,000-row sentence) and F050's downloads (`nosniff`, `private, no-store`; a foreign file id → **404**).
 
 ## 8. Reference documents (read only the section a task needs)
 

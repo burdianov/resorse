@@ -22,7 +22,10 @@ describe('devFeatureFlags', () => {
   })
 
   it('hands out a new set each call, so one caller cannot edit another’s', () => {
-    const first = devFeatureFlags(true)
+    // `ReadonlySet` is the honest return type — callers must not edit it — so the
+    // cast is the test's, and the claim it makes is about the *copy*: editing
+    // what one caller received must not reach the next caller or the module.
+    const first = devFeatureFlags(true) as Set<string>
     first.add('something.else')
 
     expect(devFeatureFlags(true).has('something.else')).toBe(false)

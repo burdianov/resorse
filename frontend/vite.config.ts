@@ -31,6 +31,19 @@ export default defineConfig({
     include: ['tests/**/*.test.{ts,tsx}'],
     css: false,
     restoreMocks: true,
+    // Vitest's 5 s default is a budget for an idle machine; this suite never
+    // runs on one. 67 files each build a fresh jsdom (the setup alone is ~1.2 s
+    // per file, measured across the suite) and vitest runs them up to the 28
+    // cores at once, so any machine-wide load spike stretches a test's wall
+    // clock while the test's own work is unchanged. Observed: three tests at
+    // 5089 / 5098 / 5146 ms in one run — a git stash rewriting 16 files with
+    // the antivirus re-scanning them — where the same tests pass in ~1.5 s
+    // standalone, and two runs immediately before and after were green at
+    // 563/563. 15 s is a ceiling for a loaded machine, not a target: it is
+    // deliberately no larger, and it is what lets the lab route's own 10 s
+    // finder timeout below actually be reached — under a 5 s test budget that
+    // assertion could never fire, which is how it was found.
+    testTimeout: 15_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

@@ -10,7 +10,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-function Harness({ onValueChange }: { onValueChange?: (value: string) => void }) {
+/**
+ * `onValueChange` carries base-ui's own signature, `(value: string | null, …)`:
+ * `Select` *is* the primitive's root here, and it reports `null` when the value
+ * is cleared. A handler typed for `string` only would be a promise the wrapper
+ * cannot keep, so the fixture is widened to what the primitive actually calls.
+ */
+function Harness({ onValueChange }: { onValueChange?: (value: string | null) => void }) {
   return (
     <Select onValueChange={onValueChange}>
       <SelectTrigger aria-label="Department">

@@ -66,6 +66,7 @@ const ADMIN_ROLE: RoleItem = {
 
 function me(overrides: Partial<MeResponse> = {}): MeResponse {
   return {
+    created_at: '2026-01-02T03:04:05Z',
     id: ME_ID,
     email: 'root@example.com',
     full_name: 'Root Operator',
@@ -490,12 +491,12 @@ describe('exporting the directory', () => {
     // cleanup is observable. A subclass rather than a plain object: the app and
     // its dependencies may still construct a `URL`.
     class StubURL extends URL {
-      static createObjectURL = (blob: Blob): string => {
+      static override createObjectURL = (blob: Blob): string => {
         created.push(blob)
         return `blob:preview-${created.length}`
       }
 
-      static revokeObjectURL = (url: string): void => {
+      static override revokeObjectURL = (url: string): void => {
         revoked.push(url)
       }
     }

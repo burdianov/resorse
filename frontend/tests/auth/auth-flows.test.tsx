@@ -37,6 +37,7 @@ import { server } from '@/testing/msw-server'
 configure({ asyncUtilTimeout: 3000 })
 
 const ME: MeResponse = {
+  created_at: '2026-01-02T03:04:05Z',
   id: '0192acde-0000-7000-8000-000000000001',
   email: 'ada@example.com',
   full_name: 'Ada Lovelace',

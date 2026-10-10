@@ -39,6 +39,7 @@ interface Captured {
 
 function me(id: string, email: string, fullName: string): MeResponse {
   return {
+    created_at: '2026-01-02T03:04:05Z',
     id,
     email,
     full_name: fullName,

@@ -428,9 +428,28 @@ is a ratchet set at the F055 measurement — meant to be raised as tests are add
 run green. The measurement that set it: **All files 92.65 / 80.49 / 91.14 / 93.71**, `src/lib` **94.04 / 85.71 /
 90.32 / 95.65**.
 
-One gap worth knowing when a check surprises you: `tsconfig.json`'s `include` is `["src", "vite.config.ts"]`,
-so `pnpm run typecheck` does **not** typecheck `tests/` — which is how eight unused test variables survived
-until the linter looked at them in F055. Lint and coverage both cover `tests/`; only the type checker does not.
+**`test.testTimeout` is 15 s, not Vitest's 5 s default, and that is a measurement rather than a shrug.** This
+suite builds a fresh jsdom per file — 67 files, ~1.2 s of setup each — and runs them up to the 28 cores at once,
+so a machine-wide load spike stretches a test's wall clock while the test's own work is unchanged. Observed:
+three unrelated tests at 5089 / 5098 / 5146 ms in one run (a `git stash` rewriting 16 files, with the antivirus
+re-scanning them), every one of them passing in ~1.5 s standalone, with the runs immediately before and after
+green at 563/563. The number is deliberately no larger, and a genuinely hung test still fails — just later. It is
+also what makes the lab route's own 10 s finder timeout reachable, which is how the problem surfaced: under a 5 s
+test budget that assertion could never fire, so F055's "flake repair" could not have worked in the case it was
+written for.
+
+`tsconfig.json`'s `include` is `["src", "tests", "vite.config.ts"]`. It used to be `["src", "vite.config.ts"]`, so
+`pnpm run typecheck` did **not** typecheck `tests/` — which is how eight unused test variables survived until the
+linter looked at them in F055. The gap was closed in F055's follow-up, and widening it was worth doing on its own
+evidence: the type checker found 20 real errors in the test tree that lint and coverage had both walked past —
+nine fixtures missing `MeResponse.created_at` (a **required** field the fixtures had been omitting), two call
+sites passing an explicit `undefined` to an optional prop (`exactOptionalPropertyTypes`), an assignment to a
+`ReadonlySet`, a handler typed narrower than `Select`'s `onValueChange`, and a `Progress` wrapper whose props
+claimed `value` was required although an absent value *is* the indeterminate state it already rendered. It also
+**deleted** a test: `scroll-area.test.tsx` asserted an `orientation` attribute on the root, and jsdom performs no
+layout, so base-ui renders no scrollbar at all there — the assertion was passing for a reason unrelated to what
+it claimed. Asserting it for real is F057's browser check, not something to fake here. Because `pnpm run build`
+is `tsc --noEmit && vite build`, a type error in a test now fails the production build too, which is the point.
 
 ### The session layer (F032)
 

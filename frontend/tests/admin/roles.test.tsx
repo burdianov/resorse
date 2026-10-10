@@ -60,6 +60,7 @@ const PERMISSIONS: PermissionItem[] = [
 
 function me(): MeResponse {
   return {
+    created_at: '2026-01-02T03:04:05Z',
     id: '00000000-0000-7000-8000-000000000009',
     email: 'root@example.com',
     full_name: 'Root Operator',

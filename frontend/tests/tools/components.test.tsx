@@ -27,6 +27,7 @@ import { server } from '@/testing/msw-server'
  */
 
 const SUPERUSER: MeResponse = {
+  created_at: '2026-01-02T03:04:05Z',
   id: '00000000-0000-7000-8000-000000000001',
   email: 'ada@example.com',
   full_name: 'Ada Lovelace',
@@ -142,7 +143,10 @@ describe('/tools/components', () => {
     // An explicit timeout: this is the app's largest lazy route (recharts is
     // behind it), and when the whole suite runs in parallel with coverage
     // instrumentation enabled, resolving that chunk has been observed to
-    // outlast the 1s default — a real 1.4-1.6s wait, not a missing route.
+    // outlast the 1s default — a real 1.4-1.6s wait, not a missing route. It is
+    // 10 s and not more because the suite's own budget is 15 s
+    // (`test.testTimeout` in vite.config.ts), so this finder is the one that
+    // fails first and fails with the sentence above rather than a bare timeout.
     expect(
       await screen.findByRole('heading', { name: 'Component lab' }, { timeout: 10_000 }),
     ).toBeInTheDocument()

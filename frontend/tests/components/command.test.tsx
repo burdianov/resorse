@@ -11,6 +11,11 @@ import {
   CommandList,
 } from '@/components/ui/command'
 
+/**
+ * `onSelect` is spread conditionally rather than passed as `undefined`:
+ * `exactOptionalPropertyTypes` refuses an explicit `undefined` for a callback
+ * the primitive declares optional (found once `tsc` covered `tests/`).
+ */
 function Harness({ onSelect }: { onSelect?: () => void }) {
   return (
     <Command>
@@ -18,7 +23,7 @@ function Harness({ onSelect }: { onSelect?: () => void }) {
       <CommandList>
         <CommandEmpty>No results</CommandEmpty>
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={onSelect}>Dashboard</CommandItem>
+          <CommandItem {...(onSelect ? { onSelect } : {})}>Dashboard</CommandItem>
           <CommandItem>Notifications</CommandItem>
           <CommandItem>Profile</CommandItem>
         </CommandGroup>

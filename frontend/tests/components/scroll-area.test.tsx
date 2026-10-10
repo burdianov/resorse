@@ -27,20 +27,21 @@ describe('ScrollArea', () => {
     expect(container.querySelector('[data-slot="scroll-area-viewport"]')).not.toBeNull()
   })
 
-  it('accepts an orientation', () => {
-    const { container } = render(
-      <ScrollArea orientation="horizontal" className="h-24">
-        <p>Content</p>
-      </ScrollArea>,
-    )
-
-    // jsdom performs no layout, so the scrollbar may not be measurable here;
-    // what must hold is that the orientation reaches the root for styling.
-    expect(container.querySelector('[data-slot="scroll-area"]')).toHaveAttribute(
-      'orientation',
-      'horizontal',
-    )
-  })
+  // There is deliberately no orientation test here any more. Two versions were
+  // wrong, and the second one's failure is the useful record:
+  //
+  // 1. It passed `orientation` to `ScrollArea` and asserted the attribute landed
+  //    on the root. It did — as a stray DOM attribute, because the root does not
+  //    take that prop and the wrapper spreads what it does not destructure. The
+  //    test asserted an accident (found once `tsc` covered `tests/`).
+  // 2. It asserted instead on the scrollbar, which jsdom never renders: with no
+  //    layout every measurement is zero, so Base UI's `ScrollAreaRoot` emits the
+  //    viewport and stops (`<div data-slot="scroll-area">…<div data-slot="scroll-area-
+  //    viewport">`; no scrollbar, no corner). Orientation is the *scrollbar's*
+  //    property, so it is not observable here at all.
+  //
+  // A real browser is where this becomes assertable — the F057 Playwright gap
+  // (`CARRIED_CONSTRAINTS.md` §6), recorded rather than faked with a weaker check.
 
   it('merges a caller className', () => {
     const { container } = render(
