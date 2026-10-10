@@ -32,7 +32,10 @@ everything":
   rename or deactivation survives every re-run. This is not demo data (the
   distinction ``REFERENCE_PARITY.md`` draws): nothing is invented for a
   screenshot, and a database that has run the migrations but not this seed is
-  one the product cannot classify anything in.
+  one the product cannot classify anything in. **D010 adds the Head Office cost
+  centre** to that group, by the same rule and for the same reason: the map
+  says there is exactly one, the table makes that uniqueness a constraint
+  (``0016``), and a database without the row has nowhere for a cost to land.
 
 The three seeded roles (C16): ``super_admin`` holds everything;
 ``admin`` holds everything except ``roles.manage``/``permissions.manage`` —
@@ -62,8 +65,9 @@ from app.core.permissions import (
     PERMISSION_DESCRIPTIONS,
     PermissionCode,
 )
-from app.models import Discipline, Permission, Role
+from app.models import CostCentre, Discipline, Permission, Role
 from app.models.identity import role_permissions
+from app.models.projects import HEAD_OFFICE_KIND
 
 SUPER_ADMIN_ROLE_NAME = "super_admin"
 ADMIN_ROLE_NAME = "admin"
@@ -166,6 +170,13 @@ DEFAULT_DISCIPLINES: tuple[tuple[str, str], ...] = (
     ("general", "General"),
 )
 
+# The one cost centre the product names (D010; DOMAIN_ARCHITECTURE §2: "exactly
+# one HEAD_OFFICE row"). Created-if-missing by **kind**, not by name, because
+# the kind is what the table makes unique (``0016``): an operator who renames
+# theirs keeps it, and a second Head Office row is refused by the database
+# rather than merely not created here.
+HEAD_OFFICE_COST_CENTRE_NAME = "Head Office"
+
 
 @dataclass(frozen=True)
 class SeedReport:
@@ -178,6 +189,7 @@ class SeedReport:
     grants_removed: int
     system_flags_restored: int
     disciplines_created: int
+    cost_centres_created: int
 
     @property
     def is_noop(self) -> bool:
@@ -188,18 +200,25 @@ class SeedReport:
             and self.grants_removed == 0
             and self.system_flags_restored == 0
             and self.disciplines_created == 0
+            and self.cost_centres_created == 0
         )
 
     def summary_lines(self) -> list[str]:
         """The operator-facing report, one line per fact touched."""
         if self.is_noop:
-            return ["Seed: nothing to do — roles, permissions and reference rows are up to date."]
+            return [
+                (
+                    "Seed: nothing to do — roles, permissions, reference rows and the "
+                    "Head Office cost centre are up to date."
+                )
+            ]
         lines = [
             "Seed applied:",
             f"  permissions created: {self.permissions_created}",
             f"  roles created:       {self.roles_created}",
             f"  grants added:        {self.grants_added} (removed: {self.grants_removed})",
             f"  disciplines created: {self.disciplines_created}",
+            f"  cost centres created: {self.cost_centres_created}",
         ]
         if self.system_flags_restored:
             lines.append(f"  is_system flags restored: {self.system_flags_restored}")
@@ -289,6 +308,19 @@ async def seed(session: AsyncSession) -> SeedReport:
             disciplines_created += 1
     await session.flush()
 
+    # The Head Office cost centre (D010), by the same rule as the disciplines
+    # above and nothing more. The lookup is by *kind* because the kind is what
+    # the table makes unique — the name is an operator's to correct, and a row
+    # that exists keeps whatever they made it.
+    head_office_cost_centre = await session.scalar(
+        select(CostCentre.id).where(CostCentre.kind == HEAD_OFFICE_KIND)
+    )
+    cost_centres_created = 0
+    if head_office_cost_centre is None:
+        session.add(CostCentre(kind=HEAD_OFFICE_KIND, name=HEAD_OFFICE_COST_CENTRE_NAME))
+        cost_centres_created = 1
+    await session.flush()
+
     return SeedReport(
         permissions_created=created_permissions,
         roles_created=created_roles,
@@ -296,6 +328,7 @@ async def seed(session: AsyncSession) -> SeedReport:
         grants_removed=grants_removed,
         system_flags_restored=system_flags_restored,
         disciplines_created=disciplines_created,
+        cost_centres_created=cost_centres_created,
     )
 
 
@@ -315,10 +348,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m app.seed",
         description=(
-            "Create the default roles, every permission code and the initial "
-            "reference rows if they are missing. Idempotent: existing rows are "
-            "never modified. Safe to run at any time; the bootstrap CLI runs it "
-            "for you."
+            "Create the default roles, every permission code, the initial "
+            "reference rows and the Head Office cost centre if they are "
+            "missing. Idempotent: existing rows are never modified. Safe to run "
+            "at any time; the bootstrap CLI runs it for you."
         ),
     )
     parser.parse_args(argv)

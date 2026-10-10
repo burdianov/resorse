@@ -89,7 +89,8 @@ RATES (D014–D017)
 designations ──< designation_rates   (rate_per_hour NUMERIC, effective_from, ends where the next row starts)
 employees    ──< employee_rates      (rate_per_hour NUMERIC, effective_from, …) — overrides when effective
 
-PROJECTS (D007–D010, D019) — `projects` landed in D007 (migration `0014`)
+PROJECTS (D007–D010, D019) — `projects` landed in D007 (migration `0014`), `cost_centres` in D010 (migration
+`0016`)
 projects (code UQ, name, status tender|awarded|retired, start_date, contractual_completion,
           forecast_completion, responsible_user_id → users NULLABLE)
     **awarding a tender makes two rows, not one** (C57): the awarded project is new, the tender row is retired and
@@ -159,7 +160,8 @@ The requirements that are constraints rather than conventions, and where each on
 tree does not honour is drift, and the first task to add a table (`D002`) took `0010` — D001 added no revision,
 so the head stayed `0009` until then, and `D003` read `0011`, `D004` read `0012` and `D005` read `0013` from the
 directory rather than planning them. `D006` adds no revision and leaves the head at `0013`: its module is
-frontend-only. `D007` read `0014` the same way, so the head is `0014`.
+frontend-only. `D007` read `0014` and `D008`'s audit vocabulary read `0015` the same way; `D009` adds no
+revision (its half is the UI), and `D010` read `0016` for `cost_centres`, so the head is `0016`.
 `0010_disciplines` is where the domain starts; a later task reads its number from the directory, never from a plan.
 
 ## 3. The action/scope matrix
@@ -267,7 +269,7 @@ find the rule instead of re-deriving a shape from the columns:
   executable. What *is* executable arrives with each task: D084 re-checks the API contract and the typed
   client, D085–D087 are the three suites, and D091 ("production-like deployment smoke and known limitations",
   "no unverified success claims") is the gate that reads this document against the shipped product.
-- **What is already checked, as of D009.** `PermissionCode` carries the six reference-table codes §3's matrix
+- **What is already checked, as of D010.** `PermissionCode` carries the six reference-table codes §3's matrix
   registers for D005 (`disciplines`/`departments`/`designations` × `read`/`manage`, all global), the routes that
   enforce them exist at `/api/v1/masters/…`, and **`APP_MODULES` is no longer empty**: D006 registered the module
   §1's first row plans — one group ("Reference Data", `order` 25) and the three screens
@@ -284,10 +286,12 @@ find the rule instead of re-deriving a shape from the columns:
   the route gate is visibility, the API is the boundary), so no route claims a code it does not use (C68). That
   is §1's first two rows both landed. The lifecycle `status` reaches a caller exactly as D008 left it — an
   ordinary field edit — and D033's award conversion is still the only thing that will machine the transition
-  (C67/C68). `alembic heads` is `0015` (D005's
-  revision widens the audit vocabularies, D006's module adds none, D007's adds `projects`, and D008's adds the
-  three `project.*` actions and the `project` entity type to the same pair of CHECKs), with `disciplines`
-  (D002), `departments` (D003), `designations` (D004) and `projects` (D007) the domain tables under it — D004's
+  (C67/C68). `alembic heads` is `0016` (D005's
+  revision widens the audit vocabularies, D006's module adds none, D007's adds `projects`, D008's adds the
+  three `project.*` actions and the `project` entity type to the same pair of CHECKs, D009's half adds none —
+  it is the UI — and D010's adds `cost_centres`), with `disciplines`
+  (D002), `departments` (D003), `designations` (D004), `projects` (D007) and `cost_centres` (D010) the domain
+  tables under it — D004's
   being the first with a foreign key, and §3's "deactivate, never delete where a row is referenced" now reaching
   a caller as a 409 the service translates from `ON DELETE RESTRICT`; and D007's being the first table that is
   **not** a reference list, so §2's PROJECTS block has begun to land: the three `Date` columns are the tree's
@@ -295,7 +299,17 @@ find the rule instead of re-deriving a shape from the columns:
   first index whose predicate **is** a §3 rule — unique among live projects, so C57's award can reuse the retired
   tender's code (C66) — while `status` is written as an **ordinary field** under `projects.update`: D008 ships the
   lifecycle field §3 assigns it and no transition machine, because C57's award conversion is D033's own route
-  (C67); and `docs/FOUNDATION_REPORT.md` §3's boundary scan still finds no vocabulary of the
+  (C67). **D010 is the second table of the PROJECTS block**, and the first thing in this map that is a *rule*
+  rather than a table: §2's "exactly one HEAD_OFFICE row" is now executable — a partial unique index over
+  `kind`, because a CHECK cannot count rows, which is D007's live-code index shape used for a different rule —
+  beside a second partial unique index holding one cost centre per project, and a CHECK that makes
+  `(PROJECT, NULL)` unwritable, because a project cost centre belonging to no project has no project to be
+  unique per. The Head Office row itself is the **seed's**, not the migration's (`0016` ships no rows), so a
+  migrated database that has not been seeded has no Head Office cost centre — and nothing yet creates a
+  *project's* row, which is why the second half of §2's sentence ("every project has exactly one") is still a
+  plan here rather than a rule in the database: the schema can hold *at most one* per project, and *at least
+  one* needs a writer, which is the project creation route's business (D008) and not this task's. And
+  `docs/FOUNDATION_REPORT.md` §3's boundary scan still finds no vocabulary of the
   reference product's *other* domains in shipped code — a claim D003 had to narrow to keep true (`DECISIONS.md`
   C62), which is the shape this bullet predicted, and one D005 and D006 kept by calling these tables "reference
   tables" and their group "Reference Data" rather than the phrase the narrowed list still forbids. Those four
@@ -310,4 +324,4 @@ find the rule instead of re-deriving a shape from the columns:
 | `ARCHITECTURE.md` §8 | the **foundation's** tables — this document is the domain's, hung off them |
 | `ADDING_A_MODULE.md` | the **recipe** for one module — this document is the whole set at once, with the boundaries between them |
 | `PRODUCT_SPEC.md` §3–§10 | the **requirements** — this document is their shape in tables and codes, and it adds no rule of its own |
-| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C68`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |
+| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C70`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |

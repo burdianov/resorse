@@ -9,7 +9,8 @@ F023 shipped the conventions with no tables; F024 adds the identity group
 the rate-limit buckets. Each later group arrives with the task that owns it —
 D002 opens the domain's own group (``masters``), D003 adds its second table
 and D004 its third, the first that references other rows; D007 opens the
-second group (``projects``), the first table that is not a reference list.
+second group (``projects``), the first table that is not a reference list, and
+D010 adds its second table (``cost_centres``).
 """
 
 from app.models.audit import AUDIT_ACTIONS, AUDIT_ENTITY_TYPES, AuditLog
@@ -18,7 +19,7 @@ from app.models.identity import Permission, Role, User, role_permissions, user_r
 from app.models.masters import Department, Designation, Discipline
 from app.models.notifications import Notification
 from app.models.preferences import UserPreference
-from app.models.projects import PROJECT_STATUSES, Project
+from app.models.projects import COST_CENTRE_KINDS, PROJECT_STATUSES, CostCentre, Project
 from app.models.rate_limit import RateLimitBucket
 from app.models.session import REVOCATION_REASONS, UserSession
 from app.models.settings import AppSetting
@@ -26,10 +27,12 @@ from app.models.settings import AppSetting
 __all__ = [
     "AUDIT_ACTIONS",
     "AUDIT_ENTITY_TYPES",
+    "COST_CENTRE_KINDS",
     "PROJECT_STATUSES",
     "REVOCATION_REASONS",
     "AppSetting",
     "AuditLog",
+    "CostCentre",
     "Department",
     "Designation",
     "Discipline",

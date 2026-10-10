@@ -92,15 +92,20 @@ def test_every_shipped_code_has_a_description() -> None:
 
 
 def test_a_noop_report_reads_like_a_no_op() -> None:
-    noop = SeedReport(0, 0, 0, 0, 0, 0)
+    noop = SeedReport(0, 0, 0, 0, 0, 0, 0)
     assert noop.is_noop
     assert noop.summary_lines() == [
-        "Seed: nothing to do — roles, permissions and reference rows are up to date."
+        (
+            "Seed: nothing to do — roles, permissions, reference rows and the "
+            "Head Office cost centre are up to date."
+        )
     ]
-    assert not SeedReport(1, 0, 0, 0, 0, 0).is_noop
+    assert not SeedReport(1, 0, 0, 0, 0, 0, 0).is_noop
     # Every count the report carries is part of the no-op test — a run that
-    # created nothing but a reference row still did work (D002).
-    assert not SeedReport(0, 0, 0, 0, 0, 1).is_noop
+    # created nothing but a reference row still did work (D002), and D010's
+    # cost centre is one more such row.
+    assert not SeedReport(0, 0, 0, 0, 0, 1, 0).is_noop
+    assert not SeedReport(0, 0, 0, 0, 0, 0, 1).is_noop
 
 
 # --- the first run -----------------------------------------------------------
