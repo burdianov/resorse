@@ -225,15 +225,15 @@ and is deliberately absent here, as F002 requires. `BIG-PROMPT.txt` §3.1 is its
 
 | Document | Owning task | Status |
 |---|---|---|
-| `README.md` | F062 | named in F062 ("operations docs") |
+| `README.md` | F062 | named in F062 ("operations docs") — **delivered by F062** |
 | `docs/ARCHITECTURE.md` | F004 | named in F004 ("architecture diagram and interfaces") |
 | `docs/ROUTES_NAVIGATION.md` | F016 / F062 | implied by F016 registry + F062 docs |
 | `docs/STACK_VERSIONS.md` | F003 | explicitly named |
 | `docs/SECURITY.md` | F060 | implied by "security hardening" |
-| `docs/DEPLOYMENT.md` | F062 | implied |
-| `docs/BACKUP_RESTORE.md` | F062 | implied ("backup restore") |
-| `docs/ADDING_A_MODULE.md` | F063 | implied by "test extension registry" |
-| `docs/TESTING.md` | F062 | assigned 2026-10-08 (formerly gap G-5); F062 owns the §14 document set |
+| `docs/DEPLOYMENT.md` | F062 | implied — **delivered by F062** (the production refusal, rollback and the verified/unverified split are recorded in it) |
+| `docs/BACKUP_RESTORE.md` | F062 | implied ("backup restore") — **delivered by F062**; its §9 records that the procedure has not been executed end to end |
+| `docs/ADDING_A_MODULE.md` | F063 | implied by "test extension registry" — **written by F062** (its task text names it); **F063 owes the end-to-end proof** |
+| `docs/TESTING.md` | F062 | assigned 2026-10-08 (formerly gap G-5); **delivered by F062**, which owned the §14 document set |
 | `docs/REFERENCE_PARITY.md` | F004 | delivered by F004 — see §14 |
 | `docs/OPENAPI_CLIENT.md` | F018 | assigned 2026-10-08 (formerly gap G-6); drift check enforced at F061 |
 | `docs/IMPLEMENTATION_LOG.md` | operator gates | named in gate text |
@@ -315,7 +315,8 @@ All 63 Stage A tasks appear. No Stage B task is referenced.
 Seven items were found not named verbatim in `TASKS.md`; all were assigned owners on 2026-10-08 at the operator's
 request, so no mapping gap remains open. `TASKS.md` carries the task-level wording; this table records the
 decision. G-8 is a later, different kind of entry — a limitation discovered while implementing a task, recorded
-so it is not lost. Only G-8 is open.
+so it is not lost. **G-8 was resolved in F014. G-9 is open**: the readiness endpoint is part of the stated API
+contract, one source file attributes it to F062, and F062 delivered documentation only.
 
 | ID | Item | Resolution |
 |---|---|---|
@@ -323,10 +324,11 @@ so it is not lost. Only G-8 is open.
 | G-2 | The 21 "enhanced generic" components of BP-5.2b were unnamed | Distributed across existing tasks, no new task: **F017** PageHeader/ErrorState/**EmptyState**/**LoadingState**/**StatusBadge** (revised in F012 — these three are composites over the primitives and belong with the other state components); **F019** FormActions **+ ConfirmDialog** (moved here when F013 delivered only the overlay primitives: F019's unsaved-changes prompt is the component's first real consumer, and it now lives in `components/common/confirm-dialog.tsx`); **F020** PaginationBar/SearchField/FilterChip; **F016** PermissionGate/SecureLink; **F050** FileDropzone/FilePreview; **F053** PDFPreviewModal; **F054** ThemeAwareChart; **F011/F014** IconButton/KeyboardShortcut; **F009** RelativeTime/DateDisplay |
 | G-3 | `/` and `/admin` redirect routes unowned | **F017** — added to its implement list |
 | G-4 | `WorkspaceContext` contract + context-switcher slot unowned | Interface designed in **F004** (`ARCHITECTURE.md` §7); slot hosted by **F015** — added to its implement list |
-| G-5 | `docs/TESTING.md` and `docs/REFERENCE_PARITY.md` required by §14 but unowned | REFERENCE_PARITY delivered by **F004**. TESTING.md assigned to **F062**, which owns the §14 document set alongside README, DEPLOYMENT, BACKUP_RESTORE and ADDING_A_MODULE |
+| G-5 | `docs/TESTING.md` and `docs/REFERENCE_PARITY.md` required by §14 but unowned | REFERENCE_PARITY delivered by **F004**. TESTING.md assigned to **F062**, which owned the §14 document set alongside README, DEPLOYMENT, BACKUP_RESTORE and ADDING_A_MODULE — **all five delivered 2026-10-10 (C50)**; F063 proves the module contract |
 | G-6 | OpenAPI typed-client generation + CI drift check appeared only in D084 (Stage B) | **F018** generates the typed DTOs and `docs/OPENAPI_CLIENT.md`; **F061** enforces the drift check in CI — both added to their implement lists |
 | G-7 | Optional items unowned | Resolved as decisions, not deferrals: the **S3 adapter interface** is owned by **F049** (interface only, no S3 dependency); the **malware-scan hook** is owned by **F060** as a pluggable no-op; the **delegation capability interface** is already in **F004** (`ScopePolicy`); the **profile signature asset** is **excluded** — its only consumer was the removed domain workflow (`REFERENCE_PARITY.md` §1) |
 | G-8 | Accessibility limitation found in F013, **fixed in F014**. Base UI's Tooltip assigns no `id` to its popup and sets no `aria-describedby` on the trigger, so a screen-reader user focused the trigger and heard nothing. | **Resolved in F014.** `tooltip.tsx` now supplies one `useId` per Tooltip through a context; the trigger carries `aria-describedby` and the popup carries the matching `id`, verified in the test suite. The reference dangles while the tooltip is closed — assistive technology ignores an unresolved describedby, so the closed state is unchanged and the open state is now announced. F013's note that a dangling reference would be "worse than the omission" was reconsidered and found over-cautious: it is identical when closed and correct when open. |
+| G-9 | The readiness endpoint (`/ready`, BP-8.4b) has no owner: `ARCHITECTURE.md` §10 states it is part of the API contract, and `backend/app/api/v1/reports.py`'s docstring names **F062** as the task that would build it | **OPEN — found by F062 (2026-10-10).** F062 was Operations docs and built no route; no other task in `TASKS.md` claims it. `backend/app/api/v1/health.py`, `ARCHITECTURE.md` §10, `docs/DEPLOYMENT.md` §11 and `docs/ADDING_A_MODULE.md` all record it as *not built*, and `reports/engine-health` (F053) deliberately answers a different question. Stage A closes at F063 and G-A4 reads "foundation release-ready", so this needs either an owning task (it must probe PostgreSQL and report *degraded*, not failed) or a recorded exclusion. |
 
 ## 15. Confirmed constraints that bound every task
 

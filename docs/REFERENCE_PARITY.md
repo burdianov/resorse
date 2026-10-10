@@ -105,9 +105,9 @@ inspected read-only in F001 and re-listed for this task. Status meanings:
 | `.env.example` | `.env.example` | REWRITE | New key set; no `NEXT_PUBLIC_*`; placeholders only, production fails on weak values. |
 | `.gitignore`, `.dockerignore` | same | ADAPT | Project-specific; a `.gitattributes` **exists already** (LF policy) and must be extended, not replaced. |
 | `.claude/**`, `frontend/.claude/**`, `CLAUDE.md` ×2, `PR1_RESUME_PROMPT.md`, `docs/claude-{map,workflows}.md`, `.claudeignore` | — | EXCLUDE | Another project's agent configuration and working notes. |
-| `README.md` | `README.md` | REWRITE | New setup, migration, bootstrap, backup and deploy instructions (F062). |
+| `README.md` | `README.md` | REWRITE | New setup, migration, bootstrap, backup and deploy instructions — **delivered by F062**. |
 | `backend/tests/e2e/**` (incl. domain suites) | `backend/tests/**` | ADAPT | Fixture/helper patterns and the real-PostgreSQL integration approach are reused; domain test bodies are not. |
-| *(absent in reference)* | `docs/*` per §14 | REWRITE | The required document set is new — see `REQUIREMENT_TRACEABILITY.md` §12. |
+| *(absent in reference)* | `docs/*` per §14 | REWRITE | The required document set is new — see `REQUIREMENT_TRACEABILITY.md` §12. `DEPLOYMENT.md`, `BACKUP_RESTORE.md`, `TESTING.md` and `ADDING_A_MODULE.md` written by **F062**; F063 proves the module contract. |
 
 ## 6. Summary
 
