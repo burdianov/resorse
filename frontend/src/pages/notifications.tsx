@@ -87,9 +87,16 @@ function NotificationCard({ notification, exiting, onOpen, onDelete }: Notificat
         </p>
         <p className="text-sm text-muted-foreground">{notification.message}</p>
       </div>
-      <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+      {/* `<time>` rather than a span: the text is a relative phrase, which a
+          reader understands and no machine can — the ISO instant rides along in
+          `datetime`, where the visual suite's mask and any future consumer can
+          find it (F058). */}
+      <time
+        dateTime={notification.created_at}
+        className="shrink-0 text-xs whitespace-nowrap text-muted-foreground"
+      >
         {formatRelativeTime(notification.created_at)}
-      </span>
+      </time>
     </>
   )
 
@@ -204,7 +211,7 @@ export function NotificationsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive hover:text-destructive"
+              className="text-destructive-text hover:text-destructive-text"
               onClick={() => setConfirmingClear(true)}
             >
               <Trash2Icon />

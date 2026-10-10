@@ -41,6 +41,14 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  /*
+   * The brand hues *as text* rather than as fills. A colour that reads well as
+   * a button's background reads badly as a line of small type on a dark one,
+   * and vice versa — the two jobs bracket their hue at different lightnesses,
+   * so they get a token each. See the `.dark` block for the numbers.
+   */
+  --color-primary-text: var(--primary-text);
+  --color-destructive-text: var(--destructive-text);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -91,6 +99,10 @@
   --accent: oklch(0.965 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  /* In light both are their fills' colour: a brand purple on white is 6.8:1 and
+     the destructive red is 4.8:1, so nothing here needs a second value. */
+  --primary-text: oklch(0.488 0.243 264.376);
+  --destructive-text: oklch(0.577 0.245 27.325);
   --border: oklch(0.91 0 0);
   --input: oklch(0.91 0 0);
   --ring: oklch(0.488 0.243 264.376);
@@ -123,10 +135,35 @@
   --secondary: oklch(0.2 0 0);
   --secondary-foreground: oklch(0.97 0 0);
   --muted: oklch(0.2 0 0);
-  --muted-foreground: oklch(0.55 0 0);
+  /*
+   * 0.68, not the 0.55 this started at. Muted text at 0.55 was 3.7:1 on the
+   * card and 4.12:1 on the page background — below AA's 4.5:1 for normal text,
+   * and the light theme never showed it because a dark grey on white is 6:1.
+   * For a neutral, OKLCh's L is the cube root of relative luminance, so the
+   * ratio is (L_fg³ + 0.05) / (L_bg³ + 0.05); against the *lightest* surface
+   * this token lands on (--accent, L 0.22) that is (0.68³ + 0.05) / (0.22³ +
+   * 0.05) ≈ 6.0:1, and higher everywhere else. F058's scan
+   * (tests/e2e/accessibility.spec.ts) is what holds it there.
+   */
+  --muted-foreground: oklch(0.68 0 0);
   --accent: oklch(0.22 0 0);
   --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  /*
+   * The brand hues as text, lightened for a dark surface — the same values the
+   * light theme uses fail AA the moment the background is near-black:
+   * `--primary` as a link is 2.6:1 on the card and `--destructive` as an error
+   * message is 3.8:1, both well under 4.5:1 for normal text. The fills are left
+   * alone: white on `--primary` is 6.8:1, so lightening *that* would break the
+   * button to fix the link. For a neutral, OKLCh's L is the cube root of
+   * relative luminance, so the ratio is (L_fg³ + 0.05) / (L_bg³ + 0.05) —
+   * against the lightest surface each lands on these are (0.72³ + 0.05) /
+   * (0.22³ + 0.05) ≈ 6.9:1 for the purple, and 5.0:1 at worst for the red,
+   * where its own 20%-tint chip is the background. F058's scan holds them
+   * there; `tests/e2e/accessibility.spec.ts` is where the claim is checked.
+   */
+  --primary-text: oklch(0.72 0.13 265);
+  --destructive-text: oklch(0.72 0.17 22.325);
   --border: oklch(0.28 0 0);
   --input: oklch(0.25 0 0);
   --ring: oklch(0.488 0.243 264.376);

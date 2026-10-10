@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { AppBreadcrumbs } from '@/components/layout/app-breadcrumbs'
 import { PageHeader } from '@/components/common/page-header'
 import { StatusBadge } from '@/components/common/status-badge'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { InputField } from '@/components/form/fields'
@@ -193,9 +193,13 @@ export function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" render={<Link to="/profile/security" />}>
+          {/* A link styled as a button, not a Button rendering a link: base-ui's
+              Button forces `role="button"` onto a non-`<button>` element, and
+              this one navigates — a screen reader has to announce it as the link
+              it is (F058). */}
+          <Link to="/profile/security" className={buttonVariants({ variant: 'outline' })}>
             Change password
-          </Button>
+          </Link>
         </CardContent>
       </Card>
 

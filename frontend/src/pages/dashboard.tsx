@@ -166,7 +166,7 @@ function UnreadNotices({ userId }: { userId: string }) {
             <p className="text-3xl font-semibold tabular-nums">{data.unread_count}</p>
             <Link
               to="/notifications"
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              className="text-sm font-medium text-primary-text underline-offset-4 hover:underline"
             >
               Open notifications
             </Link>

@@ -39,3 +39,29 @@ export async function apiPost(
     ...(data === null ? {} : { data }),
   })
 }
+
+/**
+ * The same, for the PATCH half of the admin surface.
+ *
+ * `PATCH` is where this API's partial edits live (`UpdateUserRequest`), and its
+ * "absent is untouched" rule is the reason a caller has to send exactly the
+ * fields it means to change — nothing here adds a default.
+ */
+export async function apiPatch(page: Page, path: string, data: unknown): Promise<APIResponse> {
+  return page.request.patch(path, {
+    headers: { 'X-CSRF-Token': await csrfToken(page) },
+    data,
+  })
+}
+
+/**
+ * The same, for the inbox's two DELETEs (F045).
+ *
+ * Both answer `204 No Content`, so there is nothing to unwrap: the caller's
+ * assertion is the status itself.
+ */
+export async function apiDelete(page: Page, path: string): Promise<APIResponse> {
+  return page.request.delete(path, {
+    headers: { 'X-CSRF-Token': await csrfToken(page) },
+  })
+}

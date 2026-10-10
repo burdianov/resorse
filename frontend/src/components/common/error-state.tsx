@@ -61,7 +61,7 @@ export function ErrorState({
         className,
       )}
     >
-      <Icon aria-hidden className="size-8 text-destructive" />
+      <Icon aria-hidden className="size-8 text-destructive-text" />
       <p className="text-sm font-medium text-foreground">{title ?? copy.title}</p>
       <p className="max-w-md text-sm text-muted-foreground">{description ?? copy.description}</p>
       {onRetry ? (

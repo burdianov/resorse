@@ -44,7 +44,8 @@ until its owning task lands — the agent must say so rather than hand you a com
 | Migration smoke | `cd backend && uv run alembic upgrade head` then `alembic downgrade base` | F023 |
 | Dev database at head | `cd backend && uv run alembic current` → expect `(head)` | now — see the note below |
 | Browser E2E (Playwright) | `cd frontend && pnpm exec playwright test` | **live (F057)** — see the note below: it needs the Postgres container up and the browser installed |
-| Accessibility (axe) | `cd frontend && pnpm run test:a11y` | F058 |
+| Accessibility (axe) | `cd frontend && pnpm run test:a11y` | **live (F058)** — see the note below: needs Postgres and Chromium, and it runs the workflow first. Fourteen axe scans over nine screens (five of them in both themes), WCAG 2.2 A/AA, failing on `critical` **and** `serious`, no rule suppressed |
+| Visual baselines | `cd frontend && pnpm run test:visual` | **live (F058)** — see the note below. 94 committed baselines; a diff fails the run and lands in `frontend/test-results/` |
 | PDF smoke (F051 engine + F053 export) | `cd backend && uv run pytest tests -q -k report` | **live (F051/F053)** — the report PDF is rendered **in-process** by ReportLab, so this needs no Gotenberg |
 | DOCX conversion (Gotenberg adapter) | `cd backend && uv run pytest tests -q -k conversion` | **live (F052)** — the adapter's healthy/unavailable paths are mocked, so the container is not required. The one **live** conversion test is opt-in: `docker compose up -d --wait gotenberg` and set `RESORS_LIVE_GOTENBERG=1`, otherwise it skips. |
 | Production compose | `docker compose -f docker-compose.prod.yml up --build` | F059 |
@@ -61,6 +62,41 @@ frontend, so a run takes a couple of minutes before the first spec executes. Cre
 into `frontend/tests/e2e/.state/` (git-ignored); it never reads `.env` or `LOCAL_CREDENTIALS.md`. A run leaves its
 evidence behind: `frontend/playwright-report/` holds the HTML report and `frontend/test-results/` the failure
 screenshots. Both are git-ignored and excluded from `format:check`.
+
+**The accessibility and visual suites (F058) need the same two things as the browser suite**, and for the
+same reason: `docker compose up -d --wait postgres` and `pnpm exec playwright install chromium`. They are two
+more files in the same Playwright project — `pnpm run test:a11y` makes fourteen axe scans (nine screens, five of
+them in both themes), `pnpm run test:visual` compares 94 screenshots — and the config makes both **depend on the
+workflow**, so either command runs `workflow.spec.ts` first and a broken workflow skips the scans rather than
+reporting green scans of a broken app. Expect the frontend build first, then roughly 2.5 minutes of specs per
+command: F058 observed `pnpm run test:visual` between **3.3 and 4.3 min for 105 tests**, depending on how loaded the
+machine is, and a bare `pnpm exec playwright test` — the gate row — runs all three files and takes about twice that.
+Like it, they build their own database (`app_e2e`) on every invocation, so a run begins at the workflow's beginning
+rather than on top of whatever the last run left behind.
+
+**A visual difference is meant to be looked at, not re-pinned.** The baselines are committed PNGs
+(`frontend/tests/e2e/visual.spec.ts-snapshots/`), the tolerance is `maxDiffPixels: 0`, and a failing run writes
+the actual, expected and diff images into `frontend/test-results/` — read the diff before deciding anything.
+When a change to the interface is intended, re-pin and then **prove it**: `pnpm run test:visual:update` writes
+whatever the app currently shows (including anything unstable it happens to catch), and the `pnpm run
+test:visual` you run afterwards is the run that says the new baselines are stable. A baseline that only ever
+passes on the machine that wrote it is a recording, not a baseline. Two states are dimension-bound on purpose:
+the sidebar has no collapsed form at 390px, so `dashboard-collapsed` does not exist there and
+`dashboard-nav-drawer` takes its place.
+
+**Two things outlive a navigation, and both caught F058's baselines.** The sidebar's stored preference
+(`app.sidebar` in `localStorage`) beats the viewport default, so a state photographed after some other state
+moved the rail keeps that arrangement — and at 900px, where the app itself opens collapsed, that inheritance is
+the only reason the rail would be open at all: the two restricted-account states were pinned collapsed by the
+app's own tablet default and photographed expanded by a run that had stored a preference earlier. And the inbox
+accumulates: the only way these specs can obtain a session that is not the administrator's is to reset a filler
+account's password through the API, and every reset leaves one more notice behind. Neither shows up while a run
+passes —
+Playwright restarts a worker after any failure, re-running the suite's setup, so the *first* failure is
+reproduced again and again with a slightly different image each time (F058 measured **31 password resets
+against the 30 failures of one full run**). A state is therefore *arranged* — the sidebar is clicked into
+place, the inbox is trimmed to the one notice the run just caused — and never inherited from whatever the run
+happened to do first.
 
 **Keep the dev database at head.** A new migration is exercised on `app_test` when it lands, but `app_dev` only
 moves when someone upgrades it — so a table the backend starts reading can be missing from your running server
@@ -97,8 +133,11 @@ browser walkthrough, in this order, against a **pinned tree**:
    walkthrough's outcome, and the verdict. A red item becomes a fix task and the gate is re-run after it lands;
    nothing is waived into the record, and counts are written as observed, never quoted from `NEXT_PROMPT.md`.
 
-Before G-A3, decide the items that sit inside its scope: the roles-screen re-seed defect recorded in
-`NEXT_PROMPT.md` §5 (no task owns it), and F058's accessibility findings (F058 owns them).
+Before G-A3, decide the item that sits inside its scope: the roles-screen re-seed defect recorded in
+`NEXT_PROMPT.md` §5 (no task owns it). F058 owned the accessibility findings F057 recorded and has closed them
+in application code (C46) — the palette's misplaced `sr-only` header, the breadcrumb separator nested inside an
+item, the three `Button render={<Link/>}` navigations, and the `DataTable` columns whose view-options menu
+printed a raw id.
 
 ### The gates
 - G-A1 after F016: UI app boots, design tokens/components and navigation work.

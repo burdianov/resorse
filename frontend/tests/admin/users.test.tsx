@@ -238,6 +238,24 @@ describe('the directory table', () => {
     expect(params.get('is_active')).toBeNull()
   })
 
+  it('names the columns for people, not for the API', async () => {
+    renderDirectory()
+
+    await waitForRows()
+    await userEvent.click(screen.getByRole('button', { name: 'View options' }))
+
+    // Every header on this table is a component, so the menu has nothing to
+    // print but the column id unless the column declares `meta.label` — which
+    // is exactly what shipped before F058: `full_name`, `created_at`. The
+    // same label feeds the CSV export through `columnLabel`.
+    const menu = await screen.findByRole('menu')
+    for (const label of ['Full name', 'Email', 'Roles', 'Status', 'Created']) {
+      expect(within(menu).getByRole('menuitemcheckbox', { name: label })).toBeInTheDocument()
+    }
+    expect(within(menu).queryByText('full_name')).not.toBeInTheDocument()
+    expect(within(menu).queryByText('created_at')).not.toBeInTheDocument()
+  })
+
   it('sends the search term (debounced) and filters by status', async () => {
     const { requests } = renderDirectory()
 

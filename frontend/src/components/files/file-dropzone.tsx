@@ -180,7 +180,7 @@ export function FileDropzone({
       </div>
 
       {rejection === null ? null : (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-text">
           {rejection}
         </p>
       )}

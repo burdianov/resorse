@@ -117,18 +117,25 @@ function columnsFor(options: {
     {
       id: 'full_name',
       accessorKey: 'full_name',
+      // `meta.label`: the header is a component here, so the view-options menu
+      // and the CSV export have nothing to print but the id (F022's contract,
+      // `column-label.ts`). Set on every column whose id is not already the
+      // human name — `actor_email`-style ids would otherwise surface raw.
+      meta: { label: 'Full name' },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Full name" />,
       cell: ({ row }) => <span className="font-medium">{row.original.full_name}</span>,
     },
     {
       id: 'email',
       accessorKey: 'email',
+      meta: { label: 'Email' },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
       cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
     },
     {
       id: 'roles',
       enableSorting: false,
+      meta: { label: 'Roles' },
       header: () => <span className="text-sm font-medium">Roles</span>,
       cell: ({ row }) =>
         row.original.roles.length === 0 ? (
@@ -146,6 +153,7 @@ function columnsFor(options: {
     {
       id: 'status',
       enableSorting: false,
+      meta: { label: 'Status' },
       header: () => <span className="text-sm font-medium">Status</span>,
       cell: ({ row }) => (
         <StatusBadge
@@ -158,6 +166,7 @@ function columnsFor(options: {
     {
       id: 'created_at',
       accessorKey: 'created_at',
+      meta: { label: 'Created' },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
       cell: ({ row }) => (
         <span className="text-muted-foreground">{formatDate(row.original.created_at)}</span>
@@ -166,6 +175,7 @@ function columnsFor(options: {
     {
       id: 'actions',
       enableSorting: false,
+      meta: { label: 'Actions' },
       header: () => <span className="sr-only">Actions</span>,
       cell: ({ row }) => {
         const user = row.original

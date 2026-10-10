@@ -77,7 +77,14 @@ export default defineConfig({
   retries: 0,
   forbidOnly: !!process.env.CI,
   timeout: 60_000,
-  expect: { timeout: 10_000 },
+  expect: {
+    timeout: 10_000,
+    // §10.4: "visual differences beyond intentionally approved tolerances" fail.
+    // Nothing is approved, so the tolerance is none: a screenshot that differs
+    // by a pixel fails, and the reviewer sees the diff. Loosening this later is
+    // a decision somebody has to make and record, which is the point.
+    toHaveScreenshot: { animations: 'disabled', caret: 'hide', maxDiffPixels: 0 },
+  },
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: devOrigin,
@@ -85,6 +92,32 @@ export default defineConfig({
     video: 'off',
     screenshot: 'only-on-failure',
   },
+  /**
+   * Two projects, and the order between them is a contract rather than a
+   * filename accident.
+   *
+   * The workflow has to run first. It is the run's beginning — step 2 is the
+   * bootstrapped account's **first** sign-in, the one the forced-change gate
+   * exists for (BP-6.1b) — and the gate is a one-time event per database. Any
+   * spec that signed the admin in before it would consume that gate, and step
+   * 2's assertion would then be checking a state the app no longer produces.
+   * `dependencies` is what states that: `quality` waits for `workflow`, so
+   * `pnpm run test:a11y` and `pnpm run test:visual` — which select this project
+   * — run the workflow too and cannot be run in a way that violates it.
+   *
+   * The cost of the coupling is that a broken workflow skips the scans, and it
+   * is worth paying: a workflow failure is a failure of the app the screens are
+   * pictures of, and "green scans of an app that cannot complete a sign-in"
+   * would be the more misleading result.
+   */
+  projects: [
+    { name: 'workflow', testMatch: /workflow\.spec\.ts$/ },
+    {
+      name: 'quality',
+      testMatch: /(accessibility|visual)\.spec\.ts$/,
+      dependencies: ['workflow'],
+    },
+  ],
   webServer: [
     {
       // The database first, then the API — chained, so uvicorn cannot start

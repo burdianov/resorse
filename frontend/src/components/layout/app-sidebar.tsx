@@ -166,11 +166,11 @@ export function AppSidebar({
                               className={cn(
                                 'h-10 text-sidebar-foreground/70 transition-colors duration-150',
                                 active &&
-                                  'bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary',
+                                  'bg-primary/10 font-medium text-primary-text hover:bg-primary/10 hover:text-primary-text',
                               )}
                             >
                               {Icon ? (
-                                <Icon className={cn('size-5!', active && 'text-primary')} />
+                                <Icon className={cn('size-5!', active && 'text-primary-text')} />
                               ) : null}
                               <span>{item.label}</span>
                             </SidebarMenuButton>

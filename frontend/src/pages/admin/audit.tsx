@@ -163,6 +163,9 @@ export function AdminAuditPage() {
       id: 'created_at',
       accessorKey: 'created_at',
       enableSorting: false,
+      // The header is a component, so the column's human name has to live in
+      // `meta.label` for the view options and the CSV export to print it.
+      meta: { label: 'Time' },
       header: () => <span className="text-sm font-medium">Time</span>,
       cell: ({ row }) => (
         <span className="text-muted-foreground">
@@ -174,6 +177,7 @@ export function AdminAuditPage() {
       id: 'action',
       accessorKey: 'action',
       enableSorting: false,
+      meta: { label: 'Action' },
       header: () => <span className="text-sm font-medium">Action</span>,
       cell: ({ row }) => <Badge variant="secondary">{row.original.action}</Badge>,
     },
@@ -181,6 +185,7 @@ export function AdminAuditPage() {
       id: 'actor',
       accessorKey: 'actor_email',
       enableSorting: false,
+      meta: { label: 'Actor' },
       header: () => <span className="text-sm font-medium">Actor</span>,
       cell: ({ row }) =>
         row.original.actor_email === null ? (
@@ -193,6 +198,7 @@ export function AdminAuditPage() {
       id: 'summary',
       accessorKey: 'summary',
       enableSorting: false,
+      meta: { label: 'Summary' },
       header: () => <span className="text-sm font-medium">Summary</span>,
       cell: ({ row }) => <span>{row.original.summary}</span>,
     },
@@ -200,12 +206,14 @@ export function AdminAuditPage() {
       id: 'entity_type',
       accessorKey: 'entity_type',
       enableSorting: false,
+      meta: { label: 'Entity' },
       header: () => <span className="text-sm font-medium">Entity</span>,
       cell: ({ row }) => <span className="text-muted-foreground">{row.original.entity_type}</span>,
     },
     {
       id: 'actions',
       enableSorting: false,
+      meta: { label: 'Actions' },
       header: () => <span className="sr-only">Actions</span>,
       cell: ({ row }) => (
         <div className="flex justify-end">

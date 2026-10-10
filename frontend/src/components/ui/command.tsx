@@ -41,14 +41,22 @@ function CommandDialog({
 }) {
   return (
     <Dialog {...props}>
-      <DialogHeader className="sr-only">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
       <DialogContent
         className={cn('top-1/3 translate-y-0 overflow-hidden rounded-xl! p-0', className)}
         showCloseButton={showCloseButton}
       >
+        {/* Inside the popup, not beside it. `Dialog.Root` renders its children
+            unconditionally while only its portal unmounts when closed, so a
+            header placed next to `DialogContent` left a heading ("Command
+            Palette") in the accessibility tree of every page that mounts the
+            palette — a closed dialog contributing a stray landmark (F057's
+            finding, fixed in F058). Inside the popup it names the dialog when
+            open and disappears with it; being `sr-only` (absolutely
+            positioned) it adds no row to the popup's grid. */}
+        <DialogHeader className="sr-only">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
         {children}
       </DialogContent>
     </Dialog>

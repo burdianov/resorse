@@ -80,6 +80,9 @@ export function AdminPermissionsPage() {
     {
       id: 'code',
       accessorKey: 'code',
+      // Component header → the human name has to be declared here too, or the
+      // view options and the CSV export print the raw id.
+      meta: { label: 'Code' },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
       cell: ({ row }) => <span className="font-mono text-sm">{row.original.code}</span>,
     },
@@ -87,6 +90,7 @@ export function AdminPermissionsPage() {
       id: 'description',
       accessorKey: 'description',
       enableSorting: false,
+      meta: { label: 'Description' },
       header: () => <span className="text-sm font-medium">Description</span>,
       cell: ({ row }) =>
         row.original.description === null ? (
@@ -98,6 +102,7 @@ export function AdminPermissionsPage() {
     {
       id: 'actions',
       enableSorting: false,
+      meta: { label: 'Actions' },
       header: () => <span className="sr-only">Actions</span>,
       cell: ({ row }) =>
         canManage ? (

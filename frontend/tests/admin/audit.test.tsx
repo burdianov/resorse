@@ -119,6 +119,22 @@ describe('the trail table', () => {
     expect(screen.queryByRole('button', { name: /Add|Delete/ })).toBeNull()
   })
 
+  it('names its columns in the view options rather than printing ids', async () => {
+    renderAudit()
+    await waitForRows()
+    await userEvent.click(screen.getByRole('button', { name: 'View options' }))
+
+    // `created_at`, `entity_type`, `actor` are API names; the header components
+    // carry the human ones, so the menu only has them if each column declares
+    // `meta.label` (F058).
+    const menu = await screen.findByRole('menu')
+    for (const label of ['Time', 'Action', 'Actor', 'Summary', 'Entity']) {
+      expect(within(menu).getByRole('menuitemcheckbox', { name: label })).toBeInTheDocument()
+    }
+    expect(within(menu).queryByText('created_at')).not.toBeInTheDocument()
+    expect(within(menu).queryByText('entity_type')).not.toBeInTheDocument()
+  })
+
   it('sends the filters from the server vocabulary and page state', async () => {
     const { captured } = renderAudit()
     await waitForRows()

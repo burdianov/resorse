@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 
 import { PageHeader } from '@/components/common/page-header'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 
 /**
  * The route-level 403 (BIG-PROMPT §4.6, §7.4c): what a caller sees when they
@@ -18,7 +18,12 @@ export function ForbiddenPage() {
       <PageHeader
         title="403 — Not authorised"
         description="Your account does not have permission to view this page. If you believe that is a mistake, ask an administrator to review your roles."
-        actions={<Button render={<Link to="/dashboard" />}>Back to dashboard</Button>}
+        actions={
+          // A link, not a button role: this navigates. See `not-found.tsx`.
+          <Link to="/dashboard" className={buttonVariants()}>
+            Back to dashboard
+          </Link>
+        }
       />
     </div>
   )

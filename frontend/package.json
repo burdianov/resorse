@@ -19,6 +19,9 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:e2e": "playwright test",
+    "test:a11y": "playwright test --project=quality accessibility.spec.ts",
+    "test:visual": "playwright test --project=quality visual.spec.ts",
+    "test:visual:update": "playwright test --project=quality visual.spec.ts --update-snapshots",
     "coverage": "vitest run --coverage",
     "api:types": "openapi-ts --no-log-file",
     "fix:ui": "bash scripts/fix-generated-ui.sh"
@@ -47,6 +50,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
     "@hey-api/openapi-ts": "0.99.0",
     "@playwright/test": "1.64.0",

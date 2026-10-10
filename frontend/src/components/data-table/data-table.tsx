@@ -283,7 +283,12 @@ export function DataTable<TData extends RowData>({
                 rows.map((row) => (
                   <TableRow key={row.id}>
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      // `data-column-id` gives a cell a stable handle by
+                      // meaning rather than by position. The visual suite
+                      // (F058) masks the volatile ones — timestamps, "last
+                      // login" — through it; locating them by nth-child would
+                      // break the moment a column is reordered.
+                      <TableCell key={cell.id} data-column-id={cell.column.id}>
                         <table.FlexRender cell={cell} />
                       </TableCell>
                     ))}

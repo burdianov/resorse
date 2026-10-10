@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Link, useLocation } from 'react-router'
 
 import {
@@ -35,16 +36,23 @@ export function AppBreadcrumbs({ routes }: { routes?: readonly RouteDefinition[]
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1
           return (
-            <BreadcrumbItem key={`${crumb.id}:${crumb.path}`}>
-              {isLast ? (
-                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-              ) : (
-                <>
+            <Fragment key={`${crumb.id}:${crumb.path}`}>
+              <BreadcrumbItem>
+                {isLast ? (
+                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                ) : (
                   <BreadcrumbLink render={<Link to={crumb.path} />}>{crumb.label}</BreadcrumbLink>
-                  <BreadcrumbSeparator />
-                </>
-              )}
-            </BreadcrumbItem>
+                )}
+              </BreadcrumbItem>
+              {/* The separator is the list's own child, not the item's: both are
+                  `<li>`s, and nesting one inside the other is invalid HTML that
+                  React reports as a hydration warning (F057's finding). As a
+                  sibling in the `<ol>` the trail is a well-formed list, and the
+                  separator still carries `role="presentation"` +
+                  `aria-hidden`, so a screen reader reads the crumbs and not the
+                  chevrons between them. */}
+              {!isLast && <BreadcrumbSeparator />}
+            </Fragment>
           )
         })}
       </BreadcrumbList>

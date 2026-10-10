@@ -111,14 +111,14 @@ function FormLabel({ className, children, ...props }: ComponentProps<typeof Labe
       htmlFor={formItemId}
       data-slot="form-label"
       {...(error ? { 'data-error': true } : {})}
-      className={cn('data-[error=true]:text-destructive', className)}
+      className={cn('data-[error=true]:text-destructive-text', className)}
       {...props}
     >
       {children}
       {required ? (
         <>
           {/* Visible marker for sighted users, spelled out for screen readers. */}
-          <span aria-hidden="true" className="text-destructive">
+          <span aria-hidden="true" className="text-destructive-text">
             *
           </span>
           <span className="sr-only"> (required)</span>
@@ -171,7 +171,7 @@ function FormMessage({ className, children, ...props }: ComponentProps<'p'>) {
     <p
       id={formMessageId}
       data-slot="form-message"
-      className={cn('text-sm text-destructive', className)}
+      className={cn('text-sm text-destructive-text', className)}
       {...props}
     >
       {body}
@@ -199,7 +199,7 @@ function FormError({ className }: { className?: string }) {
       role="alert"
       data-slot="form-error"
       className={cn(
-        'rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive',
+        'rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive-text',
         className,
       )}
     >

@@ -78,7 +78,7 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `msw` | **3.0.2** | 2026-10-03 | engines `node >=22.12`; peer `vite >=6` |
 | `@hey-api/openapi-ts` | **0.99.0** | 2026-06-22 | engines `node >=22.18.0`; peers `typescript >=5.5.3 \|\| >=6.0.0` — the OpenAPI→TypeScript generator, added in F018. Dev-only CLI, never a runtime dependency. |
 | `@playwright/test` | **1.64.0** | 2026-10-07 | engines `node >=20` (installed 24.14.0 ✓). In use from **F057** — the browser suite in `frontend/tests/e2e/`; Chromium build **1248**, installed by `pnpm exec playwright install chromium`. The suite runs it headless through the config's default project, so `chromium_headless_shell-1248` is what a run actually launches. |
-| `@axe-core/playwright` | **4.13.0** | 2026-08-11 | |
+| `@axe-core/playwright` | **4.13.0** | 2026-08-11 | In use from **F058** — the WCAG scans in `frontend/tests/e2e/accessibility.spec.ts` (`pnpm run test:a11y`), tags `wcag2a…wcag22aa`, failing on `critical` **and** `serious` with no rule suppressions. |
 | `@types/react` | **19.3.0** | 2026-09-09 | matches `react` |
 | `@types/react-dom` | **19.3.0** | 2026-09-09 | |
 | `@types/node` | **24.19.1** | 2026-10-01 | major tracks the Node runtime, not the newest (`26.6.4`) |

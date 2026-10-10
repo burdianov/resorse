@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test'
 
-import { generatedPassword, readState } from './state'
+import { generatedPassword, readState, updateState } from './state'
 
 /**
  * Signing in, the way a person does (F057).
@@ -59,12 +59,23 @@ export async function changeForcedPassword(page: Page, currentPassword: string):
   return replacement
 }
 
-/** Sign in as the bootstrapped super-admin, clearing the forced-change gate. */
+/**
+ * Sign in as the bootstrapped super-admin, clearing the forced-change gate.
+ *
+ * The gate fires exactly once per run — the account is created with a temporary
+ * password and clears it on its first sign-in (BP-6.1b) — so the replacement is
+ * **written back to the run's state file**. Not doing so is not a small leak: the
+ * credential `changeForcedPassword` produced becomes the only one that works, and
+ * the next spec to sign the admin in would present the superseded password and
+ * be refused. The workflow performs the same change itself, in its step 2, and
+ * persists it for the same reason.
+ */
 export async function signInAsAdmin(page: Page): Promise<void> {
   const state = readState()
   await signIn(page, state.adminEmail, state.adminPassword)
   if (new URL(page.url()).pathname === '/change-password') {
-    await changeForcedPassword(page, state.adminPassword)
+    const replacement = await changeForcedPassword(page, state.adminPassword)
+    updateState({ adminPassword: replacement })
     await page.waitForURL(/\/dashboard/)
   }
 }

@@ -349,7 +349,7 @@ export function AdminRolesPage() {
             {differences.roles} role{differences.roles === 1 ? '' : 's'}
           </p>
           {saveMutation.isError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive-text">
               {saveErrorText(saveMutation.error)}
             </p>
           ) : null}

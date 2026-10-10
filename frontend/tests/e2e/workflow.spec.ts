@@ -302,12 +302,14 @@ test.describe.serial('BP-10.4 browser workflow', () => {
     // Column preferences are per user and server-backed (F048), so they are what
     // survives a reload — page, search, sort and filter deliberately are not.
     //
-    // The view-options menu names columns by their **id**: this table's headers
-    // are components and none of them declares `meta.label`, which is the
-    // recorded F058 finding (the menu should say "Full name", not `full_name`)
-    // rather than something this task fixes.
+    // The view-options menu names columns the way the header does. Every header
+    // on this table is a component, so the name comes from each column's
+    // `meta.label` — which F058 added, replacing the raw ids (`full_name`,
+    // `roles`) the menu printed until then. Asserting the human name here keeps
+    // that fixed: the fallback in `column-label.ts` is silent, and an id would
+    // render just as comfortably as a label.
     await member.getByRole('button', { name: 'View options' }).click()
-    await member.getByRole('menuitemcheckbox', { name: 'roles' }).click()
+    await member.getByRole('menuitemcheckbox', { name: 'Roles' }).click()
     await member.getByRole('menuitem', { name: 'Move email left' }).click()
     await member.keyboard.press('Escape')
     await expect(member.locator('thead th').nth(0)).toHaveText('Email')

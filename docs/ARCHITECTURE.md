@@ -864,8 +864,74 @@ superseded token, which the server correctly reads as reuse and answers by revok
 family — so `changeForcedPassword` returns only once the gate has been left, which is where that
 contract belongs rather than in each caller's memory. And it surfaced the roles screen's phantom
 "unsaved change" after a successful save, where the draft is re-seeded from the pre-request cache
-entry (recorded as a finding; the grant itself is persisted — F057 changed no application code). Accessibility scans and screenshot baselines are **F058**, which is why
-`@axe-core/playwright` is installed but not yet exercised.
+entry (recorded as a finding; the grant itself is persisted — F057 changed no application code). The
+recorded findings it left are closed: F058 moved the palette's `sr-only` header inside its popup, made
+the breadcrumb separator a sibling of the items rather than a child, and turned the three
+`Button render={<Link/>}` navigations into `Link`s wearing `buttonVariants()`. Accessibility scans and
+screenshot baselines arrived in **F058**, below.
+
+### Accessibility scans and visual baselines (F058)
+
+Two spec files share the `quality` project, which depends on `workflow` (`playwright.config.ts`), so
+both photograph and scan the app the workflow has just built rather than a state of their own making.
+What they need in common — which theme is resolved, which viewport, and has the screen stopped
+changing — lives in `tests/e2e/support/quality.ts`: a "difference" produced by the suite racing the app
+would be a false report from a scan and from a screenshot alike.
+
+- **`accessibility.spec.ts`** (`pnpm run test:a11y`) runs fourteen scans: §10.4's five named screens
+  (login, dashboard, user directory, permission matrix, notifications) in **both themes**, plus the
+  403 page, the 404 page, the unreachable-server state and the mobile navigation drawer. The gate is
+  `@axe-core/playwright` over axe's WCAG 2.2 **A and AA** tags, failing on `critical` **and** `serious`
+  impacts, with **no rules suppressed** — a suppression hides a finding from every future run and from
+  the operator's gate with it. A failure prints the rule, its impact, the node's CSS path **and its
+  markup**, because a path alone points at an element whose colour usually comes from a class further
+  up (C46).
+- **`visual.spec.ts`** (`pnpm run test:visual`) photographs seventeen states — the sixteen §5.5 names,
+  plus the mobile navigation drawer its 390px width implies — at the three widths it names (1440×900,
+  900×800, 390×844) in both themes, from states **arranged through the app** — the sidebar is collapsed
+  by clicking the control that collapses it, the palette opened with the keyboard a user presses.
+  Baselines are committed PNGs under `tests/e2e/visual.spec.ts-snapshots/` with `maxDiffPixels: 0`, so
+  one pixel is a failure and the reviewer gets a diff. **A baseline is pinned by `--update-snapshots`
+  and believed only after the run that follows it** — `pnpm run test:visual:update` writes,
+  `pnpm run test:visual` is the run that says whether they are stable.
+- **Only timestamps are masked** (`volatileRegions`: the `created_at` cell and every `<time>`, which is
+  why `NotificationCard` renders one). Everything else is arranged to be identical every run: the
+  directory is filtered to the seeded accounts and sorted by name — the workflow's accounts carry a
+  random local part, and the seeded rows share one `created_at` to the microsecond, so the default
+  newest-first order has nothing to break the tie with — and the audit trail is filtered by **action**
+  (`user.create`) as well as by search, because the account it names is reset and re-roled on every run
+  and searching for it alone would photograph however many of those rows this run happened to make. A mask
+  hides a *value*, not its geometry: the card's timestamp is a `flex` sibling of the text block, so
+  `settle()` gives it a minimum width as well, or the mask's own left edge moves with the phrase (§12).
+- **A state is arranged, never inherited — and least of all inherited from the run's own history.**
+  Two things outlive a navigation a state begins with: the sidebar's stored preference
+  (`sidebar-preferences.ts` keeps it in `localStorage` and lets it beat the viewport's default) and the
+  inbox's contents. Both belong to the *session*, so a suite that reuses one context across seventeen
+  states — and a worker that Playwright restarts after a failure, re-running `beforeAll` — photographs
+  the suite unless the arrangement says otherwise. F058's later re-runs are the evidence, and each of the
+  three facts below was measured rather than inferred: a full run failed **30** of its tests while the
+  database afterwards held **31** password resets of the one filler this suite signs in — one per failure
+  plus the run's own, a reset being the one event this platform notifies about (C34) — and the notification
+  states came out photographing **6 cards against the baseline's 1**, while the two restricted states at
+  900px came out with the rail **open** where the app itself starts it collapsed at that width. So every
+  state that photographs a pinned sidebar declares which
+  one (`State.sidebar`) and it is made so by clicking the control on a page that has one, *before* the
+  state's own navigation — a dialog would put the control under a modal overlay where it cannot be
+  clicked, and the stored choice survives the navigation that follows. The inbox helper trims its own
+  notices down to the one it just produced (`leaveOneNotification`, keeping the newest), which is the
+  only way to pin a count that every further call would otherwise raise: the replacement password is
+  generated, so a second call cannot sign in without resetting again.
+
+**The theme is the trap both specs had to learn.** `applyTheme` toggles `.dark` on `<html>` *after* the
+first paint, so every element carrying `transition-colors` animates from its light value to its dark one;
+a scan fired mid-flight reports contrast failures against greys (`#828282` on `#1b1b1b`, `#a9a9a9` on
+`#505050`) that exist in no token and name different elements each run. `settle()` ends every transition
+and animation (`transition-duration: 0s !important` — what Playwright's own `animations: 'disabled'`
+does to a screenshot), waits for `document.fonts.ready`, and holds for two frames, so both specs read the
+state the app rests in (C46). The palette paid for this in the token layer too: **a colour that works as a
+fill does not work as text** (`--primary` is 6.8:1 under white on a button and 2.6:1 as a link on a dark
+surface), so dark mode gained `--primary-text` and `--destructive-text` and a lighter
+`--muted-foreground`.
 
 ## 6. Authorization model
 
@@ -1588,6 +1654,92 @@ popup and therefore not "inside" `[role=dialog]`. A one-shot read taken right af
 in two runs of an unchanged tree (press 11 of 12) and reads exactly like an escaping trap while the
 trap is working. `expect.poll` on "focus is inside the dialog" is the assertion that means what the
 test intends: it settles for the guard case and still fails for a real escape, which never settles.
+
+### A scan of a theme that is still animating (F058)
+
+The first accessibility scans failed in dark mode with contrast findings that could not be reproduced by
+reading the stylesheet: `#828282` on `#1b1b1b`, `#a9a9a9` on `#505050`, `#636363` on `#070707` — none of
+them a token, and not the same elements twice. Greys roughly three-quarters of the way between the light
+and dark value of the same token are what a `transition-colors` element looks like mid-flight, and
+`applyTheme` toggles `.dark` on `<html>` **after** the document's first paint, so every themed element in
+the app animates when a page loads in dark mode. The scan was reading an interpolation.
+
+Two fixes, and the second is the one worth remembering: end the transitions before reading
+(`transition-duration: 0s !important`, which is exactly what Playwright's `animations: 'disabled'` does
+for a screenshot, plus two animation frames to be certain the value has been painted), and — because a
+suite that fails differently each run is worse than no suite — **scan twice before believing a green
+run**. The fixes it then surfaced were real: dark `--muted-foreground` at `oklch(0.55)` measured 4.12:1
+on the page background and 3.7:1 on a card, and the brand hues are chosen for **fills**, where they sit
+under white text (6.8:1), not for text on a dark surface (2.6:1 as a link). Hence `--primary-text` and
+`--destructive-text` as their own tokens — the same hue, lightened for dark mode — rather than one value
+asked to be both. The arithmetic behind every check is `(L_fg³ + 0.05) / (L_bg³ + 0.05)`, because
+OKLCh's lightness *is* the cube root of relative luminance.
+
+**A photograph also has to be of a state that repeats.** The trail's newest rows are whatever the
+workflow did last, and it acts on accounts whose addresses carry a random local part; the run's 27
+seeded accounts are created in one transaction, so they share `created_at` to the microsecond and the
+newest-first order among equals belongs to the planner. The visual suite therefore masks timestamps and
+filters each state to rows of fixed text — one account's creation in the audit trail, the seeded directory
+sorted by name — and the one state the rail cannot have, a collapsed sidebar at 390px, is a different
+state there (`dashboard-nav-drawer`).
+
+### A failure is not a stop, it is a restart (F058)
+
+`beforeAll` is not once per run; it is once per **worker**, and Playwright starts a fresh worker for
+whatever the previous one did not finish. A failing test therefore does not merely stop the file — it
+re-runs the suite's setup, and setup that leaves something behind leaves one more of it. F058's re-run
+reported 30 failures, and the database afterwards held **31** password resets of the one account the
+shared helper signs in, one per failure plus the run's own, each preceded by the idempotent role
+assignment the same helper makes; the two counts are the same number because they are the same event. A
+`-g` filtered probe made the pairing visible without any forensics at all — 9 log lines of "call #1"
+against 8 failures, strictly alternating — and it is worth doing before believing any theory about which
+test is at fault.
+
+The run's failures had two causes, the second created by the first: every restart threw the browser contexts
+away, so the rail returned to the viewport's default rather than the arrangement the state asked for, *and*
+reset the password again, so the inbox gained a card. So the fixes are arrangements rather than assertions: a
+state that can only be reached once, or that depends on which test ran before it, is broken by a failure
+anywhere else in the file — which is precisely when a suite most needs to be readable.
+
+**The re-run after the fixes is the one that measured them.** The committed baselines then failed **10 of
+105**, and each of the ten was looked at before its baseline was re-pinned: six `notifications-list` shots
+differed by nothing but the mask's own edge and, at 390px, the re-wrap that pinning it causes; four
+`user-create-dialog` shots left the dialog itself unchanged and differed only in the directory rows behind
+it, which that state now filters to the seeded accounts. Exactly ten baseline files changed, and none was
+added or dropped. What a reader cannot attribute to the product, a suite has no business asking them to
+accept — which is also why the ten were re-pinned rather than the suite relaxed.
+
+**A mask hides the text, not the box it sits in.** `<time>` is the one masked element whose *width* is
+part of the layout: the notification card's text block is `flex-1` beside it, so "5 minutes ago" and
+"12 minutes ago" put the mask's left edge in different places — 1118 against 1111, both right-anchored on
+the delete button — and the seven pixels the baseline covered are a difference no reader could attribute
+to the product. It also made the failure depend on how *long* the run had been going, since the inbox is
+filled in `beforeAll` and photographed minutes later; the light group's inbox was younger than the dark
+group's, which is exactly the shape of flake that gets dismissed as noise. The sheet `settle()` injects
+therefore gives that one element a minimum width — 7rem, comfortably above the 83px the widest phrase the
+platform's own formatter can produce measures — so the box, and with it the mask, is in the same place
+whatever the phrase says: at 1440px the pinned box is 112px wide, putting the mask's left edge at 1082
+instead of 1111 or 1118. `<time>` appears nowhere else in the app, so nothing else moves. The general
+lesson for a masked region: hide the *text* and you must still account for its geometry.
+
+**And the fix costs something at the narrowest width, which was looked at rather than assumed away.** At
+390px the card is narrow enough that the same minimum width takes room from the `flex-1` text block: the
+message wraps into one more line than the app itself would give it, so that one state's screenshot records
+the harness's wrap, not the application's. It was accepted because the alternative is worse and there is no
+third option — a mask cannot pin a width without the element occupying it, and leaving the width free
+leaves an edge that moves with the phrase. What matters for a baseline is that both runs and the baseline
+agree and the agreement is the same on every machine; what the mobile shot still compares honestly is the
+card's structure, spacing, colour, the delete control and everything above and below it.
+
+**The theme assertion had the same shape, and needed the same answer.** `useTheme` emulates
+`prefers-color-scheme` and then checks that `html.dark` agrees — but the app is the one that applies the
+class, in the `change` listener the provider holds while the mode is `system`, which runs one task after the
+emulation lands. A single read therefore raced it, and F058's first full axe run failed exactly one scan of
+fourteen — the sign-in screen in dark — with *"the page resolved to light, but dark was requested"* on a
+screen where nothing was wrong; the other thirteen passed because their pages reached the read later.
+`expect.poll` on `html.dark`, keeping the matcher and the message, is the whole fix — and it strengthens
+`settle`'s premise rather than merely restoring it: the class is now known to be present *before* the
+transitions are ended, so the scan is never of a state the app is still arriving at.
 
 ## 13. Non-goals and deferred choices
 
