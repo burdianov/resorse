@@ -23,6 +23,17 @@ relevant sections of `claude_code_pack/PRODUCT_SPEC.md`, and source files needed
 Do not automatically read the entire task backlog, product specification, historical archives, or
 operator runbook.
 
+## Go command
+When the operator types "go", read `NEXT_PROMPT.md` and identify the next task ID and name.
+
+Treat "go" as explicit authorization to implement exactly that one task, following `claude_code_pack/CLAUDE_MASTER.md`.
+Before editing, present a plan of at most five concise bullets, then proceed without waiting for additional approval
+unless a blocking decision or ambiguity requires operator input. Run focused checks, update `NEXT_PROMPT.md`, commit
+the task and updated handoff together, then stop.
+
+Never automatically start another task. Never push or deploy.
+If `NEXT_PROMPT.md` does not identify exactly one next task, stop and ask for clarification.
+
 ## Rules
 - Work on exactly one operator-requested task ID per session. Never start the next task automatically.
 - Stage A (F001–F063) precedes Stage B (D001–D091). Do not add construction domain code during Stage A.
