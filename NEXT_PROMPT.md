@@ -18,17 +18,17 @@ me the operator checks. Do not push. Do not start F059.
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
 - **Last completed:** F057 — Browser E2E (record: **C45**, `ARCHITECTURE.md` §5; stack in `docs/STACK_VERSIONS.md` §6).
-  Playwright 1.64.0 / Chromium **1248** against a **real API and a freshly migrated real PostgreSQL** (`app_e2e` built
-  from empty by `backend/scripts/e2e_database.py`), API **8001** / dev **5174** / `vite preview` of the real `dist/`
-  **4174**, BP-10.4's eleven steps as one serial file with one worker. Observed: **11 passed** twice back to back
-  (1.1m, 1.3m); typecheck and lint clean. **No application code changed** — a rerun exposed a race in the spec's own
-  focus-trap assertion, now polled (§6).
+  Playwright 1.64.0 / Chromium **1248**, a **real API and a freshly migrated real PostgreSQL** (`app_e2e`, built from
+  empty by `backend/scripts/e2e_database.py`), API **8001** / dev **5174** / preview **4174**, BP-10.4's eleven steps
+  as one serial file with one worker. Observed: **11 passed** twice (1.1m, 1.3m); typecheck and lint clean. **No
+  application code changed** — a rerun exposed a race in the spec's own focus-trap assertion, now polled (§6).
 - **Previous tasks:** F056 — Backend quality gate (**C44**; its measurements are in §7); F055 + follow-up (**C43**);
   F054 — `ab3c11a` (**C42**); F053 — `cbad877` (**C41**).
 - **Next: F058 — Accessibility and visuals.** TASKS.md ~line 235: "Axe and responsive light/dark screenshot
   baselines", accept "No critical violations". `@axe-core/playwright` **4.13.0** is installed and still unused; the
   F057 suite and its isolated stack are the ground to build on (`frontend/tests/e2e/`).
-- **Gates:** F016/F032/F047/F048 are complete; **G-A3 (after F048) is due and is the operator's to run**, then **G-A4**.
+- **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (new — G-A1/G-A2
+  have no dated run recorded). **G-A3 (after F048) is due and is the operator's to run**, then G-A4 after F063.
 - **Blockers:** none recorded.
 - **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules (working-day calendar, rate changes
   within a month, revision semantics, and others). None blocks F058; never treat one as approved, and if a task depends
@@ -41,7 +41,7 @@ me the operator checks. Do not push. Do not start F059.
 - **Open item — orphan objects:** an object is unlinked only *after* the caller's commit (and when it raises), so the
   residue is a process death in between. No scheduler exists; never unlink before commit.
 - **Open item — nothing scans uploads yet:** BP-6.4's hook ships as `MalwareScanner` + `NoMalwareScanner` (the name is
-  the disclosure), nothing is wired in, and the API answers 400 if one ever refuses — never call uploads scanned.
+  the disclosure), nothing is wired in, and a refusal is a 400 — never call uploads scanned.
 
 ## 3. Essential constraints
 
@@ -166,7 +166,7 @@ Run these before F058 starts. The record column is **historical and the agent's 
 | `claude_code_pack/TASKS.md` | Backlog; F058 is at about line 235 |
 | `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C45; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
-| `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list (incl. the browser suite's prerequisites) |
+| `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |
 | `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's and the F057 browser suite), §6 authorization, §7 boundaries, §12 traps |
 | `docs/REQUIREMENT_TRACEABILITY.md` | BP-x.y index (§1–§11) and §14 gaps |
 | `docs/ROUTES_NAVIGATION.md`, `docs/OPENAPI_CLIENT.md` | Routing registry; typed-client recipe |

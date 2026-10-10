@@ -33,7 +33,7 @@ until its owning task lands — the agent must say so rather than hand you a com
 | Frontend dev server | `cd frontend && pnpm run dev` → http://localhost:5173 | **live (F006)** |
 | Backend API dev server | `cd backend && uv run uvicorn app.main:app --reload --port 8000` → http://localhost:8000/api/v1/health | **live (F007)** |
 | Frontend lint / format | `cd frontend && pnpm run lint` / `pnpm run format:check` | **live (F055)** |
-| Frontend unit + component (Vitest) | `cd frontend && pnpm test -- --run` | first tests F011; suite **live (F055)** |
+| Frontend unit + component (Vitest) | `cd frontend && pnpm run test:run` | first tests F011; suite **live (F055)** — `pnpm test` is the watch mode, `pnpm run coverage` the same run under coverage |
 | Frontend coverage | `cd frontend && pnpm run coverage` | **live (F055)** — thresholds in `vite.config.ts`; exit 0 means both were met |
 | Backend lint / format (Ruff) | `cd backend && uv run ruff check . && uv run ruff format --check .` | **live (F056)** — applied migrations are excluded from `format` only (they are frozen); `check` lints them |
 | Backend types (mypy strict) | `cd backend && uv run mypy` | **live (F056)** — covers `app`, `tests` and `scripts`; the file list is in `[tool.mypy]`, so the bare command *is* the gate |
@@ -71,6 +71,36 @@ one line — `cd backend && uv run alembic upgrade head` — and the habit that 
 downgrade-to-base leg belongs to `app_test` (F023's smoke), never to the database you browse.
 
 ## Gates
+
+### Running a gate
+
+`claude_code_pack/TASKS.md` §Gate checkpoints names the gates; **you** run them, and the agent must not advance
+across one automatically. The commands are the table above — the gate's job is to run *all* of them plus the
+browser walkthrough, in this order, against a **pinned tree**:
+
+1. **Pin the tree.** `git -C D:\resors log -1 --format="%h %s"` and `git status --short` (clean). A gate result
+   against an unknown tree proves nothing; write the hash into the entry.
+2. **Preconditions.** `docker compose up -d --wait` (Postgres healthy); `cd backend; uv run alembic current` →
+   **`(head)`** — whatever revision that is on the day, never a number copied from a document (a dev database
+   behind head serves 500s while every test is green); from F057 the browser suite
+   also needs `cd frontend; pnpm exec playwright install chromium` once per machine.
+3. **Static checks, then the suites, then the browser suite** — the table's rows in their own order: lint,
+   `format:check`, `typecheck`, `build` (+ the dev-only-exclusion search of `dist/`), Ruff, mypy; then Vitest,
+   coverage, the backend suite (**both legs** — the integration leg and the coverage gate *fail* rather than skip
+   with no database), the coverage gate, and `pnpm exec playwright test`; then OpenAPI drift and the migration
+   round trip **on `app_test` only**. Never run `downgrade base` against `app_dev`.
+4. **The browser walkthrough.** No command covers the phase's own scope — for G-A3 that is the real admin pages,
+   profile, preferences, the full DataTable, the denial checks (a non-admin gets 403 in-app and from the API, and
+   the forced-change state answers 403 until the password is changed) and the route states (404 inside the shell,
+   403 page, offline with Retry). Judge table preferences and role grants **by reloading**, never by a banner.
+5. **Record it in `docs/IMPLEMENTATION_LOG.md`** — date, commit hash, commands with observed results, the
+   walkthrough's outcome, and the verdict. A red item becomes a fix task and the gate is re-run after it lands;
+   nothing is waived into the record, and counts are written as observed, never quoted from `NEXT_PROMPT.md`.
+
+Before G-A3, decide the items that sit inside its scope: the roles-screen re-seed defect recorded in
+`NEXT_PROMPT.md` §5 (no task owns it), and F058's accessibility findings (F058 owns them).
+
+### The gates
 - G-A1 after F016: UI app boots, design tokens/components and navigation work.
 - G-A2 after F032: PostgreSQL migrations, authentication, RBAC and privilege checks pass.
 - G-A3 after F048: real admin pages, preferences, audit and notifications pass.
