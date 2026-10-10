@@ -8,29 +8,28 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F061
-in claude_code_pack/TASKS.md. Implement F061 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F062
+in claude_code_pack/TASKS.md. Implement F062 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F062.
+me the operator checks. Do not push. Do not start F063.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F060 — Security hardening (**C48**; `docs/SECURITY.md` = threat model). Production refuses unsafe
-  config at startup (`app/core/startup.py`); API headers + Caddy CSP/HSTS; JSON logs and a JSON 500 with the request id;
-  `get_malware_scanner()` seam (no-op); `X-Forwarded-For` trusted only from the web proxy (`FORWARDED_ALLOW_IPS`). **Agent-checked:**
-  `pytest -m "not integration"` 191 passed; full `uv run pytest` 455 passed, 2 skipped; ruff/mypy clean; scratch prod stack
-  boots with the CSP/HSTS set, missing asset 404, API JSON, weak password refused (exit 1). **Not checked:** a real domain,
-  the proxy trust at runtime (the log does not record the client address), and the CSP against a live browser session.
-- **Previous tasks:** F059 — Production Docker (**C47**); F058 — Accessibility and visuals (**C46**); F057 — Browser E2E (**C45**);
+- **Last completed:** F061 — CI workflows (**C49**; `.github/workflows/ci.yml`). Jobs: backend (ruff, mypy, coverage gate,
+  migration round trip on `app_test`), frontend (lint, format, typecheck, coverage, build, dev-only check), `api-contract`
+  (OpenAPI drift), e2e (`test:a11y`, Linux), `visual` (Windows, `-win32` baselines), `audit`, `images` (compose config, build,
+  migrate and backend up). **Agent-checked:** actionlint clean, the YAML parses. **Not run:** any CI job; the `visual` job's
+  PostgreSQL step is unverified on a real Windows runner.
+- **Previous tasks:** F060 — Security hardening (**C48**); F059 — Production Docker (**C47**); F058 — Accessibility and visuals (**C46**); F057 — Browser E2E (**C45**);
   F056 — Backend quality gate (**C44**, §7); F055 (**C43**); F054 (**C42**).
-- **Next: F061 — CI workflows** (TASKS.md ~line 247; owns the platform-tagged visual baselines and the OpenAPI drift check).
+- **Next: F062 — Operations docs** (TASKS.md ~line 251: bootstrap, migrations, deploy, backup/restore, README, `docs/TESTING.md`).
 - **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (new — G-A1/G-A2
   have no dated run recorded). **G-A3 (after F048) is due and is the operator's to run**, then G-A4 after F063.
 - **Blockers:** none recorded.
-- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules. None blocks F061; never treat one
-  as approved, and if a task depends on one, stop and ask. Confirmed: C11–**C48** (C48 is F060's).
+- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules. None blocks F062; never treat one
+  as approved, and if a task depends on one, stop and ask. Confirmed: C11–**C49** (C49 is F061's).
 - **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can
   be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any
   migration task; it reads `0009 (head)` today.
@@ -95,7 +94,7 @@ Start the services, each in its own terminal:
   must; C46 records it as the one F057 finding F058 deliberately did not touch. The other four are fixed (palette header,
   breadcrumb separator, three link-buttons, raw column ids) and the specs assert the last of them.
 - **The visual baselines are platform-tagged**, and `pnpm run test:visual` on a Linux runner finds none of them
-  (`…-quality-win32.png`), failing every state as new — F061 (CI) owns that. Not a defect if you meet it: the masked
+  (`…-quality-win32.png`), failing every state as new — F061 (CI) runs them in a Windows job. Not a defect if you meet it: the masked
   notification `<time>` carries a 7rem minimum width, so the 390px card wraps a line earlier than the app wraps it (§12).
 - **Dismissed — the jsdom `Select` item** (`CARRIED_CONSTRAINTS.md` §6): an uncontrolled `Select` is unreachable
   here (every `<Select` under `src/` passes `value`); its rendered label is now one of F058's baselines.
@@ -151,6 +150,7 @@ The record column is **historical and the agent's own observation**, never the o
 | **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **F055 record**: no match — the lab page and recharts are absent from `dist/`. A match means the exclusion broke |
 | Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check. F055 record**: 563 passed (F047: 498) |
 | OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F057 changes no API. **F055 record**: re-run produced **no diff** |
+| **CI (F061)** | Push the branch and read the Actions run for `CI`. Locally, the workflow lint: `docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint:latest -no-color .github/workflows/ci.yml` | Agent record: actionlint clean (no output). Expect all seven jobs green; the `visual` job is the one to read first, because its PostgreSQL step is unverified (DECISIONS C49) |
 | **Security (F060)** | `cd D:\resors\backend; uv run pytest tests/test_production_hardening.py` | 23 passed (agent record). Edge check on a live host: `curl -sI https://<SITE_ADDRESS>/` shows the CSP, HSTS and `nosniff` (`docs/SECURITY.md` §4.2) |
 | **Production stack (F059)** | Create `.env.production` from `.env.production.example` (real values, git-ignored), then `cd D:\resors; docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait` | Agent's record (scratch env, `SITE_ADDRESS=localhost`): all five services healthy, `migrate` exit 0. The operator's check: `curl -k https://<SITE_ADDRESS>/api/v1/health` → `"environment":"production"`; `docker compose -f docker-compose.prod.yml --env-file .env.production down` leaves volumes intact (`down -v` deletes them) |
 | Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)`. Run this after any migration task — a dev database behind head serves 500s while every test is green |
@@ -163,8 +163,8 @@ The record column is **historical and the agent's own observation**, never the o
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F061 is at about line 247 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C48; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F062 is at about line 251 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C49; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |
 | `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's and the F057/F058 browser suites), §6 authorization, §7 boundaries, §12 traps |

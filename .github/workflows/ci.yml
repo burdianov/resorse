@@ -1,0 +1,297 @@
+# Continuous integration (F061; BIG-PROMPT §10.5, §11.6, BP-7.9e, BP-9.4).
+#
+# Every job is independent and runs without the others' output. Each one names
+# the command the operator runs locally (docs/OPERATOR_GUIDE.md), so a red job
+# means the same thing a red local run means. Nothing here pushes an image,
+# deploys, or writes to a branch: the one job that can write is `api-contract`,
+# and it only *compares* the regenerated files against the committed ones.
+#
+# Pins: actions are pinned to their major tags, checked against the registry
+# (checkout v7, setup-node v7, setup-uv v10, upload-artifact v7). Node is the
+# frontend's engines floor (>=24). pnpm comes from the packageManager field via
+# corepack; uv from backend/uv.lock; Python from backend/.python-version.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (ruff, mypy, tests, coverage gate, migrations)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: resors
+          POSTGRES_PASSWORD: resors-ci-only
+          POSTGRES_DB: resors
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U resors -d resors"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      gotenberg:
+        image: gotenberg/gotenberg:8.37
+        ports: ["3000:3000"]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:3000/health"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # The suite connects to app_test, derived from this URL (tests/conftest.py).
+      DATABASE_URL: postgresql+asyncpg://resors:resors-ci-only@localhost:5432/resors
+      GOTENBERG_URL: http://localhost:3000
+      # The live Gotenberg conversion test (BP-7.9e): skipped everywhere else.
+      RESORS_LIVE_GOTENBERG: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install (frozen lock)
+        run: uv sync --locked
+      - name: Ruff format
+        run: uv run ruff format --check .
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Mypy (strict)
+        run: uv run mypy
+      - name: Coverage gate (both database legs)
+        run: uv run python -m scripts.coverage_gate
+      - name: Migration round trip (app_test only)
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+      - name: Dev database at head
+        run: uv run alembic current
+
+  frontend:
+    name: Frontend (lint, types, unit tests, build, dev-only exclusion)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Enable pnpm (packageManager pin)
+        run: corepack enable
+      - name: Install (frozen lock)
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm run lint
+      - name: Format check
+        run: pnpm run format:check
+      - name: Typecheck
+        run: pnpm run typecheck
+      - name: Unit and component tests (coverage thresholds)
+        run: pnpm run coverage
+      - name: Build
+        run: pnpm run build
+      - name: Dev-only surface is absent from the build
+        # A match means the import.meta.env.DEV exclusion failed (F054, F055).
+        run: |
+          if grep -rlE "Development builds only|recharts|tools/components" dist; then
+            echo "A development-only string reached the production bundle." >&2
+            exit 1
+          fi
+
+  api-contract:
+    name: OpenAPI contract drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - name: Install backend (frozen)
+        working-directory: backend
+        run: uv sync --locked
+      - name: Install frontend (frozen)
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Regenerate the OpenAPI document
+        working-directory: backend
+        run: uv run python -m scripts.export_openapi
+      - name: Regenerate the typed client
+        working-directory: frontend
+        run: pnpm run api:types
+      - name: The committed artefacts match the regenerated ones
+        run: git diff --exit-code -- backend/openapi.json frontend/src/lib/generated
+
+  e2e:
+    name: Browser (workflow and accessibility, Linux)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: resors
+          POSTGRES_PASSWORD: resors-ci-only
+          POSTGRES_DB: resors
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U resors -d resors"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # The E2E database is app_e2e, derived from this URL by scripts/e2e_database.py.
+      DATABASE_URL: postgresql+asyncpg://resors:resors-ci-only@localhost:5432/resors
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - name: Install backend (frozen)
+        working-directory: backend
+        run: uv sync --locked
+      - name: Install frontend (frozen)
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+      # The visual suite is deliberately not run here: its baselines are
+      # platform-tagged (`-win32.png`), so this runner would fail every one of
+      # them as a new snapshot. It runs in the `visual` job instead.
+      - name: Workflow and accessibility scans
+        working-directory: frontend
+        run: pnpm run test:a11y
+      - name: Upload the report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
+  visual:
+    name: Visual baselines (Windows, the platform the baselines were rendered on)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Playwright names snapshots by platform: this runner matches `-win32`.
+      # Rendering on a different machine is a difference to read, never a reason
+      # to re-pin (F058, DECISIONS C46).
+      DATABASE_URL: postgresql+asyncpg://resors:resors-ci-only@localhost:5432/resors
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start PostgreSQL (the runner image's install)
+        # Service containers are Linux-only, so this job uses the PostgreSQL
+        # the Windows runner image ships. Its version is not pinned here; the
+        # operator should confirm it on the first run (see the handoff).
+        shell: pwsh
+        run: |
+          $pg = Get-ChildItem "C:\Program Files\PostgreSQL" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $pg) { throw "No PostgreSQL installation found on this runner image." }
+          $bin = Join-Path $pg.FullName "bin"
+          $env:PGPASSWORD = "postgres"
+          & (Join-Path $bin "psql.exe") -U postgres -h localhost -c "CREATE ROLE resors LOGIN PASSWORD 'resors-ci-only' CREATEDB;"
+          & (Join-Path $bin "psql.exe") -U postgres -h localhost -c "CREATE DATABASE resors OWNER resors;"
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - name: Install backend (frozen)
+        working-directory: backend
+        run: uv sync --locked
+      - name: Install frontend (frozen)
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        working-directory: frontend
+        run: pnpm exec playwright install chromium
+      - name: Visual comparison (maxDiffPixels 0)
+        working-directory: frontend
+        run: pnpm run test:visual
+      - name: Upload actual, expected and diff images on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-test-results
+          path: frontend/test-results
+          retention-days: 7
+
+  audit:
+    name: Dependency audits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - name: Frontend production dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile && pnpm audit --prod --audit-level=high
+      - name: Backend production dependencies
+        working-directory: backend
+        run: |
+          uv export --locked --no-dev --no-emit-project --no-hashes -o requirements-prod.txt
+          uvx pip-audit --strict -r requirements-prod.txt
+
+  images:
+    name: Production images and compose smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create a throwaway production environment file
+        # Generated per run, never committed, deleted with the runner. SITE_ADDRESS
+        # is a non-loopback, non-resolving name: production validation refuses
+        # localhost (app/core/startup.py), and this job never serves the edge.
+        run: |
+          {
+            echo "SITE_ADDRESS=ci.resors.test"
+            echo "POSTGRES_USER=resors"
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+            echo "POSTGRES_DB=resors"
+          } > .env.ci
+      - name: Compose file is valid
+        run: docker compose -f docker-compose.prod.yml --env-file .env.ci config --quiet
+      - name: Build the API and edge images
+        run: docker compose -f docker-compose.prod.yml --env-file .env.ci build backend web
+      - name: Migrations apply and the API becomes healthy
+        run: docker compose -f docker-compose.prod.yml --env-file .env.ci up -d --wait postgres gotenberg migrate backend
+      - name: Migration exited zero
+        run: test "$(docker inspect -f '{{.State.ExitCode}}' "$(docker compose -f docker-compose.prod.yml --env-file .env.ci ps -a -q migrate)")" = "0"
+      - name: Show the API log on failure
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml --env-file .env.ci logs --no-color backend migrate
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.prod.yml --env-file .env.ci down -v
