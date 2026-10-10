@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { Briefcase, Building2, Wrench } from 'lucide-react'
+import { Briefcase, Building2, FolderKanban, Wrench } from 'lucide-react'
 
 import type { NavGroup, RouteDefinition } from './navigation'
 
@@ -122,5 +122,76 @@ const MASTERS_MODULE: AppModule = {
   ],
 }
 
-/** Compiled-in modules. Stage A shipped none; D006 registers the first. */
-export const APP_MODULES: readonly AppModule[] = [MASTERS_MODULE]
+/**
+ * The project register (D009) — the second entry, and the first module over a
+ * *working* table rather than a curated vocabulary.
+ *
+ * **Two routes, one group, and the second route is not in the navigation.**
+ * `/projects` is the register; `/projects/:projectId` is one project's record
+ * and the place its status is changed. A detail route is reached from the row
+ * that names it, so `showInNavigation: false` — the same metadata the profile
+ * pages use — keeps the group's one link from being two.
+ *
+ * **Both routes require `projects.read`, and neither requires more.** §3's rule
+ * is that `requiredPermissions` are the codes the route's *calls* need: this
+ * screen's reads are `projects.read` (D008's list, detail and every field they
+ * carry), and the status control's write is `projects.update` — which the
+ * control itself gates on, exactly as the user directory gates its row actions
+ * on their own codes while the route demands only the read. Putting
+ * `projects.update` on the route would hide the register from the readers who
+ * are most of its audience; leaving it off the control would render a button
+ * that always 403s. Only the three codes D008 registers are declared:
+ * `projects.responsibility` exists in §3's matrix and not in
+ * `app/core/permissions.py` (D019 adds it), and a declaration for a code the
+ * server does not have is a row the permission dictionary would render blank.
+ *
+ * **No `adminOnly`**, for the reason the reference tables record: the flag
+ * names the `users`/`roles`/`permissions`/`settings`/`audit` namespaces, and a
+ * module in its own namespace must not claim it. **No `featureFlag`** — the
+ * module ships on.
+ *
+ * The declarations are the server's sentences from `app/core/permissions.py`,
+ * copied rather than paraphrased (the dictionary UI renders them). Declaring
+ * them grants nothing; the registry is the server's.
+ */
+const PROJECTS_MODULE: AppModule = {
+  id: 'projects',
+  navigation: [{ id: 'projects', label: 'Projects', order: 26 }],
+  routes: [
+    {
+      id: 'projects-list',
+      path: '/projects',
+      label: 'Projects',
+      icon: FolderKanban,
+      group: 'projects',
+      requiredPermissions: ['projects.read'],
+      component: lazy(async () => {
+        const module = await import('@/pages/projects')
+        return { default: module.ProjectsPage }
+      }),
+    },
+    {
+      // Out of the sidebar: a record is opened from the register's row that
+      // names it, and the route is guarded by the same read code.
+      id: 'projects-detail',
+      path: '/projects/:projectId',
+      label: 'Project',
+      icon: FolderKanban,
+      group: 'projects',
+      showInNavigation: false,
+      requiredPermissions: ['projects.read'],
+      component: lazy(async () => {
+        const module = await import('@/pages/projects/detail')
+        return { default: module.ProjectDetailPage }
+      }),
+    },
+  ],
+  permissions: [
+    { code: 'projects.read', description: "View the project list and a project's details." },
+    { code: 'projects.create', description: 'Create projects.' },
+    { code: 'projects.update', description: 'Edit a project and its lifecycle status.' },
+  ],
+}
+
+/** Compiled-in modules. Stage A shipped none; D006 registers the first, D009 the second. */
+export const APP_MODULES: readonly AppModule[] = [MASTERS_MODULE, PROJECTS_MODULE]

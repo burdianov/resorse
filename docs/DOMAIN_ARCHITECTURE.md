@@ -267,7 +267,7 @@ find the rule instead of re-deriving a shape from the columns:
   executable. What *is* executable arrives with each task: D084 re-checks the API contract and the typed
   client, D085–D087 are the three suites, and D091 ("production-like deployment smoke and known limitations",
   "no unverified success claims") is the gate that reads this document against the shipped product.
-- **What is already checked, as of D008.** `PermissionCode` carries the six reference-table codes §3's matrix
+- **What is already checked, as of D009.** `PermissionCode` carries the six reference-table codes §3's matrix
   registers for D005 (`disciplines`/`departments`/`designations` × `read`/`manage`, all global), the routes that
   enforce them exist at `/api/v1/masters/…`, and **`APP_MODULES` is no longer empty**: D006 registered the module
   §1's first row plans — one group ("Reference Data", `order` 25) and the three screens
@@ -277,8 +277,14 @@ find the rule instead of re-deriving a shape from the columns:
   that is not a reference table**: `PermissionCode` gained the three codes §3's matrix plans for projects
   (`projects.read`, `projects.create`, `projects.update` — the first row §3 scopes to `project`, though that
   narrowing belongs to D081 and these are role gates until `ScopePolicy` exists), the five routes exist at
-  `/api/v1/projects/…`, and the seeded `viewer` holds `projects.read` (C67) — while `APP_MODULES` is
-  **unchanged**, because the module registry entry is D009's. `alembic heads` is `0015` (D005's
+  `/api/v1/projects/…`, and the seeded `viewer` holds `projects.read` (C67). **D009 put that surface on screen,
+  and `APP_MODULES` now holds two modules**: the projects module adds one group ("Projects", `order` 26) and two
+  routes — `/projects` and `/projects/:projectId` — each declaring `projects.read` alone, because that is what
+  their own calls need, with the detail screen's one write gated **in the screen** on `projects.update` (§6.3d:
+  the route gate is visibility, the API is the boundary), so no route claims a code it does not use (C68). That
+  is §1's first two rows both landed. The lifecycle `status` reaches a caller exactly as D008 left it — an
+  ordinary field edit — and D033's award conversion is still the only thing that will machine the transition
+  (C67/C68). `alembic heads` is `0015` (D005's
   revision widens the audit vocabularies, D006's module adds none, D007's adds `projects`, and D008's adds the
   three `project.*` actions and the `project` entity type to the same pair of CHECKs), with `disciplines`
   (D002), `departments` (D003), `designations` (D004) and `projects` (D007) the domain tables under it — D004's
@@ -304,4 +310,4 @@ find the rule instead of re-deriving a shape from the columns:
 | `ARCHITECTURE.md` §8 | the **foundation's** tables — this document is the domain's, hung off them |
 | `ADDING_A_MODULE.md` | the **recipe** for one module — this document is the whole set at once, with the boundaries between them |
 | `PRODUCT_SPEC.md` §3–§10 | the **requirements** — this document is their shape in tables and codes, and it adds no rule of its own |
-| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C67`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |
+| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C68`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |

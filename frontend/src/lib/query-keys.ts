@@ -17,6 +17,8 @@
  * prefix must be spelled once.
  */
 
+import type { ProjectItem } from '@/lib/generated/api'
+
 /** Request parameters that make one page of the user directory distinct. */
 export interface AdminUsersParams {
   page: number
@@ -45,6 +47,22 @@ const filesRoot = (userId: string) => ['files', userId] as const
 export interface FileListParams {
   page: number
   pageSize: number
+}
+
+const projectsRoot = ['projects'] as const
+
+/**
+ * Request parameters that make one page of the project register distinct
+ * (D009). `status` is the generated contract's own union rather than a copy of
+ * it — the same reason `pages/projects/rules.ts` derives its vocabulary there.
+ */
+export interface ProjectListParams {
+  page: number
+  pageSize: number
+  search?: string
+  status?: ProjectItem['status']
+  sort: string
+  order: 'asc' | 'desc'
 }
 
 export const queryKeys = {
@@ -105,5 +123,21 @@ export const queryKeys = {
     root: (userId: string) => filesRoot(userId),
     list: (userId: string, params: FileListParams) =>
       [...filesRoot(userId), 'list', params] as const,
+  },
+  /**
+   * The project register (D009). No user id: projects are shared business
+   * records, not per-user data — every reader of the same page sees the same
+   * rows, and the server's own project scope (D081) is what decides *which*
+   * project a caller may read, not this key. **Paginated**, unlike the reference
+   * tables above, so the list key carries its request parameters — the
+   * `admin.users` shape, and the reason `root` is exposed separately: the status
+   * mutation invalidates that prefix so the detail entry and every page of the
+   * list refetch together.
+   */
+  projects: {
+    /** Invalidation root: matches the list pages and every detail entry. */
+    root: projectsRoot,
+    list: (params: ProjectListParams) => [...projectsRoot, 'list', params] as const,
+    detail: (projectId: string) => [...projectsRoot, 'detail', projectId] as const,
   },
 }
