@@ -39,7 +39,8 @@ from app.seed import (
 
 # The exact read set the `viewer` role ships with (C16). Written out literally
 # on purpose: the point is that a change to VIEWER_GRANTS fails a test and
-# gets a decision, not that the constant equals itself.
+# gets a decision, not that the constant equals itself. The three master-data
+# reads are D005's — the first Stage B codes, and the amendment C64 records.
 EXPECTED_VIEWER_CODES = {
     "users.read",
     "roles.read",
@@ -50,6 +51,9 @@ EXPECTED_VIEWER_CODES = {
     "notifications.manage_own",
     "files.read",
     "reports.generate",
+    "disciplines.read",
+    "departments.read",
+    "designations.read",
 }
 
 EXPECTED_ADMIN_WITHHELD = {"roles.manage", "permissions.manage"}

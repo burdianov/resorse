@@ -66,6 +66,20 @@ class PermissionCode(StrEnum):
     FILES_CREATE = "files.create"
     REPORTS_GENERATE = "reports.generate"
 
+    # The reference tables (D005) — the first Stage B codes. One `read`/`manage`
+    # pair per reference table, all *global* scope (DOMAIN_ARCHITECTURE §3):
+    # a discipline, a department and a designation are company-wide
+    # vocabularies, not rows that belong to a user or a project, so there is
+    # no `_own`/scoped variant to hold and nothing to narrow in SQL.
+    # `designations.import` is the bulk-import code D018 adds — deliberately
+    # not declared before the endpoint that checks it exists.
+    DISCIPLINES_READ = "disciplines.read"
+    DISCIPLINES_MANAGE = "disciplines.manage"
+    DEPARTMENTS_READ = "departments.read"
+    DEPARTMENTS_MANAGE = "departments.manage"
+    DESIGNATIONS_READ = "designations.read"
+    DESIGNATIONS_MANAGE = "designations.manage"
+
 
 # Human text for the permission dictionary UI (F038) and the seed's rows.
 # Every member must appear here — a test enforces it, because a code without a
@@ -88,6 +102,12 @@ PERMISSION_DESCRIPTIONS: Final[dict[PermissionCode, str]] = {
     PermissionCode.FILES_READ: "Download stored files within authorization.",
     PermissionCode.FILES_CREATE: "Upload files.",
     PermissionCode.REPORTS_GENERATE: "Generate reports and PDFs from authorized data.",
+    PermissionCode.DISCIPLINES_READ: "View the discipline list.",
+    PermissionCode.DISCIPLINES_MANAGE: "Add, edit and deactivate disciplines.",
+    PermissionCode.DEPARTMENTS_READ: "View the department list.",
+    PermissionCode.DEPARTMENTS_MANAGE: "Add, edit and deactivate departments.",
+    PermissionCode.DESIGNATIONS_READ: "View the designation list.",
+    PermissionCode.DESIGNATIONS_MANAGE: "Add, edit and deactivate designations.",
 }
 
 # Declaration order, for stable seed output and tests. `tuple(...)` of the enum

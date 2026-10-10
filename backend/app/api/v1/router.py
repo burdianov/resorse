@@ -14,6 +14,7 @@ from app.api.v1 import (
     auth,
     files,
     health,
+    masters,
     me_preferences,
     notifications,
     readiness,
@@ -30,6 +31,7 @@ api_router.include_router(admin_roles.router, tags=["admin"])
 api_router.include_router(admin_permissions.router, tags=["admin"])
 api_router.include_router(admin_settings.router, tags=["admin"])
 api_router.include_router(admin_audit.router, tags=["admin"])
+api_router.include_router(masters.router, tags=["masters"])
 api_router.include_router(notifications.router, tags=["notifications"])
 api_router.include_router(files.router, tags=["files"])
 api_router.include_router(reports.router, tags=["reports"])

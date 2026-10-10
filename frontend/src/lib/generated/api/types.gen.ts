@@ -215,6 +215,60 @@ export type ClearAllResponse = {
 };
 
 /**
+ * CreateDepartmentRequest
+ */
+export type CreateDepartmentRequest = {
+    /**
+     * Classification
+     */
+    classification: 'HEAD_OFFICE' | 'SITE';
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * CreateDesignationRequest
+ */
+export type CreateDesignationRequest = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Department Id
+     */
+    department_id: string;
+    /**
+     * Discipline Id
+     */
+    discipline_id: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * CreateDisciplineRequest
+ */
+export type CreateDisciplineRequest = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
  * CreatePermissionRequest
  */
 export type CreatePermissionRequest = {
@@ -288,6 +342,42 @@ export type CreateUserResponse = {
 };
 
 /**
+ * DepartmentItem
+ */
+export type DepartmentItem = {
+    /**
+     * Classification
+     */
+    classification: 'HEAD_OFFICE' | 'SITE';
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * DepartmentListResponse
+ */
+export type DepartmentListResponse = {
+    /**
+     * Items
+     */
+    items: Array<DepartmentItem>;
+};
+
+/**
  * DependencyCheck
  *
  * One dependency's answer, and whether the application needs it up.
@@ -305,6 +395,90 @@ export type DependencyCheck = {
      * Status
      */
     status: 'up' | 'down';
+};
+
+/**
+ * DesignationItem
+ *
+ * One job title and the two rows it belongs to.
+ *
+ * The references are ids, not nested objects: the list the screen needs is
+ * already loaded, so a dialog joins them client-side against the two lists it
+ * has. Nesting them here would make every response carry the same department
+ * twice and force a second way to read it.
+ */
+export type DesignationItem = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Department Id
+     */
+    department_id: string;
+    /**
+     * Discipline Id
+     */
+    discipline_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * DesignationListResponse
+ */
+export type DesignationListResponse = {
+    /**
+     * Items
+     */
+    items: Array<DesignationItem>;
+};
+
+/**
+ * DisciplineItem
+ *
+ * One discipline, as the list and the edit dialog show it.
+ */
+export type DisciplineItem = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * DisciplineListResponse
+ *
+ * The whole list, sorted by code — the order the service returns and the
+ * only order the screens have to agree on.
+ */
+export type DisciplineListResponse = {
+    /**
+     * Items
+     */
+    items: Array<DisciplineItem>;
 };
 
 /**
@@ -780,6 +954,73 @@ export type UnreadCountResponse = {
      * Unread Count
      */
     unread_count: number;
+};
+
+/**
+ * UpdateDepartmentRequest
+ *
+ * The classification is editable here, unlike the code: it is an
+ * attribute *of* the row, and a head office that is reclassified as a site
+ * is a correction, not a new identity.
+ */
+export type UpdateDepartmentRequest = {
+    /**
+     * Classification
+     */
+    classification?: 'HEAD_OFFICE' | 'SITE' | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
+ * UpdateDesignationRequest
+ *
+ * The two references are editable: a title that moves to another
+ * department is the same title, and nothing points at a designation yet —
+ * when D014's employees do, a move stays this cheap, because the reference
+ * is an id the row carries rather than a name stored beside it.
+ */
+export type UpdateDesignationRequest = {
+    /**
+     * Department Id
+     */
+    department_id?: string | null;
+    /**
+     * Discipline Id
+     */
+    discipline_id?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
+ * UpdateDisciplineRequest
+ *
+ * Partial edit: the name and the active flag, and nothing else. The flag
+ * is how a discipline that is still referenced is retired — the delete
+ * route refuses while a designation names it.
+ */
+export type UpdateDisciplineRequest = {
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Name
+     */
+    name?: string | null;
 };
 
 /**
@@ -2267,6 +2508,590 @@ export type HealthApiV1HealthGetResponses = {
 };
 
 export type HealthApiV1HealthGetResponse = HealthApiV1HealthGetResponses[keyof HealthApiV1HealthGetResponses];
+
+export type ListDepartmentsApiV1MastersDepartmentsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/masters/departments';
+};
+
+export type ListDepartmentsApiV1MastersDepartmentsGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the departments.read permission.
+     */
+    403: unknown;
+};
+
+export type ListDepartmentsApiV1MastersDepartmentsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: DepartmentListResponse;
+};
+
+export type ListDepartmentsApiV1MastersDepartmentsGetResponse = ListDepartmentsApiV1MastersDepartmentsGetResponses[keyof ListDepartmentsApiV1MastersDepartmentsGetResponses];
+
+export type CreateDepartmentApiV1MastersDepartmentsPostData = {
+    body: CreateDepartmentRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/masters/departments';
+};
+
+export type CreateDepartmentApiV1MastersDepartmentsPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the departments.manage permission.
+     */
+    403: unknown;
+    /**
+     * A department with this code already exists.
+     */
+    409: unknown;
+    /**
+     * Shape errors, or a classification that is not one of the two.
+     */
+    422: unknown;
+};
+
+export type CreateDepartmentApiV1MastersDepartmentsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: DepartmentItem;
+};
+
+export type CreateDepartmentApiV1MastersDepartmentsPostResponse = CreateDepartmentApiV1MastersDepartmentsPostResponses[keyof CreateDepartmentApiV1MastersDepartmentsPostResponses];
+
+export type DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Department Id
+         */
+        department_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/departments/{department_id}';
+};
+
+export type DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the departments.manage permission.
+     */
+    403: unknown;
+    /**
+     * No such department.
+     */
+    404: unknown;
+    /**
+     * A designation still names this department.
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteError = DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteErrors[keyof DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteErrors];
+
+export type DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteResponse = DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteResponses[keyof DeleteDepartmentApiV1MastersDepartmentsDepartmentIdDeleteResponses];
+
+export type GetDepartmentApiV1MastersDepartmentsDepartmentIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Department Id
+         */
+        department_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/departments/{department_id}';
+};
+
+export type GetDepartmentApiV1MastersDepartmentsDepartmentIdGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the departments.read permission.
+     */
+    403: unknown;
+    /**
+     * No such department.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetDepartmentApiV1MastersDepartmentsDepartmentIdGetError = GetDepartmentApiV1MastersDepartmentsDepartmentIdGetErrors[keyof GetDepartmentApiV1MastersDepartmentsDepartmentIdGetErrors];
+
+export type GetDepartmentApiV1MastersDepartmentsDepartmentIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: DepartmentItem;
+};
+
+export type GetDepartmentApiV1MastersDepartmentsDepartmentIdGetResponse = GetDepartmentApiV1MastersDepartmentsDepartmentIdGetResponses[keyof GetDepartmentApiV1MastersDepartmentsDepartmentIdGetResponses];
+
+export type UpdateDepartmentApiV1MastersDepartmentsDepartmentIdPatchData = {
+    body: UpdateDepartmentRequest;
+    path: {
+        /**
+         * Department Id
+         */
+        department_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/departments/{department_id}';
+};
+
+export type UpdateDepartmentApiV1MastersDepartmentsDepartmentIdPatchErrors = {
+    /**
+     * An empty edit (no values submitted).
+     */
+    400: unknown;
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the departments.manage permission.
+     */
+    403: unknown;
+    /**
+     * No such department.
+     */
+    404: unknown;
+    /**
+     * A classification that is not one of the two.
+     */
+    422: unknown;
+};
+
+export type UpdateDepartmentApiV1MastersDepartmentsDepartmentIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: DepartmentItem;
+};
+
+export type UpdateDepartmentApiV1MastersDepartmentsDepartmentIdPatchResponse = UpdateDepartmentApiV1MastersDepartmentsDepartmentIdPatchResponses[keyof UpdateDepartmentApiV1MastersDepartmentsDepartmentIdPatchResponses];
+
+export type ListDesignationsApiV1MastersDesignationsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/masters/designations';
+};
+
+export type ListDesignationsApiV1MastersDesignationsGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the designations.read permission.
+     */
+    403: unknown;
+};
+
+export type ListDesignationsApiV1MastersDesignationsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: DesignationListResponse;
+};
+
+export type ListDesignationsApiV1MastersDesignationsGetResponse = ListDesignationsApiV1MastersDesignationsGetResponses[keyof ListDesignationsApiV1MastersDesignationsGetResponses];
+
+export type CreateDesignationApiV1MastersDesignationsPostData = {
+    body: CreateDesignationRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/masters/designations';
+};
+
+export type CreateDesignationApiV1MastersDesignationsPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the designations.manage permission.
+     */
+    403: unknown;
+    /**
+     * A designation with this code already exists.
+     */
+    409: unknown;
+    /**
+     * Shape errors, or a department/discipline that does not exist.
+     */
+    422: unknown;
+};
+
+export type CreateDesignationApiV1MastersDesignationsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: DesignationItem;
+};
+
+export type CreateDesignationApiV1MastersDesignationsPostResponse = CreateDesignationApiV1MastersDesignationsPostResponses[keyof CreateDesignationApiV1MastersDesignationsPostResponses];
+
+export type DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Designation Id
+         */
+        designation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/designations/{designation_id}';
+};
+
+export type DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the designations.manage permission.
+     */
+    403: unknown;
+    /**
+     * No such designation.
+     */
+    404: unknown;
+    /**
+     * Something still references this designation.
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteError = DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteErrors[keyof DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteErrors];
+
+export type DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteResponse = DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteResponses[keyof DeleteDesignationApiV1MastersDesignationsDesignationIdDeleteResponses];
+
+export type GetDesignationApiV1MastersDesignationsDesignationIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Designation Id
+         */
+        designation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/designations/{designation_id}';
+};
+
+export type GetDesignationApiV1MastersDesignationsDesignationIdGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the designations.read permission.
+     */
+    403: unknown;
+    /**
+     * No such designation.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetDesignationApiV1MastersDesignationsDesignationIdGetError = GetDesignationApiV1MastersDesignationsDesignationIdGetErrors[keyof GetDesignationApiV1MastersDesignationsDesignationIdGetErrors];
+
+export type GetDesignationApiV1MastersDesignationsDesignationIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: DesignationItem;
+};
+
+export type GetDesignationApiV1MastersDesignationsDesignationIdGetResponse = GetDesignationApiV1MastersDesignationsDesignationIdGetResponses[keyof GetDesignationApiV1MastersDesignationsDesignationIdGetResponses];
+
+export type UpdateDesignationApiV1MastersDesignationsDesignationIdPatchData = {
+    body: UpdateDesignationRequest;
+    path: {
+        /**
+         * Designation Id
+         */
+        designation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/designations/{designation_id}';
+};
+
+export type UpdateDesignationApiV1MastersDesignationsDesignationIdPatchErrors = {
+    /**
+     * An empty edit (no values submitted).
+     */
+    400: unknown;
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the designations.manage permission.
+     */
+    403: unknown;
+    /**
+     * No such designation.
+     */
+    404: unknown;
+    /**
+     * A department or discipline that does not exist.
+     */
+    422: unknown;
+};
+
+export type UpdateDesignationApiV1MastersDesignationsDesignationIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: DesignationItem;
+};
+
+export type UpdateDesignationApiV1MastersDesignationsDesignationIdPatchResponse = UpdateDesignationApiV1MastersDesignationsDesignationIdPatchResponses[keyof UpdateDesignationApiV1MastersDesignationsDesignationIdPatchResponses];
+
+export type ListDisciplinesApiV1MastersDisciplinesGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/masters/disciplines';
+};
+
+export type ListDisciplinesApiV1MastersDisciplinesGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the disciplines.read permission.
+     */
+    403: unknown;
+};
+
+export type ListDisciplinesApiV1MastersDisciplinesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: DisciplineListResponse;
+};
+
+export type ListDisciplinesApiV1MastersDisciplinesGetResponse = ListDisciplinesApiV1MastersDisciplinesGetResponses[keyof ListDisciplinesApiV1MastersDisciplinesGetResponses];
+
+export type CreateDisciplineApiV1MastersDisciplinesPostData = {
+    body: CreateDisciplineRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/masters/disciplines';
+};
+
+export type CreateDisciplineApiV1MastersDisciplinesPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the disciplines.manage permission.
+     */
+    403: unknown;
+    /**
+     * A discipline with this code already exists.
+     */
+    409: unknown;
+    /**
+     * Shape errors in the submitted fields.
+     */
+    422: unknown;
+};
+
+export type CreateDisciplineApiV1MastersDisciplinesPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: DisciplineItem;
+};
+
+export type CreateDisciplineApiV1MastersDisciplinesPostResponse = CreateDisciplineApiV1MastersDisciplinesPostResponses[keyof CreateDisciplineApiV1MastersDisciplinesPostResponses];
+
+export type DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Discipline Id
+         */
+        discipline_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/disciplines/{discipline_id}';
+};
+
+export type DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the disciplines.manage permission.
+     */
+    403: unknown;
+    /**
+     * No such discipline.
+     */
+    404: unknown;
+    /**
+     * A designation still names this discipline.
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteError = DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteErrors[keyof DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteErrors];
+
+export type DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteResponse = DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteResponses[keyof DeleteDisciplineApiV1MastersDisciplinesDisciplineIdDeleteResponses];
+
+export type GetDisciplineApiV1MastersDisciplinesDisciplineIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Discipline Id
+         */
+        discipline_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/disciplines/{discipline_id}';
+};
+
+export type GetDisciplineApiV1MastersDisciplinesDisciplineIdGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the disciplines.read permission.
+     */
+    403: unknown;
+    /**
+     * No such discipline.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetDisciplineApiV1MastersDisciplinesDisciplineIdGetError = GetDisciplineApiV1MastersDisciplinesDisciplineIdGetErrors[keyof GetDisciplineApiV1MastersDisciplinesDisciplineIdGetErrors];
+
+export type GetDisciplineApiV1MastersDisciplinesDisciplineIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: DisciplineItem;
+};
+
+export type GetDisciplineApiV1MastersDisciplinesDisciplineIdGetResponse = GetDisciplineApiV1MastersDisciplinesDisciplineIdGetResponses[keyof GetDisciplineApiV1MastersDisciplinesDisciplineIdGetResponses];
+
+export type UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchData = {
+    body: UpdateDisciplineRequest;
+    path: {
+        /**
+         * Discipline Id
+         */
+        discipline_id: string;
+    };
+    query?: never;
+    url: '/api/v1/masters/disciplines/{discipline_id}';
+};
+
+export type UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchErrors = {
+    /**
+     * An empty edit (no values submitted).
+     */
+    400: unknown;
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the disciplines.manage permission.
+     */
+    403: unknown;
+    /**
+     * No such discipline.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchError = UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchErrors[keyof UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchErrors];
+
+export type UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: DisciplineItem;
+};
+
+export type UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchResponse = UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchResponses[keyof UpdateDisciplineApiV1MastersDisciplinesDisciplineIdPatchResponses];
 
 export type ClearAllApiV1NotificationsDeleteData = {
     body?: never;

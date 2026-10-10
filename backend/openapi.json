@@ -210,7 +210,16 @@
               "permission.delete",
               "setting.update",
               "file.create",
-              "file.delete"
+              "file.delete",
+              "discipline.create",
+              "discipline.update",
+              "discipline.delete",
+              "department.create",
+              "department.update",
+              "department.delete",
+              "designation.create",
+              "designation.update",
+              "designation.delete"
             ],
             "items": {
               "type": "string"
@@ -226,7 +235,10 @@
               "role",
               "permission",
               "setting",
-              "file"
+              "file",
+              "discipline",
+              "department",
+              "designation"
             ],
             "items": {
               "type": "string"
@@ -348,6 +360,93 @@
           "deleted"
         ],
         "title": "ClearAllResponse",
+        "type": "object"
+      },
+      "CreateDepartmentRequest": {
+        "properties": {
+          "classification": {
+            "enum": [
+              "HEAD_OFFICE",
+              "SITE"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "classification"
+        ],
+        "title": "CreateDepartmentRequest",
+        "type": "object"
+      },
+      "CreateDesignationRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "department_id": {
+            "format": "uuid",
+            "title": "Department Id",
+            "type": "string"
+          },
+          "discipline_id": {
+            "format": "uuid",
+            "title": "Discipline Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "department_id",
+          "discipline_id"
+        ],
+        "title": "CreateDesignationRequest",
+        "type": "object"
+      },
+      "CreateDisciplineRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "CreateDisciplineRequest",
         "type": "object"
       },
       "CreatePermissionRequest": {
@@ -494,6 +593,60 @@
         "title": "CreateUserResponse",
         "type": "object"
       },
+      "DepartmentItem": {
+        "properties": {
+          "classification": {
+            "enum": [
+              "HEAD_OFFICE",
+              "SITE"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "classification",
+          "is_active"
+        ],
+        "title": "DepartmentItem",
+        "type": "object"
+      },
+      "DepartmentListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DepartmentItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DepartmentListResponse",
+        "type": "object"
+      },
       "DependencyCheck": {
         "description": "One dependency's answer, and whether the application needs it up.",
         "properties": {
@@ -520,6 +673,111 @@
           "required"
         ],
         "title": "DependencyCheck",
+        "type": "object"
+      },
+      "DesignationItem": {
+        "description": "One job title and the two rows it belongs to.\n\nThe references are ids, not nested objects: the list the screen needs is\nalready loaded, so a dialog joins them client-side against the two lists it\nhas. Nesting them here would make every response carry the same department\ntwice and force a second way to read it.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "department_id": {
+            "format": "uuid",
+            "title": "Department Id",
+            "type": "string"
+          },
+          "discipline_id": {
+            "format": "uuid",
+            "title": "Discipline Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "department_id",
+          "discipline_id",
+          "is_active"
+        ],
+        "title": "DesignationItem",
+        "type": "object"
+      },
+      "DesignationListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DesignationItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DesignationListResponse",
+        "type": "object"
+      },
+      "DisciplineItem": {
+        "description": "One discipline, as the list and the edit dialog show it.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "is_active"
+        ],
+        "title": "DisciplineItem",
+        "type": "object"
+      },
+      "DisciplineListResponse": {
+        "description": "The whole list, sorted by code — the order the service returns and the\nonly order the screens have to agree on.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DisciplineListResponse",
         "type": "object"
       },
       "EngineHealthResponse": {
@@ -1150,6 +1408,141 @@
           "unread_count"
         ],
         "title": "UnreadCountResponse",
+        "type": "object"
+      },
+      "UpdateDepartmentRequest": {
+        "additionalProperties": false,
+        "description": "The classification is editable here, unlike the code: it is an\nattribute *of* the row, and a head office that is reclassified as a site\nis a correction, not a new identity.",
+        "properties": {
+          "classification": {
+            "anyOf": [
+              {
+                "enum": [
+                  "HEAD_OFFICE",
+                  "SITE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateDepartmentRequest",
+        "type": "object"
+      },
+      "UpdateDesignationRequest": {
+        "additionalProperties": false,
+        "description": "The two references are editable: a title that moves to another\ndepartment is the same title, and nothing points at a designation yet —\nwhen D014's employees do, a move stays this cheap, because the reference\nis an id the row carries rather than a name stored beside it.",
+        "properties": {
+          "department_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department Id"
+          },
+          "discipline_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline Id"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateDesignationRequest",
+        "type": "object"
+      },
+      "UpdateDisciplineRequest": {
+        "additionalProperties": false,
+        "description": "Partial edit: the name and the active flag, and nothing else. The flag\nis how a discipline that is still referenced is retired — the delete\nroute refuses while a designation names it.",
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateDisciplineRequest",
         "type": "object"
       },
       "UpdateMeRequest": {
@@ -3100,6 +3493,685 @@
         "summary": "Liveness probe",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/masters/departments": {
+      "get": {
+        "description": "Every department, deactivated ones included, sorted by code.",
+        "operationId": "list_departments_api_v1_masters_departments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the departments.read permission."
+          }
+        },
+        "summary": "List the departments",
+        "tags": [
+          "masters"
+        ]
+      },
+      "post": {
+        "operationId": "create_department_api_v1_masters_departments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDepartmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the departments.manage permission."
+          },
+          "409": {
+            "description": "A department with this code already exists."
+          },
+          "422": {
+            "description": "Shape errors, or a classification that is not one of the two."
+          }
+        },
+        "summary": "Create a department",
+        "tags": [
+          "masters"
+        ]
+      }
+    },
+    "/api/v1/masters/departments/{department_id}": {
+      "delete": {
+        "operationId": "delete_department_api_v1_masters_departments__department_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "department_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Department Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the departments.manage permission."
+          },
+          "404": {
+            "description": "No such department."
+          },
+          "409": {
+            "description": "A designation still names this department."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete an unused department",
+        "tags": [
+          "masters"
+        ]
+      },
+      "get": {
+        "operationId": "get_department_api_v1_masters_departments__department_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "department_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Department Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the departments.read permission."
+          },
+          "404": {
+            "description": "No such department."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One department",
+        "tags": [
+          "masters"
+        ]
+      },
+      "patch": {
+        "description": "The name, the classification and the active flag. The classification is\neditable — it is an attribute of the row, unlike the code.",
+        "operationId": "update_department_api_v1_masters_departments__department_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "department_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Department Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDepartmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepartmentItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "An empty edit (no values submitted)."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the departments.manage permission."
+          },
+          "404": {
+            "description": "No such department."
+          },
+          "422": {
+            "description": "A classification that is not one of the two."
+          }
+        },
+        "summary": "Rename, reclassify or deactivate a department",
+        "tags": [
+          "masters"
+        ]
+      }
+    },
+    "/api/v1/masters/designations": {
+      "get": {
+        "description": "Every designation, deactivated ones included, sorted by code.",
+        "operationId": "list_designations_api_v1_masters_designations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignationListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the designations.read permission."
+          }
+        },
+        "summary": "List the designations",
+        "tags": [
+          "masters"
+        ]
+      },
+      "post": {
+        "operationId": "create_designation_api_v1_masters_designations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDesignationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignationItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the designations.manage permission."
+          },
+          "409": {
+            "description": "A designation with this code already exists."
+          },
+          "422": {
+            "description": "Shape errors, or a department/discipline that does not exist."
+          }
+        },
+        "summary": "Create a designation",
+        "tags": [
+          "masters"
+        ]
+      }
+    },
+    "/api/v1/masters/designations/{designation_id}": {
+      "delete": {
+        "operationId": "delete_designation_api_v1_masters_designations__designation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "designation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Designation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the designations.manage permission."
+          },
+          "404": {
+            "description": "No such designation."
+          },
+          "409": {
+            "description": "Something still references this designation."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete an unused designation",
+        "tags": [
+          "masters"
+        ]
+      },
+      "get": {
+        "operationId": "get_designation_api_v1_masters_designations__designation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "designation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Designation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignationItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the designations.read permission."
+          },
+          "404": {
+            "description": "No such designation."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One designation",
+        "tags": [
+          "masters"
+        ]
+      },
+      "patch": {
+        "description": "The name, the two references and the active flag — not the code.",
+        "operationId": "update_designation_api_v1_masters_designations__designation_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "designation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Designation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDesignationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignationItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "An empty edit (no values submitted)."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the designations.manage permission."
+          },
+          "404": {
+            "description": "No such designation."
+          },
+          "422": {
+            "description": "A department or discipline that does not exist."
+          }
+        },
+        "summary": "Rename, move or deactivate a designation",
+        "tags": [
+          "masters"
+        ]
+      }
+    },
+    "/api/v1/masters/disciplines": {
+      "get": {
+        "description": "Every discipline, deactivated ones included, sorted by code.",
+        "operationId": "list_disciplines_api_v1_masters_disciplines_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisciplineListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the disciplines.read permission."
+          }
+        },
+        "summary": "List the disciplines",
+        "tags": [
+          "masters"
+        ]
+      },
+      "post": {
+        "operationId": "create_discipline_api_v1_masters_disciplines_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDisciplineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisciplineItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the disciplines.manage permission."
+          },
+          "409": {
+            "description": "A discipline with this code already exists."
+          },
+          "422": {
+            "description": "Shape errors in the submitted fields."
+          }
+        },
+        "summary": "Create a discipline",
+        "tags": [
+          "masters"
+        ]
+      }
+    },
+    "/api/v1/masters/disciplines/{discipline_id}": {
+      "delete": {
+        "operationId": "delete_discipline_api_v1_masters_disciplines__discipline_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "discipline_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Discipline Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the disciplines.manage permission."
+          },
+          "404": {
+            "description": "No such discipline."
+          },
+          "409": {
+            "description": "A designation still names this discipline."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete an unused discipline",
+        "tags": [
+          "masters"
+        ]
+      },
+      "get": {
+        "operationId": "get_discipline_api_v1_masters_disciplines__discipline_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "discipline_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Discipline Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisciplineItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the disciplines.read permission."
+          },
+          "404": {
+            "description": "No such discipline."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One discipline",
+        "tags": [
+          "masters"
+        ]
+      },
+      "patch": {
+        "description": "The name and the active flag. The code is the identity and is not\neditable — an attempt to send one is a 422 at the unknown field.",
+        "operationId": "update_discipline_api_v1_masters_disciplines__discipline_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "discipline_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Discipline Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDisciplineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisciplineItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "An empty edit (no values submitted)."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the disciplines.manage permission."
+          },
+          "404": {
+            "description": "No such discipline."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename or deactivate a discipline",
+        "tags": [
+          "masters"
         ]
       }
     },

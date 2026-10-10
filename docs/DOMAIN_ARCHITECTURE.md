@@ -157,8 +157,8 @@ The requirements that are constraints rather than conventions, and where each on
 **Migration numbering.** The next revision is always `max(head) + 1` from the directory
 (`ARCHITECTURE.md` §9), hand-numbered so it reads in order. This map reserves no numbers: a reservation the
 tree does not honour is drift, and the first task to add a table (`D002`) took `0010` — D001 added no revision,
-so the head stayed `0009` until then, and `D003` read `0011` and `D004` read `0012` from the directory
-rather than planning them.
+so the head stayed `0009` until then, and `D003` read `0011`, `D004` read `0012` and `D005` read `0013` from the
+directory rather than planning them.
 `0010_disciplines` is where the domain starts; a later task reads its number from the directory, never from a plan.
 
 ## 3. The action/scope matrix
@@ -266,14 +266,18 @@ find the rule instead of re-deriving a shape from the columns:
   executable. What *is* executable arrives with each task: D084 re-checks the API contract and the typed
   client, D085–D087 are the three suites, and D091 ("production-like deployment smoke and known limitations",
   "no unverified success claims") is the gate that reads this document against the shipped product.
-- **What is already checked, as of D004.** `APP_MODULES` is still empty and `PermissionCode` still has no domain
-  member (D005 owns the first codes); `alembic heads` is `0012`, with `disciplines` (D002), `departments` (D003)
-  and `designations` (D004) the only tables under it — and D004's is the first with a foreign key, the §2 rule
-  "two non-null FKs, one row per designation" now enforced by `ON DELETE RESTRICT` rather than by a service; and
-  `docs/FOUNDATION_REPORT.md` §3's boundary scan still finds no vocabulary of the reference product's *other*
-  domains in shipped code — a claim D003 had to narrow to keep true (`DECISIONS.md` C62), which is the shape this
-  bullet predicted. Those four facts are why D001 could be a document, and they are the four that stop being true,
-  one task at a time, from D002 onward — three have moved.
+- **What is already checked, as of D005.** `PermissionCode` now carries the six reference-table codes §3's matrix
+  registers for D005 (`disciplines`/`departments`/`designations` × `read`/`manage`, all global) and the routes that
+  enforce them exist at `/api/v1/masters/…` — while `APP_MODULES` is still empty, because the screens are D006's;
+  `alembic heads` is `0013` (D005's revision widens the audit vocabularies, it adds no table), with `disciplines`
+  (D002), `departments` (D003) and `designations` (D004) the only domain tables under it — D004's being the first
+  with a foreign key, and §3's "deactivate, never delete where a row is referenced" now reaching a caller as a
+  409 the service translates from `ON DELETE RESTRICT`; and `docs/FOUNDATION_REPORT.md` §3's boundary scan still
+  finds no vocabulary of the reference product's *other* domains in shipped code — a claim D003 had to narrow to
+  keep true (`DECISIONS.md` C62), which is the shape this bullet predicted, and one D005 kept by calling these
+  tables "reference tables" in shipped code rather than the phrase the narrowed list still forbids. Those four
+  facts are why D001 could be a document, and they are the four that stop being true, one task at a time, from
+  D002 onward — four have moved.
 
 ## 6. Where this document sits
 
@@ -283,4 +287,4 @@ find the rule instead of re-deriving a shape from the columns:
 | `ARCHITECTURE.md` §8 | the **foundation's** tables — this document is the domain's, hung off them |
 | `ADDING_A_MODULE.md` | the **recipe** for one module — this document is the whole set at once, with the boundaries between them |
 | `PRODUCT_SPEC.md` §3–§10 | the **requirements** — this document is their shape in tables and codes, and it adds no rule of its own |
-| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C63`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |
+| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C64`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |

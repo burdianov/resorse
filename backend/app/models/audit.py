@@ -69,6 +69,21 @@ AUDIT_ACTIONS: tuple[str, ...] = (
     # C34). Documents get their own task and their own actions.
     "file.create",
     "file.delete",
+    # The reference tables (D005). Three verbs per table, matching the three
+    # mutations the CRUD surface has — and *not* a fourth for deactivation:
+    # flipping `is_active` is an update, and the row's before/after diff is
+    # what records which way the flag went. A `*.deactivate` verb would put
+    # the same fact in two places and make "all changes to X" a two-action
+    # query.
+    "discipline.create",
+    "discipline.update",
+    "discipline.delete",
+    "department.create",
+    "department.update",
+    "department.delete",
+    "designation.create",
+    "designation.update",
+    "designation.delete",
 )
 
 # The entity a row is about, same idea as the actions.
@@ -80,6 +95,12 @@ AUDIT_ENTITY_TYPES: tuple[str, ...] = (
     "permission",
     "setting",
     "file",
+    # The reference tables (D005). Singular, like every other member: the entity
+    # type names the *kind* of row the event is about, which is what the
+    # viewer filters on.
+    "discipline",
+    "department",
+    "designation",
 )
 
 

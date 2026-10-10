@@ -78,6 +78,13 @@ ADMIN_GRANTS = tuple(code for code in ALL_PERMISSION_CODES if code not in _ADMIN
 # Read-only means read-only: every `.read` code, plus the two self-service
 # actions every account must be able to perform on its *own* data
 # (notifications) and the artifact-producing `reports.generate`.
+#
+# The tuple is written out rather than derived — `tests/test_seed.py` spells
+# the same set literally so a change here fails a test and gets a decision —
+# but its first clause is a rule, so the codes D005 registers are added with
+# them: the master-data lists are the vocabulary every other registry is read
+# against, which is exactly the oversight this role exists for. `admin` needs
+# no edit: its set is defined by subtraction from `ALL_PERMISSION_CODES`.
 VIEWER_GRANTS = (
     PermissionCode.USERS_READ,
     PermissionCode.ROLES_READ,
@@ -88,6 +95,9 @@ VIEWER_GRANTS = (
     PermissionCode.NOTIFICATIONS_MANAGE_OWN,
     PermissionCode.FILES_READ,
     PermissionCode.REPORTS_GENERATE,
+    PermissionCode.DISCIPLINES_READ,
+    PermissionCode.DEPARTMENTS_READ,
+    PermissionCode.DESIGNATIONS_READ,
 )
 
 
