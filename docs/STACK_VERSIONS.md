@@ -77,7 +77,7 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `@testing-library/jest-dom` | **7.0.1** | 2026-08-09 | engines `node >=22` |
 | `msw` | **3.0.2** | 2026-10-03 | engines `node >=22.12`; peer `vite >=6` |
 | `@hey-api/openapi-ts` | **0.99.0** | 2026-06-22 | engines `node >=22.18.0`; peers `typescript >=5.5.3 \|\| >=6.0.0` — the OpenAPI→TypeScript generator, added in F018. Dev-only CLI, never a runtime dependency. |
-| `@playwright/test` | **1.64.0** | 2026-10-07 | engines `node >=20` |
+| `@playwright/test` | **1.64.0** | 2026-10-07 | engines `node >=20` (installed 24.14.0 ✓). In use from **F057** — the browser suite in `frontend/tests/e2e/`; Chromium build **1248**, installed by `pnpm exec playwright install chromium`. The suite runs it headless through the config's default project, so `chromium_headless_shell-1248` is what a run actually launches. |
 | `@axe-core/playwright` | **4.13.0** | 2026-08-11 | |
 | `@types/react` | **19.3.0** | 2026-09-09 | matches `react` |
 | `@types/react-dom` | **19.3.0** | 2026-09-09 | |
@@ -197,6 +197,22 @@ Every one of these was checked against the published manifests, not inferred:
   jsdom/node path (`msw/node` `setupServer`) is unaffected: the full suite passes with msw 3.0.2, and no second
   copy is installed. If a future Vitest version starts importing msw outside browser mode, the fallback is
   msw 2.x.
+- **The browser suite adds no backend dependency (observed F057).** `@playwright/test` is a frontend
+  devDependency; the API it drives is the real one, started by the config's `webServer` as the same
+  `uvicorn app.main:app` a deployment runs. §4's Python set is unchanged by F057. The PDF step exports through
+  the operator's existing in-process renderer, so no Gotenberg container is involved.
+- **One isolated stack, three ports, one deliberate configuration override (observed F057).** The run builds
+  its own database (`app_e2e`, dropped and migrated to head by `backend/scripts/e2e_database.py`) and starts
+  the API on **8001**, the Vite dev server on **5174** and a `vite preview` of the real `dist/` on **4174** —
+  a developer's 8000/5173 stack keeps running untouched, and `reuseExistingServer` is `false` on all three
+  so a stale server can never be reused. `ALLOWED_ORIGINS` is widened to those two origins **for the API
+  process only**, which is also the evidence that CSRF checks the `Origin` header rather than trusting a
+  proxy. Both cookies are `__Host-`-prefixed and therefore **port-agnostic**, so the session created on 5174
+  is the session the 4174 preview receives — exactly what step 11's deep link needs. The single behavioural
+  override is `LOGIN_MAX_ATTEMPTS=200` (default 5 per 15 minutes per source address, `services/auth.py`):
+  BP-10.4's workflow signs in more than five times from 127.0.0.1, and a successful login deliberately does
+  not clear the address bucket. It is set in the config's `webServer.env` for that process only; step 9 still
+  takes one deliberate failed sign-in through the real form.
 
 ## 7. Package manager — operator override
 

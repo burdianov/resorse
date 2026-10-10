@@ -114,6 +114,8 @@ and prints the real URL; uvicorn fails with a clear error.
 | Inspect the stored theme (F010) | browser console: `localStorage.getItem('app.theme')` | `"light"`, `"dark"` or `"system"` |
 | Force a theme by hand (F009) | browser console: `document.documentElement.classList.add('dark')` / `.remove('dark')` | page repaints; a dark scrollbar on a light page would mean the token theme is broken |
 | Dependencies current | `cd D:\resors\frontend; pnpm install` · `cd D:\resors\backend; uv sync` | pnpm: "Already up to date" · uv: "Audited 64 packages" |
+| **Browser suite (F057)** | `cd D:\resors; docker compose up -d --wait postgres`; `cd D:\resors\frontend; pnpm exec playwright install chromium` (once per machine); `pnpm exec playwright test` | **11 passed**, ~1.1–1.3 min of specs plus the frontend build the config runs first (~3 min total). **Expect console noise, not failure**: the run logs the two findings F058 owns (React's "`<li>` cannot be a descendant of `<li>`" for the breadcrumb separator, and base-ui's `nativeButton` warning at `not-found.tsx`); they are recorded, not asserted, and the exit code stays 0. BP-10.4's eleven steps are one serial file (`tests/e2e/workflow.spec.ts`) against a **real API and a freshly migrated real PostgreSQL**: `backend/scripts/e2e_database.py` drops, creates and migrates `app_e2e` and bootstraps its super-admin, then the config starts the API on **8001**, Vite dev on **5174** and `vite preview` of the real `dist/` on **4174**. It never touches `app_dev` and never touches a stack on 8000/5173; credentials are generated per run into the git-ignored `frontend/tests/e2e/.state/`. The HTML report lands in `frontend/playwright-report/`; a failure keeps its screenshot in `frontend/test-results/` (**`error-context.md` snapshots only the test's first page** — read multi-page failures from the screenshots) |
+| **Component lab, report and downloads by hand (F054/F053/F050)** | in a **dev** build (`pnpm run dev`), signed in as an `admin`: the sidebar shows a **Tools** group holding **Component Lab**, and `/tools/components` renders the primitives, the charts and the files section — upload a real file, preview the text one, download it under the server's own name, delete it through the confirm dialog. In a **production** build the same path must 404 (the dev-only-exclusion row above checks that without a browser). By hand at `localhost:8000/docs`: F053's export (`/admin/users` → **Export PDF** → `user-directory-<date>.pdf`, and the 1,000-row sentence if the selection is too wide) and F050's downloads (`nosniff`, `private, no-store`; a foreign file id → **404**) |
 
 ### Repository
 
@@ -128,12 +130,9 @@ and prints the real URL; uvicorn fails with a clear error.
 
 | Suite | Arrives with |
 |---|---|
-| Frontend lint / format | F055 |
-| Backend lint / types as a CI gate (Ruff, mypy) | F056 — the commands themselves work today, see above |
-| Backend integration suite as a **CI gate** (the fixtures themselves are live — see the backend-tests row) | F056 |
-| End-to-end (Playwright) | F057 |
 | Accessibility (axe) | F058 |
 | Production Docker Compose | F059 |
+| **CI enforcement** of the gates (lint, format, types, both test legs, coverage, E2E drift) | F061 — every command works today (F055/F056/F057, see above); what is missing is the pipeline that runs them on a change |
 
 Nothing in this table works yet — do not run it. Each row moves up into the sections above as its task lands.
 

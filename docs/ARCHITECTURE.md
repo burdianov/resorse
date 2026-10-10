@@ -829,6 +829,44 @@ accent on notices that still need attention. Three decisions carry the behaviour
   `link` navigates **through the router**: the backend already validated it as an internal path
   (F045's two-layer rule), so an in-app navigation is structural, never a raw anchor.
 
+### The browser suite (F057)
+
+`frontend/tests/e2e/workflow.spec.ts` walks BP-10.4's eleven steps — anonymous deep link, bootstrap
+admin, account creation and role assignment, authorization in the sidebar *and* at the route, a
+permission edit landing without a stale cache, the users table's search/sort/pagination/column
+memory, theme and responsive shell with `Ctrl/Meta+K`, notifications with cross-account isolation,
+profile and password, the report export, and the production-style static server — against a real
+API and a real PostgreSQL. Three decisions shape it:
+
+- **Nothing is mocked, because the browser is the subject.** This is the only test in the project
+  that exercises the `__Host-session` cookie, the double-submit `__Host-csrf` token and the
+  `Origin` allow-list *as a browser sends them*: the SPA proxies `/api` through Vite, so a mutation's
+  `Origin` is the frontend's (F032/§2), and the preview server on 4174 receives the session created
+  on 5174 because both cookies are `__Host-`-prefixed and therefore port-agnostic. A helper that
+  injected a cookie would prove none of it, so every sign-in goes through the form.
+- **The database is the run's own.** `backend/scripts/e2e_database.py` drops, creates and migrates
+  `app_e2e` to head and bootstraps the super-admin — the workflow's own first step, performed by the
+  real bootstrap core rather than the operator CLI — then fills the directory past one page. Two
+  guards make a destructive script safe: the name must end in `_e2e`, and it is refused if it equals
+  the configured `DATABASE_URL`'s database. Credentials are generated per run and reach the specs
+  through an ignored state file; no `.env` value and no committed password is involved.
+- **The run is a sequence, and parallelising it would test a state the workflow never produces.**
+  One worker, no retries, `describe.serial`: step 4's forbidden URL needs step 3's roles, step 8's
+  notification is the admin password reset the step itself performs (the one event this platform
+  notifies about, C34 — and that reset ends the member's sessions), and step 9 signs in with the
+  password step 8 handed out. Traces are off on purpose — a trace embeds DOM
+  snapshots, and a snapshot of the login screen carries the password typed into it — while failures
+  keep a screenshot, where a `type=password` field shows dots.
+
+The suite's first run paid for itself twice over. It surfaced an ordering contract the app's
+forced-change flow imposes: a request issued while the session rotation is still in flight presents a
+superseded token, which the server correctly reads as reuse and answers by revoking the whole session
+family — so `changeForcedPassword` returns only once the gate has been left, which is where that
+contract belongs rather than in each caller's memory. And it surfaced the roles screen's phantom
+"unsaved change" after a successful save, where the draft is re-seeded from the pre-request cache
+entry (recorded as a finding; the grant itself is persisted — F057 changed no application code). Accessibility scans and screenshot baselines are **F058**, which is why
+`@axe-core/playwright` is installed but not yet exercised.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1527,6 +1565,29 @@ on "too many values to unpack". Two lessons, one entry: a test with real commits
 `actor_email` is what makes such cleanup exact even after the user row is gone. The general rule:
 rolled-back fixtures make cleanup free; the rare own-connection test pays for that realism by
 owning every row it touches.
+
+### Reading a browser failure, and what the forms actually answer to (F057)
+
+Three traps cost time in F057, and none is visible from the code alone. **Playwright's
+`error-context.md` snapshots only the *first* page the test opened** — in an eleven-step workflow that
+is the login screen, so a failure at step 9 shows the wrong DOM entirely; the **screenshot** in
+`frontend/test-results/` is the evidence for anything after the first navigation (and to dump a live
+accessible tree, `locator.ariaSnapshot()` beats guessing at roles). **The login form is `noValidate`
+with no HTML `required` attribute** — the requirement reaches assistive technology through the
+accessible *name* the label component builds (`textbox "Email (required)"`, the visible `*` being
+`aria-hidden`), so `toHaveAttribute('required', …)` fails on a form that is in fact correct; assert
+the name. The same lesson applies to any base-ui control whose `aria-*` wiring the kit adds rather
+than the markup carrying it: read the snapshot before writing the assertion.
+
+**A focus-trap assertion is a race unless it is polled.** base-ui renders a visually hidden focus
+guard before and after the popup (`[data-base-ui-focus-guard]`, `tabindex="0"`) and, when Tab reaches
+it, hands focus to the first (or last) tabbable element **on the next animation frame** — so for one
+frame after the key that wraps, `document.activeElement` is the guard, which is a *sibling* of the
+popup and therefore not "inside" `[role=dialog]`. A one-shot read taken right after
+`keyboard.press('Tab')` fails at that boundary whenever the read wins the frame, which happened once
+in two runs of an unchanged tree (press 11 of 12) and reads exactly like an escaping trap while the
+trap is working. `expect.poll` on "focus is inside the dialog" is the assertion that means what the
+test intends: it settles for the guard case and still fails for a real escape, which never settles.
 
 ## 13. Non-goals and deferred choices
 

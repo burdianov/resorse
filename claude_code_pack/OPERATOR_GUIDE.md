@@ -43,13 +43,24 @@ until its owning task lands — the agent must say so rather than hand you a com
 | Backend coverage gate | `cd backend && uv run python -m scripts.coverage_gate` | **live (F056)** — runs the whole suite under branch coverage, then enforces three floors; exit 0 means all three were met |
 | Migration smoke | `cd backend && uv run alembic upgrade head` then `alembic downgrade base` | F023 |
 | Dev database at head | `cd backend && uv run alembic current` → expect `(head)` | now — see the note below |
-| Browser E2E (Playwright) | `cd frontend && pnpm exec playwright test` | F057 |
+| Browser E2E (Playwright) | `cd frontend && pnpm exec playwright test` | **live (F057)** — see the note below: it needs the Postgres container up and the browser installed |
 | Accessibility (axe) | `cd frontend && pnpm run test:a11y` | F058 |
-| PDF / Gotenberg smoke | `cd backend && uv run pytest tests -q -k report` | F052 |
+| PDF smoke (F051 engine + F053 export) | `cd backend && uv run pytest tests -q -k report` | **live (F051/F053)** — the report PDF is rendered **in-process** by ReportLab, so this needs no Gotenberg |
+| DOCX conversion (Gotenberg adapter) | `cd backend && uv run pytest tests -q -k conversion` | **live (F052)** — the adapter's healthy/unavailable paths are mocked, so the container is not required. The one **live** conversion test is opt-in: `docker compose up -d --wait gotenberg` and set `RESORS_LIVE_GOTENBERG=1`, otherwise it skips. |
 | Production compose | `docker compose -f docker-compose.prod.yml up --build` | F059 |
 
 **At a gate**, the agent hands you the exact subset for that gate (see the gate list below) rather than the
 whole table. Never assume a check passed until you ran it; the agent must not claim it did.
+
+**The browser suite (F057) needs two things first.** `docker compose up -d --wait postgres` — it builds its own
+database (`app_e2e`) on that server, and there is no way to point it at `app_dev`; and
+`cd frontend && pnpm exec playwright install chromium` once per machine (Chromium build **1248**, matching
+`@playwright/test` 1.64.0). It starts its own API on **8001**, dev server on **5174** and a `vite preview` of the
+real `dist/` on **4174**, so it never touches a stack you have running on 8000/5173 — but it does build the
+frontend, so a run takes a couple of minutes before the first spec executes. Credentials are generated per run
+into `frontend/tests/e2e/.state/` (git-ignored); it never reads `.env` or `LOCAL_CREDENTIALS.md`. A run leaves its
+evidence behind: `frontend/playwright-report/` holds the HTML report and `frontend/test-results/` the failure
+screenshots. Both are git-ignored and excluded from `format:check`.
 
 **Keep the dev database at head.** A new migration is exercised on `app_test` when it lands, but `app_dev` only
 moves when someone upgrades it — so a table the backend starts reading can be missing from your running server

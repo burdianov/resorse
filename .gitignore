@@ -42,6 +42,11 @@ blob-report/
 test-results/
 backend/htmlcov/
 
+# Per-run browser-test state (F057): the super-admin password the preparation
+# generated, and the accounts the workflow created. Regenerated on every run,
+# never shared, never committed.
+frontend/tests/e2e/.state/
+
 # --- Secrets and local configuration ---------------------------------------
 .env
 .env.*

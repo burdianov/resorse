@@ -6,6 +6,16 @@ import { defineConfig } from 'vitest/config'
 
 // Same-origin development: the SPA calls relative `/api/v1` and Vite proxies it
 // to the FastAPI dev server, so no CORS and first-party cookies (ARCHITECTURE §2).
+//
+// The target is configurable because the browser suite (F057) runs its own API
+// on its own port against its own database: a test must never talk to the
+// developer's server, and 8000 is what the operator is most likely to have
+// running. `preview` gets the same proxy as `server`: BP-10.4 step 11 serves the
+// real `dist/` from a static server, and a deep link there still has to reach
+// the API.
+const apiTarget = process.env.RESORS_API_TARGET ?? 'http://localhost:8000'
+const apiProxy = { '/api': { target: apiTarget, changeOrigin: true } }
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -15,12 +25,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-    },
+    proxy: apiProxy,
+  },
+  preview: {
+    proxy: apiProxy,
   },
   test: {
     environment: 'jsdom',
