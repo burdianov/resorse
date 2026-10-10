@@ -44,9 +44,11 @@ import type {
   ListRolesApiV1AdminRolesGetResponse,
   ListUsersApiV1AdminUsersGetResponse,
   UpdateUserApiV1AdminUsersUserIdPatchResponse,
+  UserDirectoryReportRequest,
 } from '@/lib/generated/api'
 
 import { CreateUserDialog, EditUserDialog, ResetPasswordDialog } from './user-dialogs'
+import { UserDirectoryReportAction } from './user-directory-report'
 
 /**
  * `/admin/users` — the user directory (F034, BIG-PROMPT §7.3).
@@ -77,9 +79,24 @@ import { CreateUserDialog, EditUserDialog, ResetPasswordDialog } from './user-di
  *   them — an enabled button that always 403s is a lie of the sort §1.2 bans.
  *   Last-super-admin protection is *not* mirrored (it needs a count the list
  *   does not carry): that refusal arrives as the server's 409 sentence.
+ * - **The PDF export is this screen's filter state, sent to the server**
+ *   (F053): `UserDirectoryReportAction` posts the same search/status/sort the
+ *   query above uses, so the file is the directory the reader is looking at.
+ *   It is gated on both codes the route demands, and it is the server that
+ *   decides which rows those filters select.
  */
 
 type StatusFilter = 'all' | 'active' | 'inactive'
+
+type ReportSortField = NonNullable<UserDirectoryReportRequest['sort']>
+
+/** The report API's sort vocabulary, as the directory's three sortable columns
+ *  map onto it (`last_login_at` is accepted by the API and not shown here). */
+const REPORT_SORT_FIELDS: readonly string[] = ['full_name', 'email', 'created_at', 'last_login_at']
+
+function isReportSort(id: string): id is ReportSortField {
+  return REPORT_SORT_FIELDS.includes(id)
+}
 
 function columnsFor(options: {
   isSelf: (user: AdminUserItem) => boolean
@@ -241,6 +258,20 @@ export function AdminUsersPage() {
     [pagination, globalFilter, status, sorting],
   )
 
+  // The same filters the table is showing, in the report API's terms (F053).
+  // The screen can only sort by a column it has, and every sortable one is a
+  // field the report accepts — the guard narrows the type rather than handling
+  // a case that occurs.
+  const reportRequest = useMemo<UserDirectoryReportRequest>(
+    () => ({
+      ...(globalFilter.trim() === '' ? {} : { search: globalFilter.trim() }),
+      ...(status === 'all' ? {} : { is_active: status === 'active' }),
+      sort: isReportSort(requestParams.sort) ? requestParams.sort : 'created_at',
+      order: requestParams.order,
+    }),
+    [globalFilter, status, requestParams],
+  )
+
   const usersQuery = useQuery({
     queryKey: queryKeys.admin.users({
       page: requestParams.page,
@@ -326,16 +357,24 @@ export function AdminUsersPage() {
       description="Every account in the directory, with its roles and status."
       breadcrumbs={<AppBreadcrumbs />}
       actions={
-        <PermissionGate permissions={['users.create']}>
-          <Button
-            onClick={() => {
-              setCreating(true)
-            }}
-          >
-            <UserPlusIcon />
-            Add user
-          </Button>
-        </PermissionGate>
+        <>
+          {/* Both codes the export route demands, so the button appears only
+              where the request would be answered (users.read is also what put
+              the caller on this page at all). */}
+          <PermissionGate permissions={['reports.generate', 'users.read']}>
+            <UserDirectoryReportAction filters={reportRequest} />
+          </PermissionGate>
+          <PermissionGate permissions={['users.create']}>
+            <Button
+              onClick={() => {
+                setCreating(true)
+              }}
+            >
+              <UserPlusIcon />
+              Add user
+            </Button>
+          </PermissionGate>
+        </>
       }
     />
   )

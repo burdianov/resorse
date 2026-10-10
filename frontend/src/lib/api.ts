@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AxiosRequestConfig } from 'axios'
+import type { AxiosError, AxiosRequestConfig } from 'axios'
 
 import { toApiError } from '@/lib/errors'
 
@@ -118,9 +118,36 @@ function resolveUnauthorized(handler: UnauthorizedHandler): Promise<boolean> {
   return reauthInFlight
 }
 
+/**
+ * Read back the server's sentence from a body that arrived as a `Blob`.
+ *
+ * `responseType: 'blob'` applies to the *whole* response, so a failed download
+ * hands its error body over as a Blob rather than as parsed JSON — and our error
+ * bodies are JSON, written for the user (a 409 that names the row limit). Left
+ * wrapped, that sentence is thrown away and the caller gets the generic
+ * per-status copy instead. F053's export is the first caller this matters for;
+ * the fix belongs here rather than in the feature, because every binary
+ * endpoint has the same shape.
+ *
+ * Only bodies the server typed as JSON are touched, and a body that turns out
+ * not to parse is left exactly as it arrived.
+ */
+async function unpackBlobErrorBody(error: AxiosError): Promise<void> {
+  const response = error.response
+  const body: unknown = response?.data
+  if (response === undefined || !(body instanceof Blob)) return
+  if (!body.type.startsWith('application/json')) return
+  try {
+    response.data = JSON.parse(await body.text())
+  } catch {
+    // Not JSON after all — `toApiError` falls back to the per-status copy.
+  }
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: unknown) => {
+    if (axios.isAxiosError(error)) await unpackBlobErrorBody(error)
     const apiError = toApiError(error)
     const config = axios.isAxiosError(error) ? error.config : undefined
 

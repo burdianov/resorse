@@ -9,37 +9,36 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F053
-in claude_code_pack/TASKS.md. Implement F053 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F054
+in claude_code_pack/TASKS.md. Implement F054 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F054.
+me the operator checks. Do not push. Do not start F055.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F052 — DOCX conversion. Committed with this handoff (`git log -1 --format="%h %s"`).
-  BP-7.9b's engines are whole: `reports.render_docx` (docxtpl, template built in code, escaping left to
-  `autoescape`) and `app/services/conversion.py` — the **only outbound HTTP in this stack**, a Gotenberg adapter
-  whose two refusals differ (`ConversionUnavailable`: refused/timeout/5xx; `ConversionRejected`: 4xx, empty, no
-  extension, over the cap, or **a 200 whose body is not a PDF**), whose `health()` answers a boolean rather than
-  raising. `httpx` is now an application dependency and Compose gained `gotenberg/gotenberg:8.37`; no route, so
-  **no OpenAPI change**. Recorded as C40.
-- **Previous task:** F051 — PDF engine. Commit **`9c4fdd8`** (`feat(F051): ...`) — `render_report`/`merge_pdfs`
-  with a *measured* page total, a repeated table header, and every value escaped; **no route** (C39).
-- **Next: F053 — User directory report.** It owns the endpoint, the `reports.generate` guard, the worker-thread
-  hand-off, the preview UI **and the caller of `conversion.convert_to_pdf`**. TASKS.md accept line: "Valid
-  data-scoped PDF test."
+- **Last completed:** F053 — User directory report. Committed with this handoff (`git log -1 --format="%h %s"`).
+  The stack's first report routes: `POST /api/v1/reports/user-directory` (`reports.generate` **and** `users.read`;
+  selects through the list endpoint's own predicate; rendered in a worker thread; **409** past 1,000 rows) and
+  `GET /api/v1/reports/engine-health` (`reports.self_test()` + `conversion.health()` — its first product caller),
+  plus the export and preview UI on `/admin/users`. OpenAPI and the generated client grew both routes. Recorded
+  as C41.
+- **Previous task:** F052 — DOCX conversion. Commit **`15e8cc9`** — the docxtpl renderer and the Gotenberg
+  adapter, the stack's only outbound HTTP; no route (C40). F051 (`9c4fdd8`) before it.
+- **Next: F054 — Frontend component lab.** TASKS.md: "Dev-only primitives and chart examples"; accept line
+  "Excluded from production nav". It is also the first consumer of the two file components F050 deferred (C38).
 - **Gates:** F016, F032, F047 and F048 are complete; operator gate results are **not recorded in this handoff**.
   **G-A3 (after F048) is due and is the operator's to run** (`OPERATOR_GUIDE.md` line 54); then **G-A4, after F063**.
 - **Blockers:** none recorded.
 - **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules (working-day calendar, rate
-  changes within a month, percentage rules, revision semantics, and others). None is recorded as blocking F053;
+  changes within a month, percentage rules, revision semantics, and others). None is recorded as blocking F054;
   never treat one as approved or turn one into a confirmed rule, and if a task depends on one, stop and ask the
-  operator one precise question. Confirmed: C11–C40 (C40 is F052's).
+  operator one precise question. Confirmed: C11–C41 (C41 is F053's).
 - **Open item — the `/ready` endpoint is not built (BP-8.4b):** `conversion.health()` is the probe that belongs
-  behind it, but no task has built a readiness route — including F052, which adds no route. Do not report `/ready`
-  as existing; whichever task builds it should read `health()` rather than re-implement the call.
+  behind it, but no readiness route exists — F053's `reports/engine-health` reports the *report* engine (and the
+  converter behind it), which is a different question. Do not report `/ready` as existing; whichever task builds
+  it should read `health()` rather than re-implement the call.
 - **Open item — orphan objects:** the object is unlinked only *after* the caller's commit (and when it raises), so
   the residue is a process death in between — an unreferenced object, never a dangling row. No scheduler exists, so
   no sweep is built; never unlink before commit.
@@ -120,44 +119,45 @@ Detail: `docs/CARRIED_CONSTRAINTS.md` §6.
 - `cd D:\resors\backend; uv run pytest`
 
 **Ruff and mypy are runnable** — `cd D:\resors\backend; uv run ruff format --check <files>` / `uv run ruff check
-<files>` / `uv run mypy <files>` — and F052 ran all three on its touched files as focused checks. They are still
+<files>` / `uv run mypy <files>` — and F053 ran all three on its touched files as focused checks. They are still
 **not operator gate checks**: `OPERATOR_GUIDE.md` (lines 38–39) associates them with F056, which also adds CI
 enforcement. Frontend lint and format and the coverage gate are planned for F055.
 
 **Not yet available:** Playwright E2E (F057), axe accessibility (F058), production Compose (F059) — do not hand
-these to the operator as runnable until their task lands. **Test counts are historical** (recorded at F052, from
-the agent's focused subsets, never the whole suite): report the count you observe, not a historical one.
+these to the operator as runnable until their task lands. **Test counts are historical** (recorded at F053, from
+the agent's focused subsets): report the count you observe, not a historical one.
 
 ## 7. Operator verification commands
 
-Run these before F053 starts. The "F052 record" column is historical, not a current result.
+Run these before F054 starts. The "F053 record" column is historical, not a current result.
 
-| Check | Command | F052 record (historical) |
+| Check | Command | F053 record (historical) |
 |---|---|---|
-| Working tree | `git -C D:\resors status --short` | clean after F052's commit |
-| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F052): ...` (implementation + handoff together). Previous: `9c4fdd8 feat(F051): ...` |
+| Working tree | `git -C D:\resors status --short` | clean after F053's commit |
+| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F053): user directory report` (implementation + handoff together). Previous: `15e8cc9 feat(F052): ...` |
 | Backend health | `curl http://localhost:8000/api/v1/health` | `{"status":"ok",...}` |
-| Gotenberg (opt-in) | `curl http://localhost:3100/health`, then `$env:RESORS_LIVE_GOTENBERG=1; cd D:\resors\backend; uv run pytest tests/test_report_conversion.py -q -k live` | **not run by the agent at F052** — it needs a running Gotenberg (`docker compose up -d`), and it is the only test that proves LibreOffice actually ran |
-| F052 focused batch | `cd D:\resors\backend; uv run pytest tests/test_reports.py tests/test_report_conversion.py -q` | 42 passed, 1 skipped (observed by the agent at F052). The skip is the opt-in live conversion |
-| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F052 adds **no route**, so `backend/openapi.json` and `frontend/src/lib/generated/` are unchanged by it and a re-run should be byte-stable (observed by the agent at F052 — no regeneration was needed) |
-| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | **not run by the agent at F052** (F052 adds no migration). F049 record: clean, ending at `0009` (historical — never run this against `app_dev`) |
-| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | **not run by the agent at F052.** F048 record: exit 0, no diagnostics (historical) |
-| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **not run by the agent at F052.** F047 record: 498 passed (historical) |
-| Backend suite | `cd D:\resors\backend; uv run pytest` | **not run by the agent at F052.** F047 record: 246 passed (historical) |
+| Report engine (opt-in) | `curl http://localhost:8000/api/v1/reports/engine-health` with an admin session, and for the DOCX half `curl http://localhost:3100/health` then `$env:RESORS_LIVE_GOTENBERG=1; cd D:\resors\backend; uv run pytest tests/test_report_conversion.py -q -k live` | **not run by the agent at F053** — the first needs a signed-in session and the second a running Gotenberg (`docker compose up -d`); that one is still the only test that proves LibreOffice actually ran |
+| F053 focused batch | `cd D:\resors\backend; uv run pytest tests/test_reports_api.py tests/test_reports.py tests/test_report_conversion.py tests/test_admin_users.py -q` | 76 passed, 1 skipped (observed at F053; the skip is the opt-in live conversion). `tests/test_reports_api.py` alone: 14 |
+| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F053 **adds two routes**, so both artefacts were regenerated and are part of its commit; a re-run should be byte-stable (observed at F053) |
+| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | **not run by the agent at F053** (F053 adds no migration). F049 record: clean, ending at `0009` (historical — never run this against `app_dev`) |
+| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no diagnostics (observed at F053 — the agent ran the same `tsc --noEmit` the script runs) |
+| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check: the operator owns the result.** The agent ran it once at F053 while checking its own diff: 62 files, 539 passed. F047 record: 498 passed (historical) |
+| Backend suite | `cd D:\resors\backend; uv run pytest` | **a gate check; not run by the agent at F053.** F047 record: 246 passed (historical) |
 
-F052 adds **no route** either, so the end-to-end check — a report rendered, returned to a browser and previewed —
-still arrives with **F053**, together with the first caller of `convert_to_pdf`. F050's download checks (an
-`attachment` disposition with `nosniff` and `private, no-store`; a second account getting **404** for a foreign
-file id) remain worth running by hand at `http://localhost:8000/docs`. The full command history is in
-`docs/VERIFICATION_LOG.md` — grep for a task ID.
+**The end-to-end check F052 left open is now real.** Signed in as an `admin`, open `/admin/users`, set a filter and
+press **Export PDF**: the dialog should draw the document F053 rendered, and the download be named
+`user-directory-<date>.pdf` — the server's own name. A filter matching more than **1,000** accounts must show the
+server's sentence about the limit, not a status code. F050's download checks (an `attachment` disposition with
+`nosniff` and `private, no-store`; a second account getting **404** for a foreign file id) remain worth running by hand
+at `http://localhost:8000/docs`. The full command history is in `docs/VERIFICATION_LOG.md` — grep for a task ID.
 
 ## 8. Reference documents (read only the section a task needs)
 
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F053 is at about line 215 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C40; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F054 is at about line 219 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C41; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
 | `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend, §6 authorization, §7 extension boundaries, §12 implementation traps |

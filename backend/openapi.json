@@ -494,6 +494,34 @@
         "title": "CreateUserResponse",
         "type": "object"
       },
+      "EngineHealthResponse": {
+        "description": "What the report engine can do right now.\n\nTwo separate facts rather than one verdict, because they fail separately:\nthe PDF engine is in this process and the converter is another service, and\na caller that only needs a rendered PDF (the user directory) is not\naffected by a converter that is down. ``status`` is the headline a reader\nor a dashboard reads — ``degraded`` means at least one of them is not\navailable.",
+        "properties": {
+          "converter": {
+            "title": "Converter",
+            "type": "boolean"
+          },
+          "pdf_engine": {
+            "title": "Pdf Engine",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "pdf_engine",
+          "converter"
+        ],
+        "title": "EngineHealthResponse",
+        "type": "object"
+      },
       "FileItem": {
         "properties": {
           "category": {
@@ -1234,6 +1262,56 @@
           }
         },
         "title": "UpdateUserRequest",
+        "type": "object"
+      },
+      "UserDirectoryReportRequest": {
+        "description": "The filters the user directory is currently showing.",
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "order": {
+            "default": "desc",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Order",
+            "type": "string"
+          },
+          "search": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search"
+          },
+          "sort": {
+            "default": "created_at",
+            "enum": [
+              "full_name",
+              "email",
+              "created_at",
+              "last_login_at"
+            ],
+            "title": "Sort",
+            "type": "string"
+          }
+        },
+        "title": "UserDirectoryReportRequest",
         "type": "object"
       },
       "UserListResponse": {
@@ -3223,6 +3301,78 @@
         "summary": "Mark one notification read",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/reports/engine-health": {
+      "get": {
+        "description": "Whether reports can be produced, and whether DOCX conversion can.\n\nGated on ``reports.generate`` rather than being public: it is a diagnostic\nfor the capability it describes, and it reports availability without naming\nan internal address or a version (an error body is not the place to narrate\nthe deployment). PostgreSQL is deliberately *not* probed here — that is the\nreadiness endpoint's question (BP-8.4b, F062), and this route needs no\ndatabase session at all.",
+        "operationId": "engine_health_api_v1_reports_engine_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the reports.generate permission."
+          }
+        },
+        "summary": "Report engine health",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/user-directory": {
+      "post": {
+        "description": "Render the caller's directory with the filters they are looking at.\n\nThe document carries exactly the columns the directory screen shows, in its\norder, and the same predicate decides the rows — so \"what I saw\" and \"what I\ndownloaded\" are one answer rather than two that agree today.",
+        "operationId": "user_directory_report_api_v1_reports_user_directory_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserDirectoryReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The directory, rendered as a PDF attachment."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing reports.generate, missing users.read, or a pending password change."
+          },
+          "409": {
+            "description": "The export would exceed the row limit for one document."
+          },
+          "422": {
+            "description": "Shape errors in the filter body."
+          }
+        },
+        "summary": "Export the user directory as a PDF",
+        "tags": [
+          "reports"
         ]
       }
     }

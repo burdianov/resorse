@@ -122,6 +122,36 @@ async def get_user(session: AsyncSession, user_id: uuid.UUID) -> User:
     return user
 
 
+def directory_criteria(search: str | None, is_active: bool | None) -> list[Any]:
+    """The predicate the directory *is*: which accounts a caller is looking at.
+
+    Shared by the paged list (F033) and the exported report (F053) rather than
+    written twice. That is the whole reason it is public: BP-7.9c requires a
+    report that draws "only authorized rows", and the strongest form of that
+    promise is not a second WHERE clause that agrees today — it is one clause,
+    used by both, so a filter added here cannot reach one surface and miss the
+    other.
+    """
+    criteria: list[Any] = [User.is_deleted.is_(False)]
+    if search:
+        pattern = f"%{_escape_like(search.strip())}%"
+        criteria.append(or_(User.full_name.ilike(pattern), User.email.ilike(pattern)))
+    if is_active is not None:
+        criteria.append(User.is_active.is_(is_active))
+    return criteria
+
+
+def directory_ordering(*, sort: str, order: str) -> tuple[Any, ...]:
+    """The directory's order, with ``id`` as a tiebreaker.
+
+    A *total* order, or two pages can disagree about where a row belongs while
+    a request is in flight — and an export read at the same moment would be a
+    third opinion. Both surfaces take their ordering from here.
+    """
+    column = SORTABLE_FIELDS[sort]
+    return (column.desc() if order == "desc" else column.asc(), User.id.asc())
+
+
 async def list_users(
     session: AsyncSession,
     *,
@@ -133,27 +163,42 @@ async def list_users(
     order: str,
 ) -> tuple[list[User], int]:
     """One page of the directory and the total the footer needs."""
-    criteria: list[Any] = [User.is_deleted.is_(False)]
-    if search:
-        pattern = f"%{_escape_like(search.strip())}%"
-        criteria.append(or_(User.full_name.ilike(pattern), User.email.ilike(pattern)))
-    if is_active is not None:
-        criteria.append(User.is_active.is_(is_active))
-
+    criteria = directory_criteria(search, is_active)
     total = await session.scalar(select(func.count()).select_from(User).where(*criteria))
-    column = SORTABLE_FIELDS[sort]
-    ordered = column.desc() if order == "desc" else column.asc()
-    # `id` as the tiebreaker: offset pagination needs a *total* order, or two
-    # pages can disagree about where a row belongs while a request is in flight.
     statement = (
         select(User)
         .where(*criteria)
-        .order_by(ordered, User.id.asc())
+        .order_by(*directory_ordering(sort=sort, order=order))
         .limit(page_size)
         .offset((page - 1) * page_size)
     )
     users = list(await session.scalars(statement))
     return users, int(total or 0)
+
+
+async def directory_rows(
+    session: AsyncSession,
+    *,
+    search: str | None,
+    is_active: bool | None,
+    sort: str,
+    order: str,
+    limit: int,
+) -> list[User]:
+    """Every matching row, unpaginated — the report's half of the directory.
+
+    ``limit`` is the caller's business and is applied in SQL: a report reader
+    that must not render more than it promised asks for one row past its cap,
+    so "exactly at the cap" and "over it" are different answers here rather
+    than in a Python ``len()`` over a result the database already sent.
+    """
+    statement = (
+        select(User)
+        .where(*directory_criteria(search, is_active))
+        .order_by(*directory_ordering(sort=sort, order=order))
+        .limit(limit)
+    )
+    return list(await session.scalars(statement))
 
 
 def _escape_like(value: str) -> str:

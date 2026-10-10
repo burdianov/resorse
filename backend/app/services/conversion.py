@@ -255,3 +255,14 @@ async def convert_to_pdf(
         filename=filename,
         content_type=content_type,
     )
+
+
+async def health(*, converter: GotenbergConverter | None = None) -> bool:
+    """Whether the configured converter is answering — the probe a route calls.
+
+    The same shape as :func:`convert_to_pdf` for the same reason: the default
+    comes from configuration, and a test may pass its own. This is the entry
+    point the reports health route reads (F053), and the one a readiness probe
+    should read rather than reaching for the adapter itself (F062).
+    """
+    return await (converter or get_converter()).health()

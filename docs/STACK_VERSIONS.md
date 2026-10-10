@@ -48,7 +48,8 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `@dnd-kit/core` | **6.3.1** | 2024-12-05 | peer `react >=16.8` |
 | `@dnd-kit/sortable` | **10.0.0** | 2024-12-04 | |
 | `@dnd-kit/utilities` | **3.2.2** | 2023-11-06 | |
-| `react-pdf` | **11.0.0** | 2026-09-10 | peer `react ^19` |
+| `react-pdf` | **11.0.0** | 2026-09-10 | peer `react ^19`. In use from **F053** (`components/common/pdf-preview-dialog.tsx`), and loaded lazily: the chunk is imported only after a successful export. |
+| `pdfjs-dist` | **6.3.289** | 2026-08-29 | peer — a **direct** dependency from F053 even though `react-pdf` depends on it: pnpm's strict `node_modules` hides the worker file (`pdfjs-dist/build/pdf.worker.min.mjs`) from a bare-specifier resolution, and the pin must agree with the range `react-pdf` resolves. |
 | ~~`next-themes`~~ | 0.4.6 | 2025-03-11 | **not used** — §2.1 permits it only if verified in a Vite SPA; F010 wrote an equivalent provider instead and documented the exception (`ARCHITECTURE.md` §5). It has zero dependencies, so this removes rather than adds a dependency. |
 | `tw-animate-css` | **1.4.0** | 2025-09-24 | |
 

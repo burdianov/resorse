@@ -288,6 +288,33 @@ export type CreateUserResponse = {
 };
 
 /**
+ * EngineHealthResponse
+ *
+ * What the report engine can do right now.
+ *
+ * Two separate facts rather than one verdict, because they fail separately:
+ * the PDF engine is in this process and the converter is another service, and
+ * a caller that only needs a rendered PDF (the user directory) is not
+ * affected by a converter that is down. ``status`` is the headline a reader
+ * or a dashboard reads — ``degraded`` means at least one of them is not
+ * available.
+ */
+export type EngineHealthResponse = {
+    /**
+     * Converter
+     */
+    converter: boolean;
+    /**
+     * Pdf Engine
+     */
+    pdf_engine: boolean;
+    /**
+     * Status
+     */
+    status: 'ok' | 'degraded';
+};
+
+/**
  * FileItem
  */
 export type FileItem = {
@@ -809,6 +836,30 @@ export type UpdateUserRequest = {
      * Role Ids
      */
     role_ids?: Array<string> | null;
+};
+
+/**
+ * UserDirectoryReportRequest
+ *
+ * The filters the user directory is currently showing.
+ */
+export type UserDirectoryReportRequest = {
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Order
+     */
+    order?: 'asc' | 'desc';
+    /**
+     * Search
+     */
+    search?: string | null;
+    /**
+     * Sort
+     */
+    sort?: 'full_name' | 'email' | 'created_at' | 'last_login_at';
 };
 
 /**
@@ -2391,3 +2442,65 @@ export type MarkReadApiV1NotificationsNotificationIdReadPostResponses = {
 };
 
 export type MarkReadApiV1NotificationsNotificationIdReadPostResponse = MarkReadApiV1NotificationsNotificationIdReadPostResponses[keyof MarkReadApiV1NotificationsNotificationIdReadPostResponses];
+
+export type EngineHealthApiV1ReportsEngineHealthGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/reports/engine-health';
+};
+
+export type EngineHealthApiV1ReportsEngineHealthGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the reports.generate permission.
+     */
+    403: unknown;
+};
+
+export type EngineHealthApiV1ReportsEngineHealthGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: EngineHealthResponse;
+};
+
+export type EngineHealthApiV1ReportsEngineHealthGetResponse = EngineHealthApiV1ReportsEngineHealthGetResponses[keyof EngineHealthApiV1ReportsEngineHealthGetResponses];
+
+export type UserDirectoryReportApiV1ReportsUserDirectoryPostData = {
+    body: UserDirectoryReportRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/reports/user-directory';
+};
+
+export type UserDirectoryReportApiV1ReportsUserDirectoryPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing reports.generate, missing users.read, or a pending password change.
+     */
+    403: unknown;
+    /**
+     * The export would exceed the row limit for one document.
+     */
+    409: unknown;
+    /**
+     * Shape errors in the filter body.
+     */
+    422: unknown;
+};
+
+export type UserDirectoryReportApiV1ReportsUserDirectoryPostResponses = {
+    /**
+     * The directory, rendered as a PDF attachment.
+     */
+    200: Blob | File;
+};
+
+export type UserDirectoryReportApiV1ReportsUserDirectoryPostResponse = UserDirectoryReportApiV1ReportsUserDirectoryPostResponses[keyof UserDirectoryReportApiV1ReportsUserDirectoryPostResponses];

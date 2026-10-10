@@ -595,6 +595,29 @@ def count_pages(pdf: bytes) -> int:
     return len(_pages(pdf, where="the document"))
 
 
+def self_test() -> bool:
+    """Whether this engine can render a document *and* read it back.
+
+    The question a health endpoint has to answer is not "did the import
+    succeed" — ReportLab is a hard dependency, so an application that started
+    without it does not exist — but "does the whole path work". So this renders
+    a one-line document and reads its page count back with pypdf, the same
+    reader the merge path uses. Nothing leaves the process and nothing is
+    written to disk, which is what lets a probe call it.
+
+    A boolean by the same argument as the converter's probe (F052): a health
+    check that raises makes every caller write the same ``except``. The
+    ``except`` here is deliberately broad — ReportLab is untyped (see the
+    override in pyproject.toml) and free to fail in ways this module does not
+    enumerate, and all of them mean the same thing to a caller.
+    """
+    try:
+        rendered = render_report(ReportDocument(title="Self test"))
+        return count_pages(rendered) == 1
+    except Exception:  # noqa: BLE001 — a probe answers a boolean, whatever raised
+        return False
+
+
 def _pages(pdf: bytes, *, where: str) -> list[PageObject]:
     """``pdf``'s pages, with every way of failing to read them made one failure.
 

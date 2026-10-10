@@ -16,6 +16,7 @@ from app.api.v1 import (
     health,
     me_preferences,
     notifications,
+    reports,
 )
 
 api_router = APIRouter()
@@ -29,3 +30,4 @@ api_router.include_router(admin_settings.router, tags=["admin"])
 api_router.include_router(admin_audit.router, tags=["admin"])
 api_router.include_router(notifications.router, tags=["notifications"])
 api_router.include_router(files.router, tags=["files"])
+api_router.include_router(reports.router, tags=["reports"])

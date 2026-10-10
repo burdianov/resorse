@@ -3,12 +3,17 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { toast } from 'sonner'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppProviders } from '@/app/providers'
 import { buildAppRoutes } from '@/app/router'
-import type { AdminUserItem, MeResponse, RoleItem } from '@/lib/generated/api'
+import type { AdminUserItem, MeResponse, RoleItem, UserDirectoryReportRequest } from '@/lib/generated/api'
 import { server } from '@/testing/msw-server'
+
+// The report preview renders a PDF with react-pdf, which needs a canvas and a
+// worker jsdom does not have. Only the renderer is replaced — the dialog, the
+// request and everything around them stay real.
+vi.mock('react-pdf', async () => (await import('@/testing/react-pdf-stub')).reactPdf)
 
 /**
  * `/admin/users` — the directory UI against the real API contract (F034).
@@ -69,6 +74,7 @@ function me(overrides: Partial<MeResponse> = {}): MeResponse {
       'users.update',
       'users.deactivate',
       'users.reset_password',
+      'reports.generate',
     ],
     ...overrides,
   }
@@ -98,6 +104,8 @@ interface CapturedRequests {
   patch?: { url: string; body: Record<string, unknown> }
   deletes: string[]
   resets: string[]
+  /** The filter body of each directory export (F053). */
+  reports: UserDirectoryReportRequest[]
 }
 
 interface DirectoryFixture {
@@ -109,7 +117,7 @@ function directoryHandlers(
   total = rows.length,
   meUser: MeResponse = me(),
 ): { handlers: ReturnType<typeof http.get>[]; requests: CapturedRequests } {
-  const requests: CapturedRequests = { listParams: [], deletes: [], resets: [] }
+  const requests: CapturedRequests = { listParams: [], deletes: [], resets: [], reports: [] }
   const handlers = [
     http.get('/api/v1/auth/me', () => HttpResponse.json(meUser)),
     // The shell reads the account's preferences once per session (F048); the
@@ -150,6 +158,17 @@ function directoryHandlers(
     http.delete('/api/v1/admin/users/:id', ({ params }) => {
       requests.deletes.push(String(params.id))
       return new HttpResponse(null, { status: 204 })
+    }),
+    // The directory export (F053): a real PDF answer, named the way the API
+    // names it — the preview reads the name straight off this header.
+    http.post('/api/v1/reports/user-directory', async ({ request }) => {
+      requests.reports.push((await request.json()) as UserDirectoryReportRequest)
+      return new HttpResponse(new Blob(['%PDF-1.7'], { type: 'application/pdf' }), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="user-directory-2026-10-10.pdf"',
+        },
+      })
     }),
   ] as ReturnType<typeof http.get>[]
   return { handlers, requests }
@@ -446,5 +465,109 @@ describe('the permission mirrors', () => {
     expect(screen.queryByRole('button', { name: 'Add user' })).toBeNull()
     // Reading only: no row menu at all, because every item needs a code.
     expect(screen.queryByRole('button', { name: /Actions for/ })).toBeNull()
+  })
+})
+
+describe('exporting the directory', () => {
+  let created: Blob[]
+  let revoked: string[]
+
+  beforeEach(() => {
+    created = []
+    revoked = []
+    // jsdom implements no object URLs; the preview dialog's are recorded so its
+    // cleanup is observable. A subclass rather than a plain object: the app and
+    // its dependencies may still construct a `URL`.
+    class StubURL extends URL {
+      static createObjectURL = (blob: Blob): string => {
+        created.push(blob)
+        return `blob:preview-${created.length}`
+      }
+
+      static revokeObjectURL = (url: string): void => {
+        revoked.push(url)
+      }
+    }
+    vi.stubGlobal('URL', StubURL)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('exports the filters on screen and previews the PDF the server returns', async () => {
+    const { requests } = renderDirectory()
+    await waitForRows()
+
+    // Narrow the directory first: the file must be what is on screen, not the
+    // unfiltered list. Both controls are reported to the server on their own
+    // schedule (the search is debounced), so each is awaited before the export.
+    await userEvent.type(screen.getByPlaceholderText(/Search name or email/), 'ada')
+    await waitFor(() => {
+      expect(lastParams(requests).get('search')).toBe('ada')
+    })
+    await userEvent.click(screen.getByLabelText('Status'))
+    await userEvent.click(await screen.findByRole('option', { name: 'Inactive' }))
+    await waitFor(() => {
+      expect(lastParams(requests).get('is_active')).toBe('false')
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Export PDF' }))
+
+    await waitFor(() => {
+      expect(requests.reports).toEqual([
+        { search: 'ada', is_active: false, sort: 'created_at', order: 'desc' },
+      ])
+    })
+
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveAccessibleName('User directory')
+    // The document the server sent, drawn from the bytes it answered with.
+    expect(await within(dialog).findByTestId('pdf-page')).toHaveTextContent('Page 1')
+    expect(created).toHaveLength(1)
+    // The download is named by the response's own `Content-Disposition`, not by
+    // a second copy of the naming rule here.
+    expect(within(dialog).getByRole('link', { name: /Download/ })).toHaveAttribute(
+      'download',
+      'user-directory-2026-10-10.pdf',
+    )
+
+    // Closing releases the object URL the preview was drawing from.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Done' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+    expect(revoked).toEqual(['blob:preview-1'])
+  })
+
+  it('shows the server refusal when the export is too large, and opens nothing', async () => {
+    renderDirectory()
+    await waitForRows()
+    // The real 409 body, wrapped in JSON like every other error the API sends —
+    // it arrives as a Blob (the request asked for `responseType: 'blob'`), and
+    // the sentence inside it is the one the user needs to read.
+    server.use(
+      http.post('/api/v1/reports/user-directory', () =>
+        HttpResponse.json(
+          {
+            detail:
+              'This export would contain more than 1000 accounts. Narrow the filters: one report covers up to 1000 rows.',
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Export PDF' }))
+
+    expect(await screen.findByText(/more than 1000 accounts/)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('renders no export for a caller without the report code', async () => {
+    renderDirectory({ meUser: me({ permissions: ['users.read'] }) })
+    await waitForRows()
+
+    expect(screen.queryByRole('button', { name: 'Export PDF' })).toBeNull()
   })
 })
