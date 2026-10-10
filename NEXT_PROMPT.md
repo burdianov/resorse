@@ -27,7 +27,7 @@ me the operator checks. Do not push. Do not start F048.
 - **Gates:** tasks F016 and F032 are complete. Operator gate results are **not recorded in this handoff**.
   Next gate: **G-A3, after F048**.
 - **Blockers:** none recorded.
-- **Open decisions (DECISIONS.md):** **O01–O11 remain OPEN.** They are Stage B business rules (working-day
+- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN.** They are Stage B business rules (working-day
   calendar, rate changes within a month, percentage rules, revision semantics, and others). None is recorded as
   blocking F047. Rules for OPEN decisions:
   - Never treat an OPEN decision as approved, and never turn it into a confirmed rule.
@@ -135,7 +135,7 @@ The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
 | `claude_code_pack/TASKS.md` | Backlog; F047 is at about line 191 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C35; open decisions O01–O11 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C35; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
 | `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend, §6 authorization, §12 implementation traps |
