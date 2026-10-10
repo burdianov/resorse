@@ -9,41 +9,40 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F051
-in claude_code_pack/TASKS.md. Implement F051 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F052
+in claude_code_pack/TASKS.md. Implement F052 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F052.
+me the operator checks. Do not push. Do not start F053.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F050 — Files API. Committed together with this handoff (`git log -1 --format="%h %s"`).
-  The five endpoints over F049's private volume now exist: `backend/app/api/v1/files.py` (upload, metadata,
-  download, delete, list), `backend/app/schemas/files.py` (`FileItem` carries no object key, by design), the
-  committing endpoint half in `backend/app/services/storage.py` (`upload_file`, `load_file`, `list_files`,
-  `delete_file`; F049's producer `delete_file` renamed `delete_file_row`), and the router wired in `router.py`.
-  Recorded as C38; the `/files` paths are regenerated into `backend/openapi.json` and `frontend/src/lib/generated/`.
-- **Previous task:** F049 — Private storage core. Commit **`1311d06`** (`feat(F049): ...`).
-- **Next: F051 — PDF engine.** TASKS.md accept line: "Generated PDF parses."
+- **Last completed:** F051 — PDF engine. Committed together with this handoff (`git log -1 --format="%h %s"`).
+  `backend/app/services/reports.py` renders (`render_report`) and merges (`merge_pdfs`) PDFs and adds **no route**:
+  the endpoint, the `reports.generate` guard, the worker-thread hand-off and the preview UI are F053's, and the DOCX
+  half of BP-7.9b is F052's. The footer's page total is **measured, not guessed**; a spilling table repeats its
+  header; a non-rectangular row is refused by name; every value is escaped before it reaches a `Paragraph`. Fonts
+  are ReportLab's built-ins only, so the text stays extractable — which is what the acceptance, "the generated PDF
+  parses", is checked with — at the cost of Latin-1 only (Arabic/CJK await an embedded TTF). Recorded as C39.
+- **Previous task:** F050 — Files API. Commit **`b6aca64`** (`feat(F050): ...`) — the five endpoints over F049's
+  private volume, with `/files` regenerated into `backend/openapi.json` and `frontend/src/lib/generated/`.
+- **Next: F052 — DOCX conversion.** TASKS.md accept line: "Healthy/unavailable tests."
 - **Gates:** F016, F032, F047 and F048 are complete; operator gate results are **not recorded in this handoff**.
   **G-A3 (after F048) is due and is the operator's to run** (`OPERATOR_GUIDE.md` line 54); then **G-A4, after F063**.
 - **Blockers:** none recorded.
 - **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules (working-day calendar, rate
-  changes within a month, percentage rules, revision semantics, and others). None is recorded as blocking F051;
+  changes within a month, percentage rules, revision semantics, and others). None is recorded as blocking F052;
   never treat one as approved or turn one into a confirmed rule, and if a task depends on one, stop and ask the
-  operator one precise question. Confirmed: C11–C38 (C38 is F050's).
-- **Open item — orphan objects (narrowed by F050):** `store_file`/`delete_file_row` never commit, and the object
-  is unlinked only after the caller's commit succeeds. F050's `upload_file` now unlinks when the commit **raises**,
-  so the aborted-upload case is closed; what remains is a process death between the row commit and the unlink.
-  There is **no scheduler in this stack**, so no sweep was built — the residue is an unreferenced object, never a
-  row pointing at nothing. Do not "fix" it by unlinking before commit.
-- **Open item — nothing scans uploads yet:** BP-6.4's malware hook ships as the `MalwareScanner` Protocol with
-  `NoMalwareScanner` (the name is the disclosure). No scanner is wired in; the API answers 400 if one ever refuses.
-  Do not describe uploads as scanned.
-- **Open item — two file components are deferred:** `FileDropzone` and `FilePreview` did not ship with F050
-  (operator scope decision 2026-10-10: backend only). They belong to **F054**, the component lab and their first
-  consumer; F053's report surface is the PDF pipeline's own preview, not this kit component (C38).
+  operator one precise question. Confirmed: C11–C39 (C39 is F051's).
+- **Open item — orphan objects (narrowed by F050):** the object is unlinked only after the caller's commit
+  succeeds (F050's `upload_file` also unlinks when that commit **raises**), so what remains is a process death
+  between commit and unlink. There is **no scheduler in this stack**, so no sweep exists: the residue is an
+  unreferenced object, never a dangling row — and never "fix" it by unlinking before commit.
+- **Open item — nothing scans uploads yet:** BP-6.4's hook ships as `MalwareScanner` + `NoMalwareScanner` (the
+  name is the disclosure). Nothing is wired in; the API answers 400 if one ever refuses — never call uploads scanned.
+- **Open item — two file components are deferred:** `FileDropzone`/`FilePreview` did not ship with F050 (operator
+  scope decision: backend only); they belong to **F054**, the component lab and their first consumer (C38).
 - **Open item:** jsdom `Select` rendering, linked to **F057** — see §5.
 
 ## 3. Essential constraints
@@ -121,31 +120,30 @@ Frontend lint and format and the coverage gate are planned for F055.
 **Not yet available:** Playwright E2E (F057), axe accessibility (F058), production Compose (F059) — do not hand
 these to the operator as runnable until their task lands.
 
-**Test counts are historical.** Every count here was recorded at F050, and the agent's F050 runs were **focused
+**Test counts are historical.** Every count here was recorded at F051, and the agent's runs were **focused
 subsets, not the whole suite**. Report the count you actually observe; never present a historical one as verified.
 
 ## 7. Operator verification commands
 
-Run these to confirm the state before F051 starts. The "F050 record" column is historical and is not a
+Run these to confirm the state before F052 starts. The "F051 record" column is historical and is not a
 current result. Report what you observe.
 
-| Check | Command | F050 record (historical) |
+| Check | Command | F051 record (historical) |
 |---|---|---|
-| Working tree | `git -C D:\resors status --short` | clean after F050's commit |
-| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F050): ...` (implementation + handoff together). Previous: `1311d06 feat(F049): ...` |
+| Working tree | `git -C D:\resors status --short` | clean after F051's commit |
+| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F051): ...` (implementation + handoff together). Previous: `b6aca64 feat(F050): ...` |
 | Backend health | `curl http://localhost:8000/api/v1/health` | `{"status":"ok",...}` |
-| F050 focused batch | `cd D:\resors\backend; uv run pytest tests/test_files_api.py tests/test_storage.py tests/test_audit.py tests/test_admin_audit.py tests/test_database_conventions.py` | 138 passed, 1 skipped — the skip is the platform refusing unprivileged symlink creation; `tests/test_files_api.py` alone: 18 passed (observed by the agent at F050) |
-| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F050 added the five `/files` paths to `backend/openapi.json` (+347 lines) and regenerated `frontend/src/lib/generated/api/{index,types.gen}.ts`; a re-run should be byte-stable (observed by the agent at F050) |
-| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | **not run by the agent at F050** (F050 adds no migration). F049 record: clean, ending at `0009` (historical — never run this against `app_dev`) |
-| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | **not run by the agent at F050.** F048 record: exit 0, no diagnostics (historical) |
-| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **not run by the agent at F050.** F047 record: 498 passed (historical) |
-| Backend suite | `cd D:\resors\backend; uv run pytest` | **not run by the agent at F050.** F047 record: 246 passed (historical) |
+| F051 focused batch | `cd D:\resors\backend; uv run pytest tests/test_reports.py` | 22 passed (observed by the agent at F051). The adjacent F050 batch (files, storage, audit, conventions) recorded 138 passed, 1 skipped — historical |
+| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F051 adds **no route**, so `backend/openapi.json` and `frontend/src/lib/generated/` are unchanged by it and a re-run should be byte-stable (observed by the agent at F051 — no regeneration was needed) |
+| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | **not run by the agent at F051** (F051 adds no migration). F049 record: clean, ending at `0009` (historical — never run this against `app_dev`) |
+| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | **not run by the agent at F051.** F048 record: exit 0, no diagnostics (historical) |
+| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **not run by the agent at F051.** F047 record: 498 passed (historical) |
+| Backend suite | `cd D:\resors\backend; uv run pytest` | **not run by the agent at F051.** F047 record: 246 passed (historical) |
 
-Two live checks worth running by hand, because they are the point of the task: upload at
-`http://localhost:8000/docs` (`POST /api/v1/files`, multipart `file` + `category`), then `GET /api/v1/files/{id}/content`
-must arrive as a download (`Content-Disposition: attachment`) with `nosniff` and `Cache-Control: private, no-store`;
-and a **second** account asking for the first account's file id must get **404**, not 403.
-
+F051 adds **no route**, so it has no live check: the engine is exercised only by its tests, and the end-to-end
+PDF check arrives with **F053**'s report endpoint. F050's download checks — a `Content-Disposition: attachment`
+with `nosniff` and `private, no-store`, and a second account getting **404** for a foreign file id — remain
+worth running by hand at `http://localhost:8000/docs`.
 
 The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_LOG.md`. Use grep for a task ID.
 
@@ -154,8 +152,8 @@ The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F051 is at about line 207 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C38; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F052 is at about line 211 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C39; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
 | `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend, §6 authorization, §7 extension boundaries, §12 implementation traps |
@@ -184,7 +182,7 @@ DECISIONS/BLOCKERS: <only material items>
 NEXT: <ID> — <task name>
 ```
 
-The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F051 — PDF engine`.
+The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F052 — DOCX conversion`.
 
 ## 10. Accounts
 

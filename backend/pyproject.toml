@@ -54,3 +54,10 @@ line-length = 100
 [tool.mypy]
 python_version = "3.14"
 strict = true
+
+# ReportLab publishes no stubs, so `strict` would report the library's own
+# untyped imports as this project's errors. The exemption is scoped to the
+# package: `pypdf` ships inline types and is still checked (F051).
+[[tool.mypy.overrides]]
+module = "reportlab.*"
+ignore_missing_imports = true

@@ -845,6 +845,15 @@ Rules that make these boundaries real:
   user id in one SQL predicate — a foreign id resolves to 404 rather than 403, because a 403 would
   confirm it exists. What leaves on a download is marked rather than merely typed: `Content-Disposition:
   attachment` with an RFC 5987 name, `nosniff`, and `private, no-store` (F050, C38).
+- **A report is data first and a file second.** F051's engine takes a `ReportDocument` — a title, a fact block,
+  sections, rectangular tables and a named page geometry — and returns bytes, reading no settings and no
+  database, so the words (and any future branding, C29) belong to the caller. Two positions are enforced
+  rather than assumed: the footer's "Page N of M" is *measured*, because the canvas holds each page's state
+  until the total is a fact, so a table that spills cannot make page one lie; and every string is escaped
+  before it reaches a `Paragraph`, because `<` and `&` in a cell are things a user typed — BP-7.9d's
+  formula-injection defence, in its markup form. `merge_pdfs` keeps caller order and reads every part before
+  writing any, so a damaged part refuses the merge instead of producing a bundle missing its middle
+  (F051, C39).
 
 ## 8. Data model (foundation only)
 
