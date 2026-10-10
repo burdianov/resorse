@@ -9,39 +9,41 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F050
-in claude_code_pack/TASKS.md. Implement F050 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F051
+in claude_code_pack/TASKS.md. Implement F051 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F051.
+me the operator checks. Do not push. Do not start F052.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F049 — Private storage core. Committed together with this handoff
-  (`git log -1 --format="%h %s"`). The private volume, the object-key rule and the sniffed-type rule now exist:
-  `backend/app/services/storage.py` (the `StorageBackend` Protocol + the only implementation,
-  `LocalVolumeStorage`, behind it), `backend/app/models/files.py` (`file_assets`), migration `0009` (the table,
-  plus the audit vocabulary CHECKs gaining `file.create`/`file.delete`/`file`). No endpoints yet — F050 owns
-  the Files API, the reference authorization and the orphan sweep. Recorded as C37.
-- **Previous task:** F048 — Table prefs integration. Commit **`5b030d1`** (`feat(F048): ...`).
-- **Next: F050 — Files API.** TASKS.md accept line: "Cross-user/file tests."
-- **Gates:** tasks F016, F032, F047 and F048 are complete. Operator gate results are **not recorded in this handoff**.
-  **G-A3 (after F048) is now due and is the operator's to run** — see `claude_code_pack/OPERATOR_GUIDE.md` line 54.
-  Next gate after that: **G-A4, after F063**.
+- **Last completed:** F050 — Files API. Committed together with this handoff (`git log -1 --format="%h %s"`).
+  The five endpoints over F049's private volume now exist: `backend/app/api/v1/files.py` (upload, metadata,
+  download, delete, list), `backend/app/schemas/files.py` (`FileItem` carries no object key, by design), the
+  committing endpoint half in `backend/app/services/storage.py` (`upload_file`, `load_file`, `list_files`,
+  `delete_file`; F049's producer `delete_file` renamed `delete_file_row`), and the router wired in `router.py`.
+  Recorded as C38; the `/files` paths are regenerated into `backend/openapi.json` and `frontend/src/lib/generated/`.
+- **Previous task:** F049 — Private storage core. Commit **`1311d06`** (`feat(F049): ...`).
+- **Next: F051 — PDF engine.** TASKS.md accept line: "Generated PDF parses."
+- **Gates:** F016, F032, F047 and F048 are complete; operator gate results are **not recorded in this handoff**.
+  **G-A3 (after F048) is due and is the operator's to run** (`OPERATOR_GUIDE.md` line 54); then **G-A4, after F063**.
 - **Blockers:** none recorded.
-- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN.** They are Stage B business rules (working-day
-  calendar, rate changes within a month, percentage rules, revision semantics, and others). None is recorded as
-  blocking F049. Rules for OPEN decisions:
-  - Never treat an OPEN decision as approved, and never turn it into a confirmed rule.
-  - If a task depends on an OPEN decision, stop and ask the operator one precise question.
-  - Confirmed decisions C11–C37 are recorded in `claude_code_pack/DECISIONS.md` (C37 is F049's).
-- **Open item — orphan objects (for F050):** `store_file`/`delete_file` never commit, and the object is
-  unlinked only after the caller's commit succeeds. A transaction that rolls back after `store_file`, or a
-  crash between the row commit and the unlink, therefore leaves an object with no row (never a row with no
-  object). F050's sweep is where it gets reclaimed; do not "fix" it by unlinking before commit.
+- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules (working-day calendar, rate
+  changes within a month, percentage rules, revision semantics, and others). None is recorded as blocking F051;
+  never treat one as approved or turn one into a confirmed rule, and if a task depends on one, stop and ask the
+  operator one precise question. Confirmed: C11–C38 (C38 is F050's).
+- **Open item — orphan objects (narrowed by F050):** `store_file`/`delete_file_row` never commit, and the object
+  is unlinked only after the caller's commit succeeds. F050's `upload_file` now unlinks when the commit **raises**,
+  so the aborted-upload case is closed; what remains is a process death between the row commit and the unlink.
+  There is **no scheduler in this stack**, so no sweep was built — the residue is an unreferenced object, never a
+  row pointing at nothing. Do not "fix" it by unlinking before commit.
 - **Open item — nothing scans uploads yet:** BP-6.4's malware hook ships as the `MalwareScanner` Protocol with
-  `NoMalwareScanner` (the name is the disclosure). No scanner is wired in. Do not describe uploads as scanned.
+  `NoMalwareScanner` (the name is the disclosure). No scanner is wired in; the API answers 400 if one ever refuses.
+  Do not describe uploads as scanned.
+- **Open item — two file components are deferred:** `FileDropzone` and `FilePreview` did not ship with F050
+  (operator scope decision 2026-10-10: backend only). They belong to **F054**, the component lab and their first
+  consumer; F053's report surface is the PDF pipeline's own preview, not this kit component (C38).
 - **Open item:** jsdom `Select` rendering, linked to **F057** — see §5.
 
 ## 3. Essential constraints
@@ -116,30 +118,34 @@ then fix or dismiss it there.** Detail: `docs/CARRIED_CONSTRAINTS.md` §6.
 unverified. Do not present them as operator checks until they are verified. CI enforcement is planned for F056.
 Frontend lint and format and the coverage gate are planned for F055.
 
-**Not yet available:** Playwright E2E (F057), axe accessibility (F058), production Compose (F059).
-Do not hand these to the operator as runnable until their task lands.
+**Not yet available:** Playwright E2E (F057), axe accessibility (F058), production Compose (F059) — do not hand
+these to the operator as runnable until their task lands.
 
-**Test counts are historical.** Every count in this file was recorded at F049, and the agent's F049 runs were
-**focused subsets, not the whole suite**. Re-running a suite produces a new result. Report the actual observed
-count and do not present a historical count as the current verified result.
+**Test counts are historical.** Every count here was recorded at F050, and the agent's F050 runs were **focused
+subsets, not the whole suite**. Report the count you actually observe; never present a historical one as verified.
 
 ## 7. Operator verification commands
 
-Run these to confirm the state before F050 starts. The "F049 record" column is historical and is not a
+Run these to confirm the state before F051 starts. The "F050 record" column is historical and is not a
 current result. Report what you observe.
 
-| Check | Command | F049 record (historical) |
+| Check | Command | F050 record (historical) |
 |---|---|---|
-| Working tree | `git -C D:\resors status --short` | clean after F049's commit |
-| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F049): ...` (implementation + handoff together). Previous: `5b030d1 feat(F048): ...` |
+| Working tree | `git -C D:\resors status --short` | clean after F050's commit |
+| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F050): ...` (implementation + handoff together). Previous: `1311d06 feat(F049): ...` |
 | Backend health | `curl http://localhost:8000/api/v1/health` | `{"status":"ok",...}` |
-| F049 storage tests | `cd D:\resors\backend; uv run pytest tests/test_storage.py` | 99 passed, 1 skipped (the skip is the platform refusing unprivileged symlink creation, observed by the agent at F049) |
-| F049 audit + DB-convention tests | `cd D:\resors\backend; uv run pytest tests/test_audit.py tests/test_admin_audit.py tests/test_database_conventions.py tests/test_storage.py` | 120 passed, 1 skipped (F049 focused run, observed by the agent) |
-| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | Only `backend/openapi.json` changed (the `file` + `file.create`/`file.delete` vocabulary defaults); generated TS unchanged |
-| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | clean; `file_assets` at 0 rows, the audit CHECK carries `file.create`/`file.delete`, `downgrade base` leaves only `alembic_version`, re-upgrade returns `0009` (observed by the agent at F049 — never run this against `app_dev`) |
-| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | **not run by the agent at F049.** F048 record: exit 0, no diagnostics (historical) |
-| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **not run by the agent at F049.** F047 record: 498 passed (historical) |
-| Backend suite | `cd D:\resors\backend; uv run pytest` | **not run by the agent at F049.** F047 record: 246 passed (historical) |
+| F050 focused batch | `cd D:\resors\backend; uv run pytest tests/test_files_api.py tests/test_storage.py tests/test_audit.py tests/test_admin_audit.py tests/test_database_conventions.py` | 138 passed, 1 skipped — the skip is the platform refusing unprivileged symlink creation; `tests/test_files_api.py` alone: 18 passed (observed by the agent at F050) |
+| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F050 added the five `/files` paths to `backend/openapi.json` (+347 lines) and regenerated `frontend/src/lib/generated/api/{index,types.gen}.ts`; a re-run should be byte-stable (observed by the agent at F050) |
+| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | **not run by the agent at F050** (F050 adds no migration). F049 record: clean, ending at `0009` (historical — never run this against `app_dev`) |
+| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | **not run by the agent at F050.** F048 record: exit 0, no diagnostics (historical) |
+| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **not run by the agent at F050.** F047 record: 498 passed (historical) |
+| Backend suite | `cd D:\resors\backend; uv run pytest` | **not run by the agent at F050.** F047 record: 246 passed (historical) |
+
+Two live checks worth running by hand, because they are the point of the task: upload at
+`http://localhost:8000/docs` (`POST /api/v1/files`, multipart `file` + `category`), then `GET /api/v1/files/{id}/content`
+must arrive as a download (`Content-Disposition: attachment`) with `nosniff` and `Cache-Control: private, no-store`;
+and a **second** account asking for the first account's file id must get **404**, not 403.
+
 
 The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_LOG.md`. Use grep for a task ID.
 
@@ -148,11 +154,11 @@ The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F050 is at about line 203 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C37; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F051 is at about line 207 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C38; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
-| `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend, §6 authorization, §12 implementation traps |
+| `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend, §6 authorization, §7 extension boundaries, §12 implementation traps |
 | `docs/REQUIREMENT_TRACEABILITY.md` | BP-x.y index (§1–§11) and §14 gaps |
 | `docs/ROUTES_NAVIGATION.md`, `docs/OPENAPI_CLIENT.md` | Routing registry; typed-client recipe |
 | `docs/STACK_VERSIONS.md` | Version pins and approved deviations (§5) |
@@ -178,17 +184,16 @@ DECISIONS/BLOCKERS: <only material items>
 NEXT: <ID> — <task name>
 ```
 
-The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F050 — Files API`.
+The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F051 — PDF engine`.
 
 ## 10. Accounts
 
 Accounts are created by the operator. Credentials live only in the git-ignored `LOCAL_CREDENTIALS.md`, which the
-agent never reads. Record a generated password at the moment it is shown; most are shown once.
+agent never reads. Record a generated password when it is shown; most are shown once.
 
 ## 11. Maintaining this file
 
-- Update this file at the end of every completed task: header date and task, §1 task IDs, §2 position, §5 open items,
-  §7 operator checks.
-- Put per-task history in `docs/COMPLETION_LOG.md` and per-task verification recipes in `docs/VERIFICATION_LOG.md`.
-  Git history is the record of commits.
+- Update this file at the end of every completed task: §1 task IDs, §2 position and open items, §6 counts, §7
+  operator checks. Per-task history goes in `docs/COMPLETION_LOG.md`, recipes in `docs/VERIFICATION_LOG.md`;
+  git history is the record of commits.
 - Keep this file under 200 lines. Move detail to a `docs/` file instead of growing it.

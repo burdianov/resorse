@@ -840,6 +840,11 @@ Rules that make these boundaries real:
   candidate's parent to be the resolved root — so a symlink planted inside the volume fails the same
   check a `../` traversal would. The bytes stored are never trusted to be what a client said they are:
   the type is sniffed from content (F049, C37).
+- **A stored object is addressed by its row, and the row by its owner.** F050's Files API exposes no
+  object key (the wire type has no such field), and every lookup puts the file id *and* the caller's
+  user id in one SQL predicate — a foreign id resolves to 404 rather than 403, because a 403 would
+  confirm it exists. What leaves on a download is marked rather than merely typed: `Content-Disposition:
+  attachment` with an RFC 5987 name, `nosniff`, and `private, no-store` (F050, C38).
 
 ## 8. Data model (foundation only)
 

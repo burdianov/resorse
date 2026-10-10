@@ -293,6 +293,27 @@
         "title": "AuthenticatedUser",
         "type": "object"
       },
+      "Body_upload_file_api_v1_files_post": {
+        "properties": {
+          "category": {
+            "description": "A slug like `templates` or `reports`.",
+            "title": "Category",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "The file's bytes.",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "category"
+        ],
+        "title": "Body_upload_file_api_v1_files_post",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "description": "Self-service credential change (F030). Both fields are shape-bounded\nonly — see the module docstring for where the real policy lives.",
         "properties": {
@@ -471,6 +492,82 @@
           "temporary_password"
         ],
         "title": "CreateUserResponse",
+        "type": "object"
+      },
+      "FileItem": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "original_filename": {
+            "title": "Original Filename",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "original_filename",
+          "content_type",
+          "size",
+          "sha256",
+          "category",
+          "created_at"
+        ],
+        "title": "FileItem",
+        "type": "object"
+      },
+      "FileListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FileItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "FileListResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -2599,6 +2696,256 @@
         "summary": "Set one preference",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/files": {
+      "get": {
+        "description": "The caller's own library, newest first. There is no parameter that could\nname another account.",
+        "operationId": "list_files_api_v1_files_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing files.read or a pending password change."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List your files",
+        "tags": [
+          "files"
+        ]
+      },
+      "post": {
+        "description": "Store one upload, recording what its bytes are rather than what they claim.\n\nThe declared type is passed through as a *hint* only: the storage service\nmay use it to refine one case (a text file that is a CSV) and can never use\nit to widen the allowlist. A refusal that concerns the file arrives on the\n`file` field so the SPA's form mapper can put it where the user is looking.",
+        "operationId": "upload_file_api_v1_files_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_api_v1_files_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing files.create or a pending password change."
+          },
+          "422": {
+            "description": "The upload was refused (size, type, contents or category)."
+          }
+        },
+        "summary": "Upload a file",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/v1/files/{file_id}": {
+      "delete": {
+        "description": "Delete a file and its bytes. The row and the audit event commit first;\nthe object follows (see `storage.delete_file` for why that order).",
+        "operationId": "delete_file_api_v1_files__file_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing files.create or a pending password change."
+          },
+          "404": {
+            "description": "No such file belongs to the caller."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete a file",
+        "tags": [
+          "files"
+        ]
+      },
+      "get": {
+        "operationId": "read_file_metadata_api_v1_files__file_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing files.read or a pending password change."
+          },
+          "404": {
+            "description": "No such file belongs to the caller."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read a file's metadata",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/v1/files/{file_id}/content": {
+      "get": {
+        "description": "The bytes, verified against the digest the row records before they leave.\n\nA row whose object is gone, or whose object no longer hashes to what was\nrecorded, is a **server** fault — the request was fine and the store is\nwrong. Answering 404 would report that as \"you may not have this\", which is\nboth untrue and useless to whoever has to fix it.",
+        "operationId": "download_file_api_v1_files__file_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {}
+            },
+            "description": "The stored bytes."
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing files.read or a pending password change."
+          },
+          "404": {
+            "description": "No such file belongs to the caller."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "description": "The stored contents are missing or fail their checksum."
+          }
+        },
+        "summary": "Download a file",
+        "tags": [
+          "files"
         ]
       }
     },

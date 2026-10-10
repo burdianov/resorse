@@ -12,6 +12,7 @@ from app.api.v1 import (
     admin_settings,
     admin_users,
     auth,
+    files,
     health,
     me_preferences,
     notifications,
@@ -27,3 +28,4 @@ api_router.include_router(admin_permissions.router, tags=["admin"])
 api_router.include_router(admin_settings.router, tags=["admin"])
 api_router.include_router(admin_audit.router, tags=["admin"])
 api_router.include_router(notifications.router, tags=["notifications"])
+api_router.include_router(files.router, tags=["files"])

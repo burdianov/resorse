@@ -193,7 +193,7 @@ async def test_a_key_resolves_to_a_direct_child_of_the_volume(
         pytest.param("{00000000-0000-4000-8000-000000000001}", id="braced-uuid"),
         pytest.param("00000000-0000-4000-8000-00000000000Z", id="non-hex-character"),
         pytest.param("00000000-0000-4000-8000-00000000000g", id="non-hex-letter"),
-        pytest.param("0000000\uFF10-0000-4000-8000-000000000001", id="fullwidth-digit"),
+        pytest.param("0000000\uff10-0000-4000-8000-000000000001", id="fullwidth-digit"),
         pytest.param("00000000-0000-4000-8000-000000000001\x00", id="nul-terminated"),
         pytest.param("", id="empty"),
         pytest.param(".", id="dot"),
@@ -217,7 +217,7 @@ async def test_a_symlink_planted_in_the_volume_cannot_escape_it(tmp_path: Path) 
     key = storage.new_storage_key()
     try:
         os.symlink(outside, root / key, target_is_directory=True)
-    except (OSError, NotImplementedError):
+    except OSError, NotImplementedError:
         pytest.skip("this platform does not grant unprivileged symlink creation")
 
     volume = LocalVolumeStorage(root)
@@ -285,9 +285,7 @@ async def test_writing_creates_the_volume_and_leaves_no_debris(
         pytest.param("..\\..\\", "unnamed", id="traversal-only"),
     ],
 )
-async def test_the_uploaded_name_is_reduced_to_a_display_name(
-    hostile: str, expected: str
-) -> None:
+async def test_the_uploaded_name_is_reduced_to_a_display_name(hostile: str, expected: str) -> None:
     assert storage.sanitise_filename(hostile) == expected
 
 
@@ -533,9 +531,7 @@ async def test_the_cap_refuses_before_anything_is_written(
 async def test_a_type_removed_from_the_allowlist_is_refused(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
-    only_text = get_settings().model_copy(
-        update={"storage_allowed_content_types": "text/plain"}
-    )
+    only_text = get_settings().model_copy(update={"storage_allowed_content_types": "text/plain"})
 
     with pytest.raises(storage.UnsupportedFileType):
         await store(session, volume, settings=only_text)
@@ -655,7 +651,9 @@ async def test_deleting_records_the_event_and_hands_back_the_key(
     asset = await store(session, volume, actor=actor, original_filename="logo.png")
     asset_id, key = asset.id, asset.key
 
-    returned = await storage.delete_file(session, actor=actor, asset=asset)
+    # The producer half: F050's `delete_file` is the endpoint that commits and
+    # then unlinks, and this is the step it calls.
+    returned = await storage.delete_file_row(session, actor=actor, asset=asset)
 
     assert returned == key
     assert await count_assets(session) == 0
@@ -682,7 +680,3 @@ async def test_the_default_backend_is_the_configured_volume() -> None:
         assert backend.root == get_settings().storage_root
     finally:
         storage.get_storage.cache_clear()
-
-
-async def count_assets(session: AsyncSession) -> int:
-    return int(await session.scalar(select(func.count()).select_from(FileAsset)) or 0)

@@ -30,21 +30,32 @@ Four ideas, layered, each the reason the next one can be trusted.
   session and never commit: the caller's transaction is the unit of work, so
   "the row exists" and "the change was committed" stay the same fact.
 
-What is deliberately absent: the HTTP endpoints and the authorization decision
-about who may read which file are F050's (BP-7.9a's "reference authorization"),
-and no scanning engine is in this stack — :class:`NoMalwareScanner` is the
-shipped implementation of the hook, named for what it does rather than for what
-a caller might assume.
+Both halves of BP-7.9a live in this module, and the split between them is the
+transaction. The *producer* functions — :func:`store_file`,
+:func:`delete_file_row` — add rows and audit events to the caller's session and
+never commit, so a record and the change it describes stay the same fact.
+The *endpoint* functions — :func:`upload_file`, :func:`delete_file`,
+:func:`load_file`, :func:`list_files` — are the units of work a route calls:
+they own the commit, and they are where BP-7.9a's authorization is decided.
+**A file is reachable by its owner and by construction nothing else.** The row
+id and the owner travel in one SQL predicate, so another account's file is
+*not found* rather than *forbidden* (a 403 would confirm the id exists), and a
+null-owner row — the system artifact a report pipeline will one day write — is
+invisible here rather than shared with everyone.
+
+No scanning engine is in this stack: :class:`NoMalwareScanner` is the shipped
+implementation of BP-6.4's hook, named for what it does rather than for what a
+caller might assume.
 
 **The one place the pair can drift.** The object is written before the row and
-unlinked after it (see :func:`store_file` and :func:`delete_file`), so a
-transaction that rolls back between those steps leaves an *unreferenced object*
-or a *row whose bytes are still present* — never a row pointing at nothing.
-That direction is chosen deliberately: an orphan in a private volume costs
-disk and leaks nothing, while a broken row is a download that fails for a user.
-Collecting orphans is a sweep that belongs with the endpoints that can know
-which transactions committed (F050), and it is recorded as an open item rather
-than pretended away.
+unlinked after it, so a failure between those steps leaves an *unreferenced
+object* — never a row pointing at nothing. That direction is chosen
+deliberately: an orphan in a private volume costs disk and leaks nothing, while
+a broken row is a download that fails for a user. :func:`upload_file` closes
+the ordinary case, a commit that raises, by taking the object back out. What
+remains is a process that dies between a successful commit and the unlink:
+disk, and nothing else. No scheduler exists in this stack to sweep it, which is
+recorded rather than pretended away.
 """
 
 import hashlib
@@ -56,6 +67,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Protocol
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -84,6 +96,16 @@ class InvalidStorageKey(StorageError):
 
 class ObjectNotFound(StorageError):
     """No object is stored under this key."""
+
+
+class FileNotFound(StorageError):
+    """No file with this id belongs to this user.
+
+    The row-side twin of :class:`ObjectNotFound`, and deliberately the one
+    answer for "no such id" and "another account's id": the two are
+    indistinguishable here because distinguishing them is what a 403 would do
+    (F041's structural isolation, F045's rule for the inbox).
+    """
 
 
 class StorageIntegrityError(StorageError):
@@ -226,7 +248,7 @@ def _detect_office(data: bytes) -> str | None:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             names = set(archive.namelist())
-    except (zipfile.BadZipFile, zipfile.LargeZipFile, OSError, EOFError, ValueError):
+    except zipfile.BadZipFile, zipfile.LargeZipFile, OSError, EOFError, ValueError:
         # A truncated or malformed archive is not a document.
         return None
     if _DOCX_MEMBER in names:
@@ -257,9 +279,7 @@ def _is_plain_text(data: bytes) -> bool:
     return not head.startswith("<")
 
 
-def _agreed_content_type(
-    detected: str, declared: str | None, allowed: frozenset[str]
-) -> str:
+def _agreed_content_type(detected: str, declared: str | None, allowed: frozenset[str]) -> str:
     """What the row will record, given what the bytes are and what was claimed."""
     if declared is None:
         return detected
@@ -530,13 +550,14 @@ async def read_file(asset: FileAsset, *, backend: StorageBackend | None = None) 
     return data
 
 
-async def delete_file(session: AsyncSession, *, actor: User, asset: FileAsset) -> str:
+async def delete_file_row(session: AsyncSession, *, actor: User, asset: FileAsset) -> str:
     """Remove the row and record the deletion; return the key of the object.
 
     The object is **not** deleted here. It is deleted by the caller, **after**
     its transaction commits, with :func:`remove_object`: unlinking before the
     row is durable would leave a row pointing at nothing if the transaction
     rolled back — the one failure direction the module docstring rules out.
+    The endpoint that does both is :func:`delete_file`.
     """
     key, filename, entity_id = asset.key, asset.original_filename, asset.id
     await session.delete(asset)
@@ -554,16 +575,129 @@ async def delete_file(session: AsyncSession, *, actor: User, asset: FileAsset) -
 
 
 async def remove_object(key: str, *, backend: StorageBackend | None = None) -> None:
-    """Delete an object's bytes. Idempotent — see :func:`delete_file`."""
+    """Delete an object's bytes. Idempotent — see :func:`delete_file_row`."""
     volume: StorageBackend = backend or get_storage()
     await volume.delete(key)
+
+
+# --------------------------------------------------------------------------
+# The endpoints' units of work (F050). These own the commit; the producers
+# above deliberately do not.
+# --------------------------------------------------------------------------
+
+
+async def upload_file(
+    session: AsyncSession,
+    *,
+    actor: User,
+    data: bytes,
+    original_filename: str,
+    category: str,
+    declared_content_type: str | None = None,
+    backend: StorageBackend | None = None,
+    scanner: MalwareScanner | None = None,
+    settings: Settings | None = None,
+) -> FileAsset:
+    """Store an upload and settle it: the unit of work behind ``POST /files``.
+
+    :func:`store_file` is the producer and never commits; this is the caller
+    that owns the request's transaction. The owner is the actor and cannot be
+    anything else — an upload that could write an ownerless row would be a way
+    to mint a file that the isolation rule above does not cover.
+
+    The ``except`` is the interesting line. If the commit fails, the row is
+    gone and the object the producer already wrote is unreachable, so it goes
+    back out instead of accumulating. A failure there must not mask the commit
+    failure, which is the one the caller needs to see.
+    """
+    volume: StorageBackend = backend or get_storage()
+    asset = await store_file(
+        session,
+        actor=actor,
+        data=data,
+        original_filename=original_filename,
+        category=category,
+        declared_content_type=declared_content_type,
+        owner_user_id=actor.id,
+        backend=volume,
+        scanner=scanner,
+        settings=settings,
+    )
+    try:
+        await session.commit()
+    except Exception:
+        await _discard(volume, asset.key)
+        raise
+    return asset
+
+
+async def load_file(session: AsyncSession, *, user_id: uuid.UUID, file_id: uuid.UUID) -> FileAsset:
+    """The caller's own file, or :class:`FileNotFound`.
+
+    One predicate, both halves of it. Selecting the row by id and comparing the
+    owner in Python would load a stranger's row into this process and would
+    leave the decision to whoever remembered to compare; here the id and the
+    owner are the *same* query, so there is no state in which the row is
+    loaded and the check has not happened.
+    """
+    asset = await session.scalar(
+        select(FileAsset).where(FileAsset.id == file_id, FileAsset.owner_user_id == user_id)
+    )
+    if asset is None:
+        raise FileNotFound(f"No file {file_id} belongs to this user.")
+    return asset
+
+
+async def list_files(
+    session: AsyncSession, *, user_id: uuid.UUID, page: int, page_size: int
+) -> tuple[list[FileAsset], int]:
+    """One page of the caller's library (newest first) and its total.
+
+    The order is ``created_at`` descending with the id as tiebreaker: two files
+    uploaded in one transaction share an instant, and a page that could order
+    them either way would show one of them twice and the other never.
+    """
+    owner = FileAsset.owner_user_id == user_id
+    total = await session.scalar(select(func.count()).select_from(FileAsset).where(owner))
+    rows = await session.scalars(
+        select(FileAsset)
+        .where(owner)
+        .order_by(FileAsset.created_at.desc(), FileAsset.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    return list(rows), int(total or 0)
+
+
+async def delete_file(
+    session: AsyncSession, *, actor: User, user_id: uuid.UUID, file_id: uuid.UUID
+) -> None:
+    """Delete one of the caller's files: row, audit event, commit, then bytes.
+
+    The three steps are the three functions above it — :func:`load_file`, which
+    is where another account's id becomes a not-found, :func:`delete_file_row`
+    for the durable half, and :func:`remove_object` **after** the commit, so a
+    rollback leaves an object rather than a row pointing at nothing.
+
+    A failure to unlink is swallowed: the deletion has already committed, so
+    the caller is entitled to see it succeed, and reporting a completed
+    deletion as an error would invite a retry that 404s. The leftover object is
+    the safe direction the module docstring explains.
+    """
+    asset = await load_file(session, user_id=user_id, file_id=file_id)
+    key = await delete_file_row(session, actor=actor, asset=asset)
+    await session.commit()
+    try:
+        await remove_object(key)
+    except OSError:
+        return
 
 
 async def _discard(volume: StorageBackend, key: str) -> None:
     """Best-effort unlink after a failed store (see :func:`store_file`)."""
     try:
         await volume.delete(key)
-    except (StorageError, OSError):
+    except StorageError, OSError:
         # The original failure is the one worth reporting; a leftover object in
         # a private volume is the failure mode this whole design prefers.
         return

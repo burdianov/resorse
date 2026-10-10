@@ -170,6 +170,24 @@ export type AuthenticatedUser = {
 };
 
 /**
+ * Body_upload_file_api_v1_files_post
+ */
+export type BodyUploadFileApiV1FilesPost = {
+    /**
+     * Category
+     *
+     * A slug like `templates` or `reports`.
+     */
+    category: string;
+    /**
+     * File
+     *
+     * The file's bytes.
+     */
+    file: Blob | File;
+};
+
+/**
  * ChangePasswordRequest
  *
  * Self-service credential change (F030). Both fields are shape-bounded
@@ -267,6 +285,62 @@ export type CreateUserResponse = {
      */
     temporary_password: string | null;
     user: AdminUserItem;
+};
+
+/**
+ * FileItem
+ */
+export type FileItem = {
+    /**
+     * Category
+     */
+    category: string;
+    /**
+     * Content Type
+     */
+    content_type: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Original Filename
+     */
+    original_filename: string;
+    /**
+     * Sha256
+     */
+    sha256: string;
+    /**
+     * Size
+     */
+    size: number;
+};
+
+/**
+ * FileListResponse
+ */
+export type FileListResponse = {
+    /**
+     * Items
+     */
+    items: Array<FileItem>;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Page Size
+     */
+    page_size: number;
+    /**
+     * Total
+     */
+    total: number;
 };
 
 /**
@@ -1887,6 +1961,209 @@ export type PutPreferenceApiV1AuthMePreferencesKeyPutResponses = {
 };
 
 export type PutPreferenceApiV1AuthMePreferencesKeyPutResponse = PutPreferenceApiV1AuthMePreferencesKeyPutResponses[keyof PutPreferenceApiV1AuthMePreferencesKeyPutResponses];
+
+export type ListFilesApiV1FilesGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Page Size
+         */
+        page_size?: number;
+    };
+    url: '/api/v1/files';
+};
+
+export type ListFilesApiV1FilesGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing files.read or a pending password change.
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListFilesApiV1FilesGetError = ListFilesApiV1FilesGetErrors[keyof ListFilesApiV1FilesGetErrors];
+
+export type ListFilesApiV1FilesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: FileListResponse;
+};
+
+export type ListFilesApiV1FilesGetResponse = ListFilesApiV1FilesGetResponses[keyof ListFilesApiV1FilesGetResponses];
+
+export type UploadFileApiV1FilesPostData = {
+    body: BodyUploadFileApiV1FilesPost;
+    path?: never;
+    query?: never;
+    url: '/api/v1/files';
+};
+
+export type UploadFileApiV1FilesPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing files.create or a pending password change.
+     */
+    403: unknown;
+    /**
+     * The upload was refused (size, type, contents or category).
+     */
+    422: unknown;
+};
+
+export type UploadFileApiV1FilesPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: FileItem;
+};
+
+export type UploadFileApiV1FilesPostResponse = UploadFileApiV1FilesPostResponses[keyof UploadFileApiV1FilesPostResponses];
+
+export type DeleteFileApiV1FilesFileIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * File Id
+         */
+        file_id: string;
+    };
+    query?: never;
+    url: '/api/v1/files/{file_id}';
+};
+
+export type DeleteFileApiV1FilesFileIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing files.create or a pending password change.
+     */
+    403: unknown;
+    /**
+     * No such file belongs to the caller.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteFileApiV1FilesFileIdDeleteError = DeleteFileApiV1FilesFileIdDeleteErrors[keyof DeleteFileApiV1FilesFileIdDeleteErrors];
+
+export type DeleteFileApiV1FilesFileIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteFileApiV1FilesFileIdDeleteResponse = DeleteFileApiV1FilesFileIdDeleteResponses[keyof DeleteFileApiV1FilesFileIdDeleteResponses];
+
+export type ReadFileMetadataApiV1FilesFileIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * File Id
+         */
+        file_id: string;
+    };
+    query?: never;
+    url: '/api/v1/files/{file_id}';
+};
+
+export type ReadFileMetadataApiV1FilesFileIdGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing files.read or a pending password change.
+     */
+    403: unknown;
+    /**
+     * No such file belongs to the caller.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadFileMetadataApiV1FilesFileIdGetError = ReadFileMetadataApiV1FilesFileIdGetErrors[keyof ReadFileMetadataApiV1FilesFileIdGetErrors];
+
+export type ReadFileMetadataApiV1FilesFileIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: FileItem;
+};
+
+export type ReadFileMetadataApiV1FilesFileIdGetResponse = ReadFileMetadataApiV1FilesFileIdGetResponses[keyof ReadFileMetadataApiV1FilesFileIdGetResponses];
+
+export type DownloadFileApiV1FilesFileIdContentGetData = {
+    body?: never;
+    path: {
+        /**
+         * File Id
+         */
+        file_id: string;
+    };
+    query?: never;
+    url: '/api/v1/files/{file_id}/content';
+};
+
+export type DownloadFileApiV1FilesFileIdContentGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing files.read or a pending password change.
+     */
+    403: unknown;
+    /**
+     * No such file belongs to the caller.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * The stored contents are missing or fail their checksum.
+     */
+    500: unknown;
+};
+
+export type DownloadFileApiV1FilesFileIdContentGetError = DownloadFileApiV1FilesFileIdContentGetErrors[keyof DownloadFileApiV1FilesFileIdContentGetErrors];
+
+export type DownloadFileApiV1FilesFileIdContentGetResponses = {
+    /**
+     * The stored bytes.
+     */
+    200: Blob | File;
+};
+
+export type DownloadFileApiV1FilesFileIdContentGetResponse = DownloadFileApiV1FilesFileIdContentGetResponses[keyof DownloadFileApiV1FilesFileIdContentGetResponses];
 
 export type HealthApiV1HealthGetData = {
     body?: never;
