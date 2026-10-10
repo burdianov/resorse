@@ -83,6 +83,17 @@ interface Captured {
 
 interface MatrixFixture {
   matrixResponse?: () => Response
+  /**
+   * When present, a successful save is remembered and the next `GET
+   * /admin/roles` answers with the grants that were just committed — what the
+   * real server does. A handler that returns the same catalogue no matter what
+   * was written to it makes a draft re-seeded from the pre-request entry look
+   * exactly like one re-seeded from the save, which is how F064's defect
+   * passed this file.
+   */
+  persist?: { items: RoleItem[] }
+  /** Held open until the test releases it — the re-read that follows a save. */
+  holdReRead?: { until: Promise<void> }
 }
 
 function handlers(captured: Captured, fixture: MatrixFixture = {}) {
@@ -92,15 +103,32 @@ function handlers(captured: Captured, fixture: MatrixFixture = {}) {
     http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     // The shell's bell polls this on every authenticated page (F046).
     http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),
-    http.get('/api/v1/admin/roles', () => {
+    http.get('/api/v1/admin/roles', async () => {
       captured.rolesCalls += 1
-      return HttpResponse.json({ items: [VIEWER, ADMIN, SUPER] })
+      if (captured.rolesCalls > 1 && fixture.holdReRead !== undefined) {
+        await fixture.holdReRead.until
+      }
+      return HttpResponse.json({ items: fixture.persist?.items ?? [VIEWER, ADMIN, SUPER] })
     }),
     http.get('/api/v1/admin/permissions', () => HttpResponse.json({ items: PERMISSIONS })),
     http.put('/api/v1/admin/roles/matrix', async ({ request }) => {
       captured.puts += 1
-      captured.matrixBody = (await request.json()) as Record<string, unknown>
-      return fixture.matrixResponse?.() ?? new HttpResponse(null, { status: 204 })
+      const body = (await request.json()) as {
+        roles: { role_id: string; permission_codes: string[] }[]
+      }
+      captured.matrixBody = body
+      const refusal = fixture.matrixResponse?.()
+      if (refusal !== undefined) return refusal // a refused save changes nothing
+      if (fixture.persist !== undefined) {
+        const committed = Object.fromEntries(
+          body.roles.map((entry) => [entry.role_id, entry.permission_codes]),
+        )
+        fixture.persist.items = fixture.persist.items.map((role) => ({
+          ...role,
+          permission_codes: committed[role.id] ?? role.permission_codes,
+        }))
+      }
+      return new HttpResponse(null, { status: 204 })
     }),
     http.post('/api/v1/admin/roles', async ({ request }) => {
       captured.creates = (await request.json()) as Record<string, unknown>
@@ -200,7 +228,9 @@ describe('the draft and the save', () => {
   })
 
   it('saves the whole matrix in one call, system column included unchanged', async () => {
-    const { captured } = renderMatrix()
+    // The stand-in keeps what it is sent, so the re-read below answers with the
+    // saved grants rather than with the catalogue the screen already had.
+    const { captured } = renderMatrix({ persist: { items: [VIEWER, ADMIN, SUPER] } })
     await waitForMatrix()
 
     await userEvent.click(box('admin', 'reports.generate'))
@@ -226,6 +256,45 @@ describe('the draft and the save', () => {
       expect(captured.rolesCalls).toBeGreaterThanOrEqual(2)
     })
     expect(await screen.findByText('Permissions saved')).toBeInTheDocument()
+  })
+
+  it('clears the unsaved state from the save itself, not from the re-read (F064)', async () => {
+    // The re-read is held open, so everything the screen shows between the 204
+    // and the catalogue's next answer has to come from the save. Re-seeding the
+    // draft the old way — `setDraft(null)`, which drew it from the entry the
+    // re-read had not replaced yet — leaves the saved tick drawn as unsaved
+    // here, and turns it into a phantom "1 unsaved change" once the re-read
+    // lands (F057's finding).
+    const persist = { items: [VIEWER, ADMIN, SUPER] }
+    let release: () => void = () => {
+      throw new Error('the re-read was never held open')
+    }
+    const until = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { captured } = renderMatrix({ persist, holdReRead: { until } })
+    await waitForMatrix()
+
+    await userEvent.click(box('admin', 'reports.generate'))
+    expect(await screen.findByText('1 unsaved change in 1 role')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByText('Permissions saved')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(captured.rolesCalls).toBeGreaterThanOrEqual(2)
+    })
+    // The save itself is the answer: the bar is gone and the grant it just
+    // committed is the one drawn.
+    expect(box('admin', 'reports.generate')).toBeChecked()
+    expect(screen.queryByText(/unsaved change/)).toBeNull()
+
+    // Release the re-read. It confirms the same matrix, and the screen does not
+    // move — no bar, tick still drawn.
+    release()
+    await waitFor(() => {
+      expect(box('admin', 'reports.generate')).toBeChecked()
+    })
+    expect(screen.queryByText(/unsaved change/)).toBeNull()
   })
 
   it('reset restores the server state and clears the bar', async () => {

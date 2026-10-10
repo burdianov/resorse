@@ -864,9 +864,13 @@ superseded token, which the server correctly reads as reuse and answers by revok
 family — so `changeForcedPassword` returns only once the gate has been left, which is where that
 contract belongs rather than in each caller's memory. And it surfaced the roles screen's phantom
 "unsaved change" after a successful save, where the draft is re-seeded from the pre-request cache
-entry (recorded as a finding; the grant itself is persisted — F057 changed no application code), which
-**`TASKS.md` F064 now owns** (assigned by the operator 2026-10-10, C59 — it sits inside G-A3's scope, so
-it is fixed before G-A3 runs). The
+entry (recorded as a finding; the grant itself is persisted — F057 changed no application code). **F064
+fixed it** (operator-assigned 2026-10-10, C59; it sat inside G-A3's scope, so it landed before G-A3 runs):
+the save re-seeds the draft from the matrix it committed — the response is a `204`, so the mutation
+returns what it sent — and writes that answer into the roles cache, instead of going through
+`setDraft(null)`, which drew the draft from the entry the re-read had not replaced yet. The unit
+regression test holds the re-read open and proves the screen shows the saved matrix without it, and
+`workflow.spec.ts`'s helper asserts the bar going again — the assertion F057 had to drop. The
 recorded findings it left are closed: F058 moved the palette's `sr-only` header inside its popup, made
 the breadcrumb separator a sibling of the items rather than a child, and turned the three
 `Button render={<Link/>}` navigations into `Link`s wearing `buttonVariants()`. Accessibility scans and

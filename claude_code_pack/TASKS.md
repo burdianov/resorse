@@ -256,7 +256,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Implement:** Test extension registry and no domain leakage.
 **Accept:** Foundation gate report and no Next/Redis. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
-## Stage A repairs — outstanding findings from the foundation (F064–F065)
+## Stage A repairs — findings the foundation recorded as open (F064–F065)
 
 Two items the foundation recorded as open and deliberately unowned. They are repairs to Stage A, not domain work, which is why they are numbered here and not in Stage B (C59).
 

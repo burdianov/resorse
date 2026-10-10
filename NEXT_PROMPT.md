@@ -19,19 +19,20 @@ handoff, then stop and give me the operator checks. Do not push.
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation — is complete** (F001–F063), with **two repairs added 2026-10-10**: **F064** (the
-  roles-screen save-state defect) and **F065** (the `/ready` probe) — findings the foundation recorded as open and unowned
-  (C59). **Stage B has started: D001 landed (C52).** The application runs D001–D091; its gate checkpoints (D018, D036, D063, D078, D091) are the operator's.
-- **Last completed:** the **decision write-up** — no task ID, docs only (**C53–C59**). The operator answered the six blockers and all
-  eighteen `O` decisions in one sitting: `DECISIONS.md` has **no OPEN row**, `docs/DOMAIN_ARCHITECTURE.md` defers to none (§4 maps
-  each answer), and `TASKS.md` gained F064, F065 and D083a. **No table or migration — head is still `0009`**; only two docstrings
-  moved, and they moved `backend/openapi.json` (one is the published `engine-health` description; the typed client is unchanged).
-- **Previous:** D001 (**C52**, docs only); F063 — Foundation handoff (**C51**, Stage A's close); F062 (**C50**, docs only); F061
-  (**C49**; seven CI jobs, actionlint clean, **no CI job ever observed running**); F060 (**C48**) → F054 (**C42**).
-- **Next:** **F064 — Roles screen save-state fix** (TASKS.md line 263), then **F065 — Readiness probe** (line 267), then
-  **D002 — Disciplines migration** (line 277) — the first domain table (revision `0010`) and the seven seeded codes, built
-  against D001's map. F064 and F065 are the two items the operator answered "now", and **F064 sits inside G-A3's scope, so it is fixed before G-A3 is run** (C59).
+  roles-screen save-state defect, **landed**) and **F065** (the `/ready` probe, next) — findings the foundation recorded as open
+  and unowned (C59). **Stage B has started: D001 landed (C52).** The application runs D001–D091; its gate checkpoints (D018, D036, D063, D078, D091) are the operator's.
+- **Last completed:** **F064 — Roles screen save-state fix** (Stage A repair; **no table and no migration — head is still `0009`**).
+  `pages/admin/roles.tsx` re-seeded its draft from the cache entry the save's own re-read had not replaced yet, so the bar stayed up
+  (and the just-saved cell drew its old value) over a grant the server had already accepted. The save now re-seeds from the matrix it
+  committed — the `204` carries no body, so the mutation returns what it sent — and writes that answer into the roles cache. The
+  regression test holds the re-read open and proves the screen does not need it, and F057's browser helper asserts the bar going.
+- **Previous:** the **decision write-up** — no task ID, docs only (**C53–C59**); D001 (**C52**, docs only); F063 (**C51**, Stage A's
+  close); F061 (**C49**; seven CI jobs, actionlint clean, **no CI job ever observed running**); F060 (**C48**) → F054 (**C42**).
+- **Next:** **F065 — Readiness probe** (TASKS.md line 267), then **D002 — Disciplines migration** (line 277) — the first domain
+  table (revision `0010`) and the seven seeded codes, built against D001's map. F064 sat inside G-A3's scope and **has landed, so
+  G-A3 can be run** (C59); F065 is the other item the operator answered "now".
 - **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (G-A1/G-A2 have no
-  dated run recorded). **G-A3 (due since F048) and G-A4 are still not recorded** — commands in `docs/FOUNDATION_REPORT.md` §5; D001 touched no gate evidence. **G-9 (`/ready`) now has an owner (F065)**.
+  dated run recorded). **G-A3 (due since F048) and G-A4 are still not recorded** — commands in `docs/FOUNDATION_REPORT.md` §5; D001 and F064 touched no gate evidence. **G-9 (`/ready`) now has an owner (F065)**.
 - **Open decisions (DECISIONS.md):** **none.** Every decision is CONFIRMED — `C11`–**`C59`** — and `docs/DOMAIN_ARCHITECTURE.md`
   §4 records where each answer landed and which task owns it. The register's rule applies in reverse too: **a confirmed rule is amended by a new entry that says so, never edited in place.**
 - **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any migration task; it reads `0009 (head)` today.
@@ -89,10 +90,6 @@ Start the services, each in its own terminal:
 
 ## 5. Open items
 
-- **Owned now — the roles screen after a successful save (F064).** `pages/admin/roles.tsx` re-seeds its draft from the
-  *pre-request* cache entry when `saveMutation` succeeds, so the save bar can stay visible (and a just-saved cell render
-  unchanged) **while the grant is persisted** (`app_e2e`-verified). The operator answered "fix it now" on 2026-10-10, so it is
-  **F064**, inside G-A3's scope (C59); C46 records it as the one F057 finding F058 deliberately left to it (the other four are fixed).
 - **The visual baselines are platform-tagged** (`…-quality-win32.png`): on Linux, `pnpm run test:visual` finds none of
   them and fails every state as new — F061 (CI) runs them in a Windows job. Not a defect if you meet it (`ARCHITECTURE.md` §12).
 - **Dismissed — the jsdom `Select` item** (`CARRIED_CONSTRAINTS.md` §6): an uncontrolled `Select` is unreachable here (every `<Select` under `src/` passes `value`); its label is now an F058 baseline.
@@ -148,9 +145,10 @@ The record column is **historical and the agent's own observation**, never the o
 | **Security (F060)** | `cd D:\resors\backend; uv run pytest tests/test_production_hardening.py` | 23 passed (agent record). Edge check on a live host: `curl -sI https://<SITE_ADDRESS>/` shows the CSP, HSTS and `nosniff` (`docs/SECURITY.md` §4.2) |
 | **Foundation report (F063)** | Read `docs/FOUNDATION_REPORT.md` (BP-14.8), then `cd D:\resors\backend; uv run pytest tests/test_extension_contract.py tests/test_foundation_boundaries.py` and `cd D:\resors\frontend; pnpm exec vitest run tests/config/modules.test.tsx` | The report is the check: it must not claim a gate result, and every number in it must be attributable. Agent record: 9 / 5 / 7 passed. **G-A3 and G-A4 run against this tree** — the commands are in the report's §5 |
 | **Domain map (D001)** | Read `docs/DOMAIN_ARCHITECTURE.md`; then `cd D:\resors\backend; uv run alembic heads` and `cd D:\resors\frontend; grep -n "APP_MODULES" src/config/modules.ts` | The check is that the document claims no code: head is still `0009 (head)`, `APP_MODULES` is `[]`, `PermissionCode` has no domain member. **Every decision it once deferred to is CONFIRMED now (`C53`–`C59`), so the map must carry no `[Ox]` marker and no unwritable constraint** — its §4 records where each answer landed. A table, route or code that landed in D001 is a defect; so is a rule the map states as decided that `DECISIONS.md` does not |
+| **Roles matrix save (F064)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/roles.test.tsx`; in the browser suite, `pnpm exec playwright test -g "creates two roles"` | **F064 record**: `14 passed`. The check is the screen's own contract — the save clears its unsaved state **without waiting for its re-read**, so no phantom "unsaved change" and no just-saved cell drawn from the old answer. The unit test holds the re-read open to prove it; the browser helper asserts the bar going (F057 had to drop that assertion) |
 | **Production stack (F059)** | Create `.env.production` from `.env.production.example` (real values, git-ignored), then `cd D:\resors; docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait` | Agent's record (scratch env, `SITE_ADDRESS=localhost`): all five services healthy, `migrate` exit 0. The operator's check: `curl -k https://<SITE_ADDRESS>/api/v1/health` → `"environment":"production"`; `docker compose -f docker-compose.prod.yml --env-file .env.production down` leaves volumes intact (`down -v` deletes them) |
 | Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)`. Run this after any migration task — a dev database behind head serves 500s while every test is green |
-| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F057 adds no migration). F049 record: clean, ending at `0009` |
+| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F064 adds no migration). F049 record: clean, ending at `0009` |
 
 **The end-to-end checks by hand** (F054's lab, F053's export, F050's downloads) are the last two rows of `docs/VERIFICATION_LOG.md`'s "Check the work" table.
 
@@ -159,7 +157,7 @@ The record column is **historical and the agent's own observation**, never the o
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; **the two Stage A repairs F064–F065 come before Stage B; D002 is next after them (line 277). D050–D053 are withdrawn (C53), D041 is re-scoped, and D083a is new** |
+| `claude_code_pack/TASKS.md` | Backlog; **F064 has landed; the other Stage A repair, F065, comes before Stage B, and D002 is next after it (line 277). D050–D053 are withdrawn (C53), D041 is re-scoped, and D083a is new** |
 | `claude_code_pack/DECISIONS.md` | Confirmed decisions **C11–C59** — **no OPEN row remains**; §"no OPEN rows" records that an amendment is a new entry, never an edit in place |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |

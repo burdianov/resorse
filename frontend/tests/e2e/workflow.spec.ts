@@ -680,17 +680,15 @@ test.describe.serial('BP-10.4 browser workflow', () => {
  * matrix, so this counts as one operator action rather than a shortcut around
  * the UI. The bar is asserted first (the screen only offers the save once the
  * draft differs), then the toast is the server's own word that the write
- * landed.
- *
- * What this does *not* assert is the bar disappearing, which is what the
- * first F057 run waited on — and it never went away while the grant was
- * already in the database (verified against `app_e2e` afterwards). The seeded
- * draft is compared against the roles query's *new* data while it was seeded
- * from the previous entry, so the just-saved cell comes back rendered
- * unchanged with "1 unsaved change" beside it. That is a defect in the screen,
- * not in the workflow: it is recorded as an app finding in `NEXT_PROMPT.md`,
- * and the assertion here is the persisted answer, read the way a reloading
- * admin reads it.
+ * landed, and then the bar going is the screen's — F057 had to drop that
+ * assertion: the draft was seeded from the entry the save's re-read had not
+ * replaced yet, so the just-saved cell came back rendered unchanged with
+ * "1 unsaved change" beside it, while the grant was already in the database.
+ * That was the screen's defect, recorded as an app finding, and **F064 fixed
+ * it** — the save now re-seeds from the matrix it committed — so the assertion
+ * is back, and the reload below is no longer the only way to read the result.
+ * It stays because the persisted answer, read the way a reloading admin reads
+ * it, is still what this helper exists to check.
  */
 async function setRolePermission(
   page: Page,
@@ -706,6 +704,13 @@ async function setRolePermission(
   await expect(page.locator('[data-slot="matrix-save-bar"]')).toBeVisible()
   await page.getByRole('button', { name: 'Save changes' }).click()
   await expect(page.getByText('Permissions saved')).toBeVisible()
+
+  // The save clears its own unsaved state — the assertion F057 dropped, and
+  // F064's acceptance: the cell still drawn as granted is drawn from what was
+  // committed, not from the entry the re-read had yet to replace.
+  await expect(page.locator('[data-slot="matrix-save-bar"]')).toBeHidden()
+  if (granted) await expect(cell).toBeChecked()
+  else await expect(cell).not.toBeChecked()
 
   // A hard reload: the guard is an in-app `useBlocker`, so nothing asks, and
   // the draft is seeded from the server exactly as a fresh visit seeds it.

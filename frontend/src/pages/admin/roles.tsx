@@ -51,9 +51,13 @@ import type {
  *
  * - **A draft, not a form.** `draft` is seeded from the server once
  *   (`draft === null` gates it), so a background refetch cannot silently
- *   clobber edits in progress; Reset re-seeds on demand and a successful save
- *   re-seeds through `setDraft(null)` + invalidate — the bar and the count
- *   always compare the draft against the *server's* current answer.
+ *   clobber edits in progress; Reset re-seeds on demand, and a successful save
+ *   re-seeds from **the matrix it just committed** — the response is a 204, so
+ *   the mutation returns the entries it sent and both the draft and the cache
+ *   take that answer — never through `setDraft(null)`, which re-seeded from the
+ *   *pre-request* entry until the re-read landed and then read as an unsaved
+ *   change over a grant the server had already accepted (F064). Either way the
+ *   bar and the count compare the draft against the *server's* current answer.
  * - **The `super_admin` column is rendered read-only** (`is_system` from the
  *   catalogue): disabled checkboxes, a lock in the header. The column still
  *   rides the save payload **unchanged** — F035/C24 accepts that on purpose,
@@ -156,8 +160,10 @@ export function AdminRolesPage() {
   const roles = rolesQuery.data?.items ?? NO_ROLES
   const serverDraft = useMemo(() => seedDraft(roles), [roles])
 
-  // Seed once (and after save/reset): a background refetch while `draft` holds
+  // Seed once, on the first answer: a background refetch while `draft` holds
   // edits must not clobber them — that is exactly the state the bar displays.
+  // Reset and a successful save seed the draft themselves, so neither relies on
+  // this effect running again (F064).
   useEffect(() => {
     if (rolesQuery.data !== undefined && draft === null) {
       setDraft(seedDraft(rolesQuery.data.items))
@@ -171,19 +177,48 @@ export function AdminRolesPage() {
   const dirty = differences.cells > 0
 
   const saveMutation = useMutation({
-    mutationFn: () =>
-      api.put<void>('/api/v1/admin/roles/matrix', {
-        // The whole visible matrix, in the catalogue's order — including the
-        // protected column, unchanged (F035/C24 accepts exactly this).
-        roles: roles.map((role) => ({
-          role_id: role.id,
-          permission_codes: draft?.[role.id] ?? [],
-        })),
-      }),
+    // The 204 carries no body, so what was committed **is** this mutation's
+    // result — returned rather than discarded, because the success path re-seeds
+    // from it (F064).
+    mutationFn: async () => {
+      // The whole visible matrix, in the catalogue's order — including the
+      // protected column, unchanged (F035/C24 accepts exactly this).
+      const entries = roles.map((role) => ({
+        role_id: role.id,
+        permission_codes: [...(draft?.[role.id] ?? [])],
+      }))
+      await api.put<void>('/api/v1/admin/roles/matrix', { roles: entries })
+      return entries
+    },
     meta: { suppressErrorToast: true },
-    onSuccess: () => {
+    onSuccess: (entries) => {
       toast.success('Permissions saved')
-      setDraft(null)
+      // Re-seed from what was just saved, and say the same thing in the cache.
+      // Seeding through `setDraft(null)` instead drew the draft from the entry
+      // the invalidated refetch had *not* replaced yet, so the bar stayed up
+      // (and the saved cell rendered its old value) until that re-read landed —
+      // and once it did, the draft was the catalogue from before the save
+      // (F064). Writing the committed answer into the cache keeps the draft and
+      // the server's answer equal across that window; the invalidation still
+      // re-reads, and a concurrent change by somebody else is a real difference
+      // the bar is meant to show.
+      const saved: Draft = Object.fromEntries(
+        entries.map((entry) => [entry.role_id, entry.permission_codes]),
+      )
+      setDraft(saved)
+      queryClient.setQueryData<ListRolesApiV1AdminRolesGetResponse>(
+        queryKeys.admin.roles,
+        (current) =>
+          current === undefined
+            ? current
+            : {
+                ...current,
+                items: current.items.map((role) => ({
+                  ...role,
+                  permission_codes: saved[role.id] ?? role.permission_codes,
+                })),
+              },
+      )
       void queryClient.invalidateQueries({ queryKey: queryKeys.admin.roles })
     },
   })
