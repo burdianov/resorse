@@ -18,15 +18,15 @@ The original QTC360 source is a **reference only**, read from the extracted tree
 - Never create fake API responses, fake KPI figures, inert buttons, placeholder production endpoints, or pretend a check passed.
 
 ## One-task-at-a-time protocol (most important)
-1. Read only: `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md` sections needed for the task, `DECISIONS.md`, `STATE.md`, and the selected task's entry in `TASKS.md`. Read source files **only as needed**. Do not repeatedly paste or re-read all of `BIG-PROMPT.txt` — it is in this pack (verbatim; never edit it); consult a single section when a task needs it, via the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
+1. Read only: `CLAUDE_MASTER.md`, `PRODUCT_SPEC.md` sections needed for the task, `DECISIONS.md`, `NEXT_PROMPT.md`, and the selected task's entry in `TASKS.md`. Read source files **only as needed**. Do not repeatedly paste or re-read all of `BIG-PROMPT.txt` — it is in this pack (verbatim; never edit it); consult a single section when a task needs it, via the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 2. Implement **exactly one task ID** requested by the operator. Do not auto-start the next task. If a task is too big, propose a split and stop; do not silently expand scope.
 3. Before edits, give a plan of at most five concise bullets, with expected files and risks. Then implement.
 4. Use existing patterns, migrations, typed schemas and tests; avoid sweeping refactors, unrelated formatting, new dependencies without justification, and regenerating whole modules.
 5. Run **only focused, cheap checks** relevant to the task (e.g. a single pytest file, Vitest file, TypeScript on touched code if fast). Do not run full E2E, Docker rebuild, whole-repository audits or broad dependency upgrades unless the task specifically requires them.
-6. **Commit at the end of each completed task** (operator override 2026-10-08, `DECISIONS.md` C13): stage the task's own changes and `git commit` them before handing off, with a message of the form `feat(F005): <summary>`. Do **not** run `git push`, deploy, or make irreversible data changes.
+6. **Finish each task in this order:** complete the selected task; run focused checks (item 5); update `NEXT_PROMPT.md` (item 7); then commit the implementation and the handoff together (operator override 2026-10-08, `DECISIONS.md` C13), with a message of the form `feat(F005): <summary>`. Never run `git push`, deploy, or make irreversible data changes.
 
    **The operator runs all whole-suite and gate checks** (`DECISIONS.md` C14). Every handoff must therefore list exact, copy-pasteable commands with expected outcomes — never a summary of what "should" pass. Never report a suite result you did not observe yourself, and never describe an operator-run check as verified. The runbook lives in `OPERATOR_GUIDE.md`.
-7. Update `STATE.md` with task ID, changed files, migrations, checks actually run/results, checks for operator, blockers, and next task. Keep `STATE.md` concise (prefer <=200 lines; archive old entries to `docs/IMPLEMENTATION_LOG.md`).
+7. Update `NEXT_PROMPT.md` as the authoritative handoff before committing each completed task. Record the current position, changed files, migrations, checks actually run and results, operator checks, blockers, and next task. Keep it at most 200 lines. Move historical details to `docs/COMPLETION_LOG.md` or `docs/VERIFICATION_LOG.md` as appropriate. Do not update `STATE.md` per task.
 8. End with this exact concise structure:
    - `TASK: <ID> — <name>`
    - `STATUS: DONE | PARTIAL | BLOCKED`
@@ -34,18 +34,18 @@ The original QTC360 source is a **reference only**, read from the extracted tree
    - `CHECKS RUN: <commands and results, or NOT RUN>`
    - `OPERATOR CHECKS: <commands and expected outcomes>`
    - `DECISIONS/BLOCKERS: <only material items>`
-   - `NEXT: <ID>`
+   - `NEXT: <ID> — <task name>`
    Stop. Wait for operator approval/next ID.
 
 ## Task completion definition
 A task is DONE only if its listed acceptance criteria are met, code is integrated into actual routes/services/storage where applicable, no new lint/type errors are knowingly introduced, and at least a focused verification or a clearly stated reason for deferring verification is recorded. If blocked, stop and ask **one precise decision** rather than inventing a rule.
 
 ## Efficient operator workflow
-- Operator begins with `Read CLAUDE_MASTER.md, DECISIONS.md and STATE.md. Execute task F001 only. Stop after the task.`
+- Operator begins with `Read CLAUDE_MASTER.md, DECISIONS.md and NEXT_PROMPT.md. Execute task F001 only. Stop after the task.`
 - For subsequent work: `Execute task F002 only, following CLAUDE_MASTER.md. Stop and give me the operator checks.`
-- The agent commits the task's changes itself (C13); the operator runs the recommended tests, reviews the commit and sends the next task ID. Commit message form: `feat(F002): <short summary>`.
+- The agent commits the task's changes and the updated handoff together (C13); the operator runs the recommended tests, reviews the commit and sends the next task ID. Commit message form: `feat(F002): <short summary>`.
 - At designated gates, operator runs the full check suite and fixes failures in **separate, narrowly scoped repair tasks**.
-- If context becomes large, start a new Claude Code session. `STATE.md` + Git history + this prompt pack are the durable handoff. Never rely on a long chat transcript as the sole state store.
+- If context becomes large, start a new Claude Code session. `NEXT_PROMPT.md` + Git history + this prompt pack are the durable handoff. Never rely on a long chat transcript as the sole state store.
 
 ## Engineering constraints
 - Database migrations for all persistent changes; no schema changes via application startup. Money/rates: PostgreSQL NUMERIC/Decimal, never floating-point. Dates: explicit UAE timezone display, UTC instants for events; local calendar dates for assignment/leave boundaries. Clearly define inclusive/exclusive date conventions in domain code and tests.

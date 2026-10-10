@@ -6,7 +6,7 @@ Place this pack at the root of your new repository. It **contains `BIG-PROMPT.tx
 Start Claude Code in the repository root. First instruction:
 
 ```text
-Read CLAUDE_MASTER.md, DECISIONS.md, STATE.md and task F001 in TASKS.md.
+Read CLAUDE_MASTER.md, DECISIONS.md, NEXT_PROMPT.md and task F001 in TASKS.md.
 Implement F001 only. Follow the one-task protocol and stop.
 ```
 
@@ -14,7 +14,7 @@ Subsequent instruction (replace ID):
 
 ```text
 Execute F002 only. Read only the relevant spec and source files.
-Do not commit, do not start F003, and give me focused operator checks.
+Commit the completed task, including the updated NEXT_PROMPT.md handoff. Do not push. Do not start F003. Give me focused operator checks.
 ```
 
 At every handoff: (1) inspect the commit and its diff, (2) run the commands Claude lists, (3) fix failures in a dedicated repair task, (4) review the agent's commit for the task (the agent commits each task itself — C13), (5) update decision statuses when needed, (6) request the next task. Do not ask Claude to explain the whole system every time.
@@ -60,7 +60,7 @@ whole table. Never assume a check passed until you ran it; the agent must not cl
 - G-B5 after D091: business reports, security, tests and release readiness verified.
 
 ## Context economy
-Use one task per Claude session or a small number of consecutive sessions with context reset as needed. Keep only relevant sections open. Use `STATE.md` as compact checkpoint; archive logs. Prefer focused tests and explicit operator commands. Avoid generating repeated architecture essays, redundant summaries, long chain-of-thought, screenshots unless needed, and broad reformatting.
+Use one task per Claude session or a small number of consecutive sessions with context reset as needed. Keep only relevant sections open. `NEXT_PROMPT.md` is the authoritative handoff and compact checkpoint; archive logs to `docs/`. Prefer focused tests and explicit operator commands. Avoid generating repeated architecture essays, redundant summaries, long chain-of-thought, screenshots unless needed, and broad reformatting.
 
 ## Handling changes
 When you decide a business rule, update `DECISIONS.md` first and have Claude add its acceptance tests. If a feature is larger than one small task, add subtask IDs (e.g. `D042a`) rather than combining many files and concerns. If requirements change, amend spec and tests before changing code.
