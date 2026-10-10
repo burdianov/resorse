@@ -128,7 +128,9 @@ describe('the lab’s registry entry', () => {
 
     // …and the reverse: authority is required as well, so a caller with the flag
     // but no administration namespace gets nothing.
-    expect(tools(access({ permissions: ['files.read'], features: [DEV_TOOLS_FLAG] }))).toBeUndefined()
+    expect(
+      tools(access({ permissions: ['files.read'], features: [DEV_TOOLS_FLAG] })),
+    ).toBeUndefined()
     expect(tools(ANONYMOUS_ACCESS)).toBeUndefined()
   })
 })
@@ -137,7 +139,13 @@ describe('/tools/components', () => {
   it('answers with the lab page, notice and all, for an administrator', async () => {
     renderApp('/tools/components', SUPERUSER)
 
-    expect(await screen.findByRole('heading', { name: 'Component lab' })).toBeInTheDocument()
+    // An explicit timeout: this is the app's largest lazy route (recharts is
+    // behind it), and when the whole suite runs in parallel with coverage
+    // instrumentation enabled, resolving that chunk has been observed to
+    // outlast the 1s default — a real 1.4-1.6s wait, not a missing route.
+    expect(
+      await screen.findByRole('heading', { name: 'Component lab' }, { timeout: 10_000 }),
+    ).toBeInTheDocument()
     // The first question a reader of this page asks is whether it ships, so the
     // answer is on the screen rather than in a comment.
     expect(screen.getByText('Development builds only.')).toBeInTheDocument()

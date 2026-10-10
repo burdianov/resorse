@@ -23,9 +23,21 @@ import { server } from '@/testing/msw-server'
 
 configure({ asyncUtilTimeout: 3000 })
 
-const READ: PermissionItem = { id: '20000000-0000-7000-8000-000000000001', code: 'users.read', description: 'View users.' }
-const DEACTIVATE: PermissionItem = { id: '20000000-0000-7000-8000-000000000002', code: 'users.deactivate', description: null }
-const GENERATE: PermissionItem = { id: '20000000-0000-7000-8000-000000000003', code: 'reports.generate', description: 'Generate reports.' }
+const READ: PermissionItem = {
+  id: '20000000-0000-7000-8000-000000000001',
+  code: 'users.read',
+  description: 'View users.',
+}
+const DEACTIVATE: PermissionItem = {
+  id: '20000000-0000-7000-8000-000000000002',
+  code: 'users.deactivate',
+  description: null,
+}
+const GENERATE: PermissionItem = {
+  id: '20000000-0000-7000-8000-000000000003',
+  code: 'reports.generate',
+  description: 'Generate reports.',
+}
 
 function me(overrides: Partial<MeResponse> = {}): MeResponse {
   return {
@@ -118,7 +130,9 @@ describe('the table', () => {
   })
 
   it('renders no management controls without permissions.manage', async () => {
-    renderDictionary(me({ permissions: ['permissions.read'], is_superuser: false, roles: ['viewer'] }))
+    renderDictionary(
+      me({ permissions: ['permissions.read'], is_superuser: false, roles: ['viewer'] }),
+    )
     await waitForTable()
 
     expect(screen.queryByRole('button', { name: 'Add permission' })).toBeNull()
@@ -163,7 +177,10 @@ describe('creating', () => {
     await waitForTable()
     server.use(
       http.post('/api/v1/admin/permissions', () =>
-        HttpResponse.json({ detail: 'A permission with this code already exists.' }, { status: 409 }),
+        HttpResponse.json(
+          { detail: 'A permission with this code already exists.' },
+          { status: 409 },
+        ),
       ),
     )
 

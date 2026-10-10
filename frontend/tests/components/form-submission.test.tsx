@@ -219,9 +219,7 @@ describe('submission hygiene', () => {
 
   it('reports success through the shared toast', async () => {
     server.use(
-      http.post('/api/v1/admin/users', () =>
-        HttpResponse.json({ id: '1f0d…' }, { status: 201 }),
-      ),
+      http.post('/api/v1/admin/users', () => HttpResponse.json({ id: '1f0d…' }, { status: 201 })),
     )
     renderForm()
 

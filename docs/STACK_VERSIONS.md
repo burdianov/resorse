@@ -63,13 +63,14 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `tailwindcss` | **4.3.3** | 2026-07-16 | |
 | `@tailwindcss/vite` | **4.3.3** | 2026-07-16 | peer `vite ^5.2 \|\| ^6 \|\| ^7 \|\| ^8` |
 | `shadcn` (CLI) | **4.21.4** | 2026-10-07 | engines `node >=20.18.1`. Run with `pnpm dlx shadcn@4.21.4` — deliberately **not** a project dependency, so the CLI never ships in the bundle or the lockfile's runtime set. |
-| `eslint` | **10.12.0** | 2026-10-02 | engines `node ^20.19.0 \|\| ^22.13.0 \|\| >=24` |
-| `typescript-eslint` | **8.71.1** | 2026-10-05 | peer `eslint ^8.57 \|\| ^9 \|\| ^10`; **peer `typescript >=4.8.4 <6.1.0`** |
-| `eslint-plugin-react-hooks` | **7.1.1** | 2026-04-17 | |
-| `eslint-plugin-react-refresh` | **0.5.7** | 2026-09-14 | |
-| `prettier` | **3.9.9** | 2026-09-23 | |
+| `eslint` | **10.12.0** | 2026-10-02 | engines `node ^20.19.0 \|\| ^22.13.0 \|\| >=24`. In use from **F055** — flat config, `frontend/eslint.config.mjs`. |
+| `@eslint/js` | **10.0.1** | 2026-02-06 | **New in F055.** ESLint 10 no longer depends on it, so `js.configs.recommended` is not importable unless it is installed here — a direct devDependency, not a transitive one. It is the upstream defaults package, published on its own cadence and **newest at 10.0.1** while `eslint` itself is at 10.12.0: the two version lines are independent, so this row is not stale just because it lags. |
+| `typescript-eslint` | **8.71.1** | 2026-10-05 | peer `eslint ^8.57 \|\| ^9 \|\| ^10`; **peer `typescript >=4.8.4 <6.1.0`** — the reason for the TypeScript pin (§5). In use from **F055** (config only: the linter is deliberately **not** type-aware, see §6). |
+| `eslint-plugin-react-hooks` | **7.1.1** | 2026-04-17 | In use from **F055**. The flat-config half is `configs.flat['recommended-latest']`; the unprefixed `configs.recommended*` entries are eslintrc-shaped (`plugins: ["react-hooks"]`) and flat config rejects them at load. |
+| `eslint-plugin-react-refresh` | **0.5.7** | 2026-09-14 | In use from **F055**; flat config is `configs.vite`. |
+| `prettier` | **3.9.9** | 2026-09-23 | In use from **F055** — `frontend/.prettierrc.json` (printWidth 100, derived from the repo's own style: p99 was 102 chars, the author splits at 96). |
 | `vitest` | **5.0.3** | 2026-09-30 | engines `node ^22.12 \|\| ^24 \|\| >=26`; peer `vite ^6.4 \|\| ^7 \|\| ^8` |
-| `@vitest/coverage-v8` | **5.0.3** | 2026-09-30 | |
+| `@vitest/coverage-v8` | **5.0.3** | 2026-09-30 | In use from **F055** — `provider: 'v8'`, configured in `vite.config.ts` `test.coverage` with the thresholds and the recorded numbers in §6. |
 | `jsdom` | **29.1.1** | 2026-04-30 | **pinned below latest — §5** |
 | `@testing-library/react` | **16.3.3** | 2026-08-27 | peer `react ^19` |
 | `@testing-library/user-event` | **14.6.7** | 2026-09-02 | |
@@ -158,6 +159,11 @@ Every one of these was checked against the published manifests, not inferred:
   `@tailwindcss/vite@4.3.3` peers `vite ^5.2 || ^6 || ^7 || ^8` (✓); `vitest@5.0.3` peers
   `vite ^6.4 || ^7 || ^8` (✓).
 - **ESLint 10 chain:** `typescript-eslint@8.71.1` peers `eslint ^8.57 || ^9 || ^10` (✓ 10.12.0).
+  Two further facts about this chain were established by installation in **F055**, not inferred:
+  ESLint 10 ships **without** `@eslint/js` (so it is a direct devDependency here, §3), and
+  `@eslint/js@10.0.1` is the newest published version despite the eslint package being at 10.12.0 —
+  the two version lines are independent. `eslint-plugin-react-hooks@7.1.1` works only through its
+  `configs.flat` entry; passing the namespaced `configs['recommended-latest']` fails at config load.
 - **Node engines:** the strictest floors in the set are `react-router >=22.22.0`, `msw >=22.12.0`,
   `jest-dom >=22` and `typescript-eslint >=21.1.0` — all satisfied by Node 24.14.0. Only `jsdom` 30.x would
   have failed (§5).

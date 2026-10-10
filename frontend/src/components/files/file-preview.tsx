@@ -3,7 +3,14 @@ import { DownloadIcon, EyeIcon, FileQuestionIcon, Trash2Icon } from 'lucide-reac
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { useDeleteFile, useDownloadFile } from '@/components/files/use-files'
 import type { FileItem } from '@/lib/generated/api'
@@ -176,13 +183,19 @@ export function FilePreview({ item, disabled = false, className }: FilePreviewPr
         )}
 
         <p className="font-mono text-xs break-all text-muted-foreground">
-          sha256 {item.sha256} — recorded when it was stored; the server re-checks the bytes
-          against it on the way out.
+          sha256 {item.sha256} — recorded when it was stored; the server re-checks the bytes against
+          it on the way out.
         </p>
 
         <div className="flex flex-wrap gap-2">
           {kind === null ? null : (
-            <Button variant="outline" size="sm" loading={fetchBytes.isPending} disabled={busy} onClick={preview}>
+            <Button
+              variant="outline"
+              size="sm"
+              loading={fetchBytes.isPending}
+              disabled={busy}
+              onClick={preview}
+            >
               <EyeIcon />
               Preview
             </Button>

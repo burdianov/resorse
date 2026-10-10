@@ -72,7 +72,9 @@ export function readChartTokens(theme: 'light' | 'dark'): ChartTokens {
   return {
     grid: read('--border', GRID_FALLBACK[theme]),
     axis: read('--muted-foreground', AXIS_FALLBACK[theme]),
-    series: SERIES_FALLBACK.map((fallback, index) => read(`--chart-${String(index + 1)}`, fallback)),
+    series: SERIES_FALLBACK.map((fallback, index) =>
+      read(`--chart-${String(index + 1)}`, fallback),
+    ),
   }
 }
 

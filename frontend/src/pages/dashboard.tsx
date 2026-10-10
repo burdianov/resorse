@@ -201,8 +201,15 @@ function QuickLinksCard({ access }: { access: NavigationAccess }) {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2">
             {groups.map((group) => (
-              <section key={group.id} aria-labelledby={`quick-links-${group.id}`} className="space-y-2">
-                <h3 id={`quick-links-${group.id}`} className="text-sm font-medium text-muted-foreground">
+              <section
+                key={group.id}
+                aria-labelledby={`quick-links-${group.id}`}
+                className="space-y-2"
+              >
+                <h3
+                  id={`quick-links-${group.id}`}
+                  className="text-sm font-medium text-muted-foreground"
+                >
                   {group.label}
                 </h3>
                 <ul className="space-y-1">

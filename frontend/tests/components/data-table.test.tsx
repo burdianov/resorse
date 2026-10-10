@@ -3,11 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import {
-  DataTable,
-  DataTableColumnHeader,
-  DataTableFacetedFilter,
-} from '@/components/data-table'
+import { DataTable, DataTableColumnHeader, DataTableFacetedFilter } from '@/components/data-table'
 import type { DataTableColumn } from '@/components/data-table'
 import type { PaginationState, SortingState } from '@tanstack/react-table'
 
@@ -124,9 +120,7 @@ describe('client mode', () => {
   })
 
   it('paginates and reports the range it is showing', async () => {
-    renderTable(
-      <DataTable label="People" columns={columns} data={PEOPLE} initialPageSize={5} />,
-    )
+    renderTable(<DataTable label="People" columns={columns} data={PEOPLE} initialPageSize={5} />)
 
     expect(screen.getByText('1–5 of 12')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'First page' })).toBeDisabled()
@@ -270,9 +264,7 @@ describe('faceted filter', () => {
         columns={columns}
         data={PEOPLE}
         search={{ debounceMs: 0 }}
-        filters={
-          <DataTableFacetedFilter column="role" title="Role" options={ROLE_OPTIONS} />
-        }
+        filters={<DataTableFacetedFilter column="role" title="Role" options={ROLE_OPTIONS} />}
       />
     )
   }
@@ -300,9 +292,9 @@ describe('faceted filter', () => {
     expect(screen.getByText('1–4 of 4')).toBeInTheDocument()
     // The chip says what is filtered, in the option's own words — the internal
     // value ('viewer') never reaches the screen.
-    expect(screen.getByRole('button', { name: 'Remove filter: Role' }).parentElement).toHaveTextContent(
-      'Role: Viewer',
-    )
+    expect(
+      screen.getByRole('button', { name: 'Remove filter: Role' }).parentElement,
+    ).toHaveTextContent('Role: Viewer')
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove filter: Role' }))
 

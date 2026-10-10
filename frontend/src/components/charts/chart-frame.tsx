@@ -55,10 +55,7 @@ export function ChartFrame({
   className,
 }: ChartFrameProps) {
   return (
-    <figure
-      data-slot="chart-frame"
-      className={cn('space-y-3 rounded-lg border p-4', className)}
-    >
+    <figure data-slot="chart-frame" className={cn('space-y-3 rounded-lg border p-4', className)}>
       <figcaption className="space-y-1">
         <p className="text-sm font-medium text-foreground">{title}</p>
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}

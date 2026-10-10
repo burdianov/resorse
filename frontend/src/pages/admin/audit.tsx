@@ -165,7 +165,9 @@ export function AdminAuditPage() {
       enableSorting: false,
       header: () => <span className="text-sm font-medium">Time</span>,
       cell: ({ row }) => (
-        <span className="text-muted-foreground">{formatDate(row.original.created_at, 'dd.MM.yyyy HH:mm')}</span>
+        <span className="text-muted-foreground">
+          {formatDate(row.original.created_at, 'dd.MM.yyyy HH:mm')}
+        </span>
       ),
     },
     {

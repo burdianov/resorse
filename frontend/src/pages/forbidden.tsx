@@ -18,9 +18,7 @@ export function ForbiddenPage() {
       <PageHeader
         title="403 — Not authorised"
         description="Your account does not have permission to view this page. If you believe that is a mistake, ask an administrator to review your roles."
-        actions={
-          <Button render={<Link to="/dashboard" />}>Back to dashboard</Button>
-        }
+        actions={<Button render={<Link to="/dashboard" />}>Back to dashboard</Button>}
       />
     </div>
   )

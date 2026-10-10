@@ -205,7 +205,10 @@ describe('cross-account isolation', () => {
       'app.table.admin-users': { columnVisibility: { roles: false }, columnOrder: [] },
     }
 
-    const ada = renderDirectory({ meUser: me(ADA_ID, 'ada@example.com', 'Ada Lovelace'), rows: adaRows })
+    const ada = renderDirectory({
+      meUser: me(ADA_ID, 'ada@example.com', 'Ada Lovelace'),
+      rows: adaRows,
+    })
     await waitForDirectory()
     await openViewOptions()
     await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'email' }))

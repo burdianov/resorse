@@ -49,7 +49,11 @@ const SUPER: RoleItem = {
 }
 
 const PERMISSIONS: PermissionItem[] = [
-  { id: '20000000-0000-7000-8000-000000000001', code: 'reports.generate', description: 'Generate reports.' },
+  {
+    id: '20000000-0000-7000-8000-000000000001',
+    code: 'reports.generate',
+    description: 'Generate reports.',
+  },
   { id: '20000000-0000-7000-8000-000000000002', code: 'roles.read', description: 'View roles.' },
   { id: '20000000-0000-7000-8000-000000000003', code: 'users.read', description: 'View users.' },
 ]
@@ -99,10 +103,16 @@ function handlers(captured: Captured, fixture: MatrixFixture = {}) {
     }),
     http.post('/api/v1/admin/roles', async ({ request }) => {
       captured.creates = (await request.json()) as Record<string, unknown>
-      return HttpResponse.json({ ...VIEWER, name: 'new-role', permission_codes: [] }, { status: 201 })
+      return HttpResponse.json(
+        { ...VIEWER, name: 'new-role', permission_codes: [] },
+        { status: 201 },
+      )
     }),
     http.patch('/api/v1/admin/roles/:id', async ({ request, params }) => {
-      captured.patch = { url: String(params.id), body: (await request.json()) as Record<string, unknown> }
+      captured.patch = {
+        url: String(params.id),
+        body: (await request.json()) as Record<string, unknown>,
+      }
       return HttpResponse.json(VIEWER)
     }),
     http.delete('/api/v1/admin/roles/:id', ({ params }) => {
@@ -200,7 +210,9 @@ describe('the draft and the save', () => {
     })
     const body = captured.matrixBody as { roles: { role_id: string; permission_codes: string[] }[] }
     expect(body.roles.map((entry) => entry.role_id)).toEqual([VIEWER.id, ADMIN.id, SUPER.id])
-    const byId = Object.fromEntries(body.roles.map((entry) => [entry.role_id, entry.permission_codes]))
+    const byId = Object.fromEntries(
+      body.roles.map((entry) => [entry.role_id, entry.permission_codes]),
+    )
     expect(byId[ADMIN.id]?.sort()).toEqual(['reports.generate', 'users.read'])
     // The protected column rides along, unchanged — F035/C24 accepts exactly this.
     expect([...byId[SUPER.id]!].sort()).toEqual(['reports.generate', 'users.read'])

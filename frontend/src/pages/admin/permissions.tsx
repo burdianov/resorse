@@ -8,7 +8,12 @@ import { EmptyState } from '@/components/common/empty-state'
 import { ErrorState } from '@/components/common/error-state'
 import { PageHeader } from '@/components/common/page-header'
 import { PermissionGate } from '@/components/common/permission-gate'
-import { DataTable, DataTableColumnHeader, DataTableRowActions, DataTableViewOptions } from '@/components/data-table'
+import {
+  DataTable,
+  DataTableColumnHeader,
+  DataTableRowActions,
+  DataTableViewOptions,
+} from '@/components/data-table'
 import type { DataTableColumn } from '@/components/data-table'
 import { Button } from '@/components/ui/button'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'

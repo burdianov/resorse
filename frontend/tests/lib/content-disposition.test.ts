@@ -24,14 +24,14 @@ describe('filenameFromContentDisposition', () => {
     // name, so a browser that can read it must get that one.
     expect(
       filenameFromContentDisposition(
-        "attachment; filename=\"rapport_2026.pdf\"; filename*=UTF-8''rapport%20%C3%A9quipe.pdf",
+        'attachment; filename="rapport_2026.pdf"; filename*=UTF-8\'\'rapport%20%C3%A9quipe.pdf',
       ),
     ).toBe('rapport équipe.pdf')
   })
 
   it('reads the extended form on its own, quoted or not', () => {
     expect(filenameFromContentDisposition("attachment; filename*=UTF-8''a%20b.pdf")).toBe('a b.pdf')
-    expect(filenameFromContentDisposition("attachment; filename*=\"UTF-8''a.pdf\"")).toBe('a.pdf')
+    expect(filenameFromContentDisposition('attachment; filename*="UTF-8\'\'a.pdf"')).toBe('a.pdf')
   })
 
   it('returns null when the header names nothing', () => {

@@ -32,14 +32,15 @@ until its owning task lands — the agent must say so rather than hand you a com
 | Frontend build | `cd frontend && pnpm run build` | **live (F006)** |
 | Frontend dev server | `cd frontend && pnpm run dev` → http://localhost:5173 | **live (F006)** |
 | Backend API dev server | `cd backend && uv run uvicorn app.main:app --reload --port 8000` → http://localhost:8000/api/v1/health | **live (F007)** |
-| Frontend lint / format | `cd frontend && pnpm run lint` / `pnpm run format:check` | F055 |
-| Frontend unit + component (Vitest) | `cd frontend && pnpm test -- --run` | first tests F011; suite F055 |
-| Frontend coverage | `cd frontend && pnpm run coverage` | F055 |
+| Frontend lint / format | `cd frontend && pnpm run lint` / `pnpm run format:check` | **live (F055)** |
+| Frontend unit + component (Vitest) | `cd frontend && pnpm test -- --run` | first tests F011; suite **live (F055)** |
+| Frontend coverage | `cd frontend && pnpm run coverage` | **live (F055)** — thresholds in `vite.config.ts`; exit 0 means both were met |
 | Backend lint / format (Ruff) | `cd backend && uv run ruff check . && uv run ruff format --check .` | F056 |
 | Backend types | `cd backend && uv run mypy app` | F056 |
 | Backend unit tests | `cd backend && uv run pytest -q` | first tests F023; suite F056 |
 | Backend integration (real Postgres) | `docker compose up -d postgres && cd backend && uv run pytest tests/integration -q` | F008 + F056 |
 | Migration smoke | `cd backend && uv run alembic upgrade head` then `alembic downgrade base` | F023 |
+| Dev database at head | `cd backend && uv run alembic current` → expect `(head)` | now — see the note below |
 | Browser E2E (Playwright) | `cd frontend && pnpm exec playwright test` | F057 |
 | Accessibility (axe) | `cd frontend && pnpm run test:a11y` | F058 |
 | PDF / Gotenberg smoke | `cd backend && uv run pytest tests -q -k report` | F052 |
@@ -47,6 +48,14 @@ until its owning task lands — the agent must say so rather than hand you a com
 
 **At a gate**, the agent hands you the exact subset for that gate (see the gate list below) rather than the
 whole table. Never assume a check passed until you ran it; the agent must not claim it did.
+
+**Keep the dev database at head.** A new migration is exercised on `app_test` when it lands, but `app_dev` only
+moves when someone upgrades it — so a table the backend starts reading can be missing from your running server
+while every test is green. That happened after F050: `app_dev` sat at `0008`, `file_assets` arrived in `0009`,
+and the first page to call `GET /api/v1/files` (F054's lab) returned a 500 rather than an empty list. The fix is
+one line — `cd backend && uv run alembic upgrade head` — and the habit that prevents it is running
+`alembic current` after any migration task. Do not run `alembic downgrade base` against `app_dev`: the
+downgrade-to-base leg belongs to `app_test` (F023's smoke), never to the database you browse.
 
 ## Gates
 - G-A1 after F016: UI app boots, design tokens/components and navigation work.

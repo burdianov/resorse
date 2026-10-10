@@ -50,10 +50,7 @@ export function DataTableColumnHeader<TData extends RowData, TValue>({
       }}
     >
       {title}
-      <Icon
-        aria-hidden
-        className={cn('size-3.5', sorted === false && 'text-muted-foreground')}
-      />
+      <Icon aria-hidden className={cn('size-3.5', sorted === false && 'text-muted-foreground')} />
       {sortIndex > -1 ? (
         // aria-hidden: the sorted state is `aria-sort` on the <th>, and a name
         // that changes when you use the button ("Name" → "Name 1") is the same

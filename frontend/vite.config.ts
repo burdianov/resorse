@@ -31,5 +31,44 @@ export default defineConfig({
     include: ['tests/**/*.test.{ts,tsx}'],
     css: false,
     restoreMocks: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      // Measure the application source, not the test harness. The exclusions
+      // are by category, and each is code this project does not hand-write:
+      //   - `src/lib/generated/` — emitted by `pnpm run api:types` (F018);
+      //   - `src/main.tsx` — the mount call, exercised by the build, not tests;
+      //   - `src/testing/` — MSW handlers and stubs used *by* the tests;
+      //   - `src/components/ui/` — the shadcn registry's components, normalised
+      //     by `scripts/fix-generated-ui.sh` (F014).
+      // Everything else under `src/` counts, whether or not a test reaches it,
+      // so the number cannot be raised by quietly narrowing the set.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/lib/generated/**',
+        'src/main.tsx',
+        'src/testing/**',
+        'src/components/ui/**',
+        'src/**/*.d.ts',
+      ],
+      // Two thresholds, measuring two different things:
+      //
+      // - `src/lib/**` is BP-10.5's "core": the shared library every feature
+      //   rides on (the API client, the query keys, the CSV and filename
+      //   helpers, the access predicate). 85 is the requirement's own number,
+      //   not one chosen to fit — the F055 measurement clears it (94.04 st /
+      //   85.71 br / 90.32 fn / 95.65 ln).
+      // - The global numbers are a **ratchet** at the F055 measurement
+      //   (92.65 / 80.49 / 91.14 / 93.71), rounded down. They exist to make a
+      //   regression visible, and are meant to be raised as tests are added —
+      //   never lowered to turn a red run green.
+      thresholds: {
+        'src/lib/**': { statements: 85, branches: 85, functions: 85, lines: 85 },
+        statements: 92,
+        branches: 80,
+        functions: 91,
+        lines: 93,
+      },
+    },
   },
 })

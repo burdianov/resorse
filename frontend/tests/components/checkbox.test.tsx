@@ -17,22 +17,16 @@ describe('Checkbox', () => {
     // re-rendered: switching a control from uncontrolled to controlled mid-life
     // is not supported by Base UI (and is a React anti-pattern anyway).
     const unchecked = render(<Checkbox />)
-    expect(
-      unchecked.container.querySelector('[data-slot="checkbox-indicator"]'),
-    ).toBeNull()
+    expect(unchecked.container.querySelector('[data-slot="checkbox-indicator"]')).toBeNull()
     unchecked.unmount()
 
     const checked = render(<Checkbox defaultChecked />)
-    expect(
-      checked.container.querySelector('[data-slot="checkbox-indicator"]'),
-    ).not.toBeNull()
+    expect(checked.container.querySelector('[data-slot="checkbox-indicator"]')).not.toBeNull()
   })
 
   it('exposes the checked state on the element the styles key off', () => {
     const unchecked = render(<Checkbox />)
-    expect(unchecked.container.querySelector('[role="checkbox"]')).toHaveAttribute(
-      'data-unchecked',
-    )
+    expect(unchecked.container.querySelector('[role="checkbox"]')).toHaveAttribute('data-unchecked')
     unchecked.unmount()
 
     const checked = render(<Checkbox defaultChecked />)

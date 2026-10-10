@@ -97,7 +97,10 @@ export function escapeCsvValue(value: unknown): string {
 
   const safe = neutralizeFormula(text)
   const needsQuotes =
-    safe.includes('"') || safe.includes(',') || safe.includes('\n') || safe.includes('\r') ||
+    safe.includes('"') ||
+    safe.includes(',') ||
+    safe.includes('\n') ||
+    safe.includes('\r') ||
     safe !== safe.trim()
   if (!needsQuotes) return safe
   return `"${safe.replaceAll('"', '""')}"`
@@ -125,7 +128,10 @@ export function toCsv(
  * containing commas, quotes and newlines, and all three line endings — the
  * things a naive `split(',')` gets wrong and a user's paste buffer contains.
  */
-export function parseCsv(text: string, { delimiter = ',' } = {}): {
+export function parseCsv(
+  text: string,
+  { delimiter = ',' } = {},
+): {
   headers: string[]
   rows: string[][]
 } {
@@ -188,6 +194,7 @@ export function sanitizeFilename(name: string, fallback = 'export'): string {
   const base = name.split(/[\\/]/).pop() ?? ''
   const cleaned = base
     // Control characters are exactly what we strip, hence the range.
+    // eslint-disable-next-line no-control-regex -- the control range is the point, not an accident
     .replace(/[\u0000-\u001f\u007f]/g, '')
     .replace(/[<>:"|?*]/g, '-')
     .replace(/\s+/g, ' ')
@@ -273,9 +280,7 @@ export function importCsvRows<TRecord>({
 
   const indexByKey = new Map<string, number>()
   for (const column of columns) {
-    const index = headers.findIndex(
-      (header) => header.toLowerCase() === column.label.toLowerCase(),
-    )
+    const index = headers.findIndex((header) => header.toLowerCase() === column.label.toLowerCase())
     if (index === -1) {
       errors.push({ row: 0, column: column.label, message: `Missing column "${column.label}".` })
     }

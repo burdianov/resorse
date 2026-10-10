@@ -45,8 +45,7 @@ export type NotificationPages = InfiniteData<NotificationListResponse, number>
 export function useUnreadCount(userId: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.notifications.unreadCount(userId),
-    queryFn: () =>
-      api.get<UnreadCountResponse>('/api/v1/notifications/unread-count'),
+    queryFn: () => api.get<UnreadCountResponse>('/api/v1/notifications/unread-count'),
     enabled,
     refetchInterval: NOTIFICATIONS_POLL_INTERVAL_MS,
   })
@@ -169,8 +168,7 @@ export function useNotificationMutations(userId: string, filter: NotificationFil
   })
 
   const markAll = useMutation({
-    mutationFn: () =>
-      api.post<MarkAllReadResponse>('/api/v1/notifications/read-all'),
+    mutationFn: () => api.post<MarkAllReadResponse>('/api/v1/notifications/read-all'),
     onMutate: async () => {
       const context = await snapshot()
       editPages((item) => (filter === 'unread' ? null : { ...item, is_read: true }))
@@ -184,8 +182,7 @@ export function useNotificationMutations(userId: string, filter: NotificationFil
   })
 
   const deleteOne = useMutation({
-    mutationFn: (notificationId: string) =>
-      api.delete(`/api/v1/notifications/${notificationId}`),
+    mutationFn: (notificationId: string) => api.delete(`/api/v1/notifications/${notificationId}`),
     onMutate: async (notificationId) => {
       const context = await snapshot()
       const wasUnread = find(context, notificationId)?.is_read === false

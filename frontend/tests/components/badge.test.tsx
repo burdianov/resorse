@@ -32,9 +32,7 @@ describe('Badge', () => {
   })
 
   it('renders as another element when given a render prop', () => {
-    render(
-      <Badge render={<a href="/releases/1" />}>v1.0</Badge>,
-    )
+    render(<Badge render={<a href="/releases/1" />}>v1.0</Badge>)
 
     const link = screen.getByRole('link', { name: 'v1.0' })
     expect(link.tagName).toBe('A')

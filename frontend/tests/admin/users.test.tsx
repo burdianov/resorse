@@ -7,7 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppProviders } from '@/app/providers'
 import { buildAppRoutes } from '@/app/router'
-import type { AdminUserItem, MeResponse, RoleItem, UserDirectoryReportRequest } from '@/lib/generated/api'
+import type {
+  AdminUserItem,
+  MeResponse,
+  RoleItem,
+  UserDirectoryReportRequest,
+} from '@/lib/generated/api'
 import { server } from '@/testing/msw-server'
 
 // The report preview renders a PDF with react-pdf, which needs a canvas and a
@@ -108,10 +113,6 @@ interface CapturedRequests {
   reports: UserDirectoryReportRequest[]
 }
 
-interface DirectoryFixture {
-  requests: CapturedRequests
-}
-
 function directoryHandlers(
   rows: AdminUserItem[],
   total = rows.length,
@@ -174,9 +175,19 @@ function directoryHandlers(
   return { handlers, requests }
 }
 
-function renderDirectory(init: { rows?: AdminUserItem[]; total?: number; meUser?: MeResponse } = {}) {
+function renderDirectory(
+  init: { rows?: AdminUserItem[]; total?: number; meUser?: MeResponse } = {},
+) {
   const { handlers, requests } = directoryHandlers(
-    init.rows ?? [userItem(), userItem({ id: GRACE_ID, email: 'grace@example.com', full_name: 'Grace Hopper', is_active: false })],
+    init.rows ?? [
+      userItem(),
+      userItem({
+        id: GRACE_ID,
+        email: 'grace@example.com',
+        full_name: 'Grace Hopper',
+        is_active: false,
+      }),
+    ],
     init.total,
     init.meUser ?? me(),
   )

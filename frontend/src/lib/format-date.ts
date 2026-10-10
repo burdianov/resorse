@@ -25,9 +25,7 @@ export function formatDate(
   // A bare calendar date is parsed as local midnight, not UTC: `new Date('2026-10-09')`
   // is UTC and shifts a day for anyone west of Greenwich.
   const date =
-    typeof value === 'string'
-      ? new Date(value.length === 10 ? `${value}T00:00:00` : value)
-      : value
+    typeof value === 'string' ? new Date(value.length === 10 ? `${value}T00:00:00` : value) : value
 
   if (Number.isNaN(date.getTime())) {
     return '—'
@@ -75,7 +73,8 @@ export function formatRelativeTime(value: string | Date, now: number = Date.now(
     return '—'
   }
   const deltaSeconds = Math.round((date.getTime() - now) / 1000)
-  const [unit, secondsPerUnit] =
-    RELATIVE_UNITS.find(([, seconds]) => Math.abs(deltaSeconds) >= seconds) ?? ['second', 1]
+  const [unit, secondsPerUnit] = RELATIVE_UNITS.find(
+    ([, seconds]) => Math.abs(deltaSeconds) >= seconds,
+  ) ?? ['second', 1]
   return relativeFormatter.format(Math.round(deltaSeconds / secondsPerUnit), unit)
 }

@@ -101,10 +101,9 @@ export function FileLabSection() {
         permissions={['files.create']}
         fallback={
           <p className="text-sm text-muted-foreground">
-            Uploading needs <code className="font-mono">files.create</code>, which this account
-            does not have. The dropzone is hidden rather than shown disabled — the API would
-            refuse the request, and offering a control that cannot work is worse than not
-            offering it.
+            Uploading needs <code className="font-mono">files.create</code>, which this account does
+            not have. The dropzone is hidden rather than shown disabled — the API would refuse the
+            request, and offering a control that cannot work is worse than not offering it.
           </p>
         }
       >
@@ -122,8 +121,8 @@ export function FileLabSection() {
         permissions={['files.read']}
         fallback={
           <p className="text-sm text-muted-foreground">
-            Listing needs <code className="font-mono">files.read</code>, which this account does
-            not have.
+            Listing needs <code className="font-mono">files.read</code>, which this account does not
+            have.
           </p>
         }
       >

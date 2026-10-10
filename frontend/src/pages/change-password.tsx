@@ -81,9 +81,9 @@ export function ChangePasswordForm({ onSuccess }: { onSuccess?: () => void }) {
       <form
         noValidate
         onSubmit={(event) => {
-          void form.handleSubmit((values) =>
-            mutation.mutateAsync(values).catch(() => undefined),
-          )(event)
+          void form.handleSubmit((values) => mutation.mutateAsync(values).catch(() => undefined))(
+            event,
+          )
         }}
         className="grid gap-4"
       >

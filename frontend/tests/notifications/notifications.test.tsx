@@ -79,7 +79,10 @@ interface InboxFixture {
  * A stateful stand-in for F045's endpoints: the mutation routes edit `items`
  * exactly as the server would, so a later refetch tells the truth.
  */
-function inboxHandlers(initial: NotificationItem[], options: { meUser?: MeResponse } = {}): InboxFixture {
+function inboxHandlers(
+  initial: NotificationItem[],
+  options: { meUser?: MeResponse } = {},
+): InboxFixture {
   const items = [...initial]
   const captured: Captured = {
     listParams: [],
@@ -103,7 +106,8 @@ function inboxHandlers(initial: NotificationItem[], options: { meUser?: MeRespon
       const params = new URL(request.url).searchParams
       captured.listParams.push(params)
       const filter = params.get('is_read')
-      const matching = filter === null ? items : items.filter((item) => String(item.is_read) === filter)
+      const matching =
+        filter === null ? items : items.filter((item) => String(item.is_read) === filter)
       const page = Number(params.get('page') ?? '1')
       const pageSize = Number(params.get('page_size') ?? '25')
       return HttpResponse.json({
@@ -330,7 +334,10 @@ describe('the mutations', () => {
   })
 
   it('clears all only after the confirmation, and then the empty state shows', async () => {
-    const { captured } = inboxHandlers([notification({ title: 'One' }), notification({ title: 'Two' })])
+    const { captured } = inboxHandlers([
+      notification({ title: 'One' }),
+      notification({ title: 'Two' }),
+    ])
     renderApp('/notifications')
     await waitForInbox()
     await screen.findByText('One')

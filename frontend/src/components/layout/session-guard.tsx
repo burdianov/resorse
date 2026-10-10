@@ -55,11 +55,7 @@ function SessionBoundary({ children }: { children: ReactNode }) {
 
   if (auth.status === 'anonymous') {
     return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: `${location.pathname}${location.search}` }}
-      />
+      <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
     )
   }
 

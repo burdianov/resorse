@@ -3,7 +3,7 @@ import type { ComponentType } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { AppShell } from '@/components/layout/app-shell'
 import { SIDEBAR_STORAGE_KEY } from '@/components/layout/sidebar-preferences'
@@ -128,7 +128,7 @@ describe('AppShell layout', () => {
 
   it('marks the active route with aria-current and the active state attribute', async () => {
     setViewportWidth(1280)
-    const { container } = renderShell()
+    renderShell()
 
     const link = await screen.findByRole('link', { name: 'Dashboard' })
     expect(link).toHaveAttribute('aria-current', 'page')

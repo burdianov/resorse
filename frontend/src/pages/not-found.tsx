@@ -15,9 +15,7 @@ export function NotFoundPage() {
       <PageHeader
         title="404 — Page not found"
         description="The page you asked for does not exist, or it has moved."
-        actions={
-          <Button render={<Link to="/dashboard" />}>Back to dashboard</Button>
-        }
+        actions={<Button render={<Link to="/dashboard" />}>Back to dashboard</Button>}
       />
     </div>
   )

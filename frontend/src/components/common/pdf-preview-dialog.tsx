@@ -216,8 +216,7 @@ function PreviewUnavailable() {
     <div role="alert" className="flex flex-col items-center gap-2 px-6 py-10 text-center">
       <FileWarningIcon className="size-5 text-muted-foreground" />
       <p className="text-sm text-muted-foreground">
-        This preview cannot be shown in this browser. The PDF was produced — download it to
-        open it.
+        This preview cannot be shown in this browser. The PDF was produced — download it to open it.
       </p>
     </div>
   )

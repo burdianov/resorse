@@ -73,6 +73,13 @@ import type {
 
 type Draft = Record<string, string[]>
 
+/**
+ * One shared empty list. `data?.items ?? []` inside the render body builds a
+ * new array every render, which would make every hook that depends on it
+ * recompute each time — `react-hooks/exhaustive-deps` flags it (F055).
+ */
+const NO_ROLES: readonly RoleItem[] = []
+
 function seedDraft(roles: readonly RoleItem[]): Draft {
   return Object.fromEntries(roles.map((role) => [role.id, [...role.permission_codes].sort()]))
 }
@@ -146,7 +153,7 @@ export function AdminRolesPage() {
     staleTime: 5 * 60_000,
   })
 
-  const roles = rolesQuery.data?.items ?? []
+  const roles = rolesQuery.data?.items ?? NO_ROLES
   const serverDraft = useMemo(() => seedDraft(roles), [roles])
 
   // Seed once (and after save/reset): a background refetch while `draft` holds
@@ -371,7 +378,12 @@ export function AdminRolesPage() {
       ) : null}
 
       <CreateRoleDialog open={creating} onOpenChange={setCreating} />
-      <RenameRoleDialog role={renaming} onOpenChange={(open) => { if (!open) setRenaming(null) }} />
+      <RenameRoleDialog
+        role={renaming}
+        onOpenChange={(open) => {
+          if (!open) setRenaming(null)
+        }}
+      />
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => {

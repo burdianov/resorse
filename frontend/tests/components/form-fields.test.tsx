@@ -176,7 +176,10 @@ describe('accessibility wiring', () => {
     const label = screen.getByText('Work address').closest('p')
 
     // Label → control, through htmlFor/id…
-    expect(email).toHaveAttribute('id', screen.getByText('Email').closest('label')?.getAttribute('for'))
+    expect(email).toHaveAttribute(
+      'id',
+      screen.getByText('Email').closest('label')?.getAttribute('for'),
+    )
     // …and the description plus the message, in that order, through one
     // aria-describedby chain.
     const describedBy = email.getAttribute('aria-describedby')?.split(' ') ?? []

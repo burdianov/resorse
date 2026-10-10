@@ -2,12 +2,7 @@ import { HttpResponse, delay, http } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { api, setUnauthorizedHandler } from '@/lib/api'
-import {
-  ApiError,
-  NETWORK_ERROR_DETAIL,
-  SERVER_ERROR_DETAIL,
-  toApiError,
-} from '@/lib/errors'
+import { ApiError, NETWORK_ERROR_DETAIL, SERVER_ERROR_DETAIL, toApiError } from '@/lib/errors'
 import type { HealthResponse } from '@/lib/generated/api'
 import type { HealthApiV1HealthGetResponse } from '@/lib/generated/api'
 import { server } from '@/testing/msw-server'

@@ -158,10 +158,7 @@ export function AppSidebar({
                           <SidebarMenuItem key={item.id}>
                             <SidebarMenuButton
                               render={
-                                <Link
-                                  to={item.path}
-                                  aria-current={active ? 'page' : undefined}
-                                />
+                                <Link to={item.path} aria-current={active ? 'page' : undefined} />
                               }
                               isActive={active}
                               // Shown by the rail when the sidebar is collapsed.

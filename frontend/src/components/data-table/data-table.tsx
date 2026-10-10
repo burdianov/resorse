@@ -31,7 +31,14 @@ import type {
 
 import { EmptyState } from '@/components/common/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Table as TablePrimitive, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table as TablePrimitive,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 
 import { DataTableContext } from './data-table-context'
@@ -288,9 +295,7 @@ export function DataTable<TData extends RowData>({
         </div>
 
         {showPagination ? (
-          <DataTablePagination
-            {...(pageSizeOptions !== undefined ? { pageSizeOptions } : {})}
-          />
+          <DataTablePagination {...(pageSizeOptions !== undefined ? { pageSizeOptions } : {})} />
         ) : null}
       </div>
     </DataTableContext.Provider>

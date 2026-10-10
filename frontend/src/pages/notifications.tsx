@@ -243,10 +243,7 @@ export function NotificationsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       {header}
 
-      <Tabs
-        value={filter}
-        onValueChange={(value) => setFilter(value as NotificationFilter)}
-      >
+      <Tabs value={filter} onValueChange={(value) => setFilter(value as NotificationFilter)}>
         <TabsList aria-label="Filter notifications">
           {FILTERS.map((entry) => (
             <TabsTrigger key={entry.value} value={entry.value}>

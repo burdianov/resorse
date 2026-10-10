@@ -54,7 +54,7 @@ describe('Select', () => {
     const onValueChange = vi.fn()
     render(<Harness onValueChange={onValueChange} />)
 
-    const trigger = screen.getByRole('combobox', { name: 'Department' })
+    screen.getByRole('combobox', { name: 'Department' })
     await userEvent.tab()
     // ArrowDown opens the listbox and highlights the first option.
     await userEvent.keyboard('{ArrowDown}')

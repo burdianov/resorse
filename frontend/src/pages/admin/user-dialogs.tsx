@@ -19,7 +19,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { InputField } from '@/components/form/fields'
-import { Form, FormError, FormField, FormItem, FormLabel, FormMessage } from '@/components/form/form'
+import {
+  Form,
+  FormError,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/form/form'
 import { FormActions } from '@/components/form/form-actions'
 import { applyServerErrors } from '@/components/form/form-errors'
 import { Label } from '@/components/ui/label'
@@ -170,9 +177,7 @@ function RolePicker<TValues extends FieldValues>({
                 })}
               </div>
             )}
-            {description ? (
-              <p className="text-sm text-muted-foreground">{description}</p>
-            ) : null}
+            {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
             <FormMessage />
           </FormItem>
         )
@@ -253,8 +258,8 @@ export function CreateUserDialog({
               <TemporaryPasswordNotice password={issued.password} email={issued.email} />
             ) : (
               <p className="text-sm">
-                The account for {issued.email} was created with the initial password you entered.
-                It must be changed at first sign-in.
+                The account for {issued.email} was created with the initial password you entered. It
+                must be changed at first sign-in.
               </p>
             )}
             <DialogFooter>
@@ -505,8 +510,8 @@ export function ResetPasswordDialog({
             <p className="flex items-start gap-2 text-sm">
               <KeyRoundIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <span>
-                Reset the password for <span className="font-medium">{user?.full_name}</span>?
-                They will be signed out everywhere and must set a new password at next sign-in.
+                Reset the password for <span className="font-medium">{user?.full_name}</span>? They
+                will be signed out everywhere and must set a new password at next sign-in.
               </span>
             </p>
             {mutation.isError ? (

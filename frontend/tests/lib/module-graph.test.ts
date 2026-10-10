@@ -62,7 +62,13 @@ function resolveSpecifier(specifier: string, fromFile: string): string | null {
     return null
   }
 
-  const candidates = [base, `${base}.ts`, `${base}.tsx`, join(base, 'index.ts'), join(base, 'index.tsx')]
+  const candidates = [
+    base,
+    `${base}.ts`,
+    `${base}.tsx`,
+    join(base, 'index.ts'),
+    join(base, 'index.tsx'),
+  ]
   for (const candidate of candidates) {
     try {
       if (statSync(candidate).isFile()) return candidate

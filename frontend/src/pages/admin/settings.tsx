@@ -99,7 +99,8 @@ function fromSnapshot(snapshot: Record<string, unknown>): SettingsValues {
       app_description: String(snapshot['branding.app_description'] ?? ''),
     },
     display: {
-      date_format: (snapshot['display.date_format'] ?? 'DD.MM.YYYY') as SettingsValues['display']['date_format'],
+      date_format: (snapshot['display.date_format'] ??
+        'DD.MM.YYYY') as SettingsValues['display']['date_format'],
       timezone: String(snapshot['display.timezone'] ?? ''),
     },
   }
@@ -119,7 +120,8 @@ export function AdminSettingsPage() {
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.admin.settings,
-    queryFn: () => api.get<GetSettingsEndpointApiV1AdminSettingsGetResponse>('/api/v1/admin/settings'),
+    queryFn: () =>
+      api.get<GetSettingsEndpointApiV1AdminSettingsGetResponse>('/api/v1/admin/settings'),
     staleTime: 60_000,
   })
 
@@ -157,7 +159,9 @@ export function AdminSettingsPage() {
     },
   })
 
-  const zones = useMemo(timezoneOptions, [])
+  // Inline arrow on purpose: `react-hooks/use-memo` (F055) requires an inline
+  // function expression, and the call is what must run once, not the reference.
+  const zones = useMemo(() => timezoneOptions(), [])
   const dateFormatOptions = DATE_FORMATS.map((format) => ({ value: format, label: format }))
 
   const header = (
@@ -189,9 +193,9 @@ export function AdminSettingsPage() {
         <form
           noValidate
           onSubmit={(event) => {
-            void form.handleSubmit((values) =>
-              mutation.mutateAsync(values).catch(() => undefined),
-            )(event)
+            void form.handleSubmit((values) => mutation.mutateAsync(values).catch(() => undefined))(
+              event,
+            )
           }}
           className="space-y-6"
         >

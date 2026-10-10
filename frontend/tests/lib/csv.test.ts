@@ -252,7 +252,8 @@ describe('importing', () => {
 
   function parseRow(values: Record<string, string>) {
     const problems: Array<{ column?: string; message: string }> = []
-    if (values['name']?.trim() === '') problems.push({ column: 'Name', message: 'Name is required.' })
+    if (values['name']?.trim() === '')
+      problems.push({ column: 'Name', message: 'Name is required.' })
     if (!values['email']?.includes('@')) {
       problems.push({ column: 'Email', message: 'Enter a valid email address.' })
     }
@@ -275,7 +276,11 @@ describe('importing', () => {
   })
 
   it('matches headers by label, ignoring case and surrounding spaces', () => {
-    const result = importCsvRows({ text: '  name , EMAIL \r\nAda,ada@example.com\r\n', columns, parseRow })
+    const result = importCsvRows({
+      text: '  name , EMAIL \r\nAda,ada@example.com\r\n',
+      columns,
+      parseRow,
+    })
 
     expect(result.ok).toBe(true)
     expect(result.records).toHaveLength(1)
@@ -286,9 +291,7 @@ describe('importing', () => {
 
     expect(result.ok).toBe(false)
     expect(result.records).toEqual([])
-    expect(result.errors).toEqual([
-      { row: 0, column: 'Email', message: 'Missing column "Email".' },
-    ])
+    expect(result.errors).toEqual([{ row: 0, column: 'Email', message: 'Missing column "Email".' }])
   })
 
   it('discloses every bad row, numbered the way the editor numbers them', () => {

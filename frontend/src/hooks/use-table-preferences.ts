@@ -55,10 +55,7 @@ export function useTablePreferences(tableKey: string): UseTablePreferencesResult
     (next: TablePreferences) => {
       setPreferences(next)
       const store = getTablePreferencesStore()
-      if (
-        Object.keys(next.columnVisibility).length === 0 &&
-        next.columnOrder.length === 0
-      ) {
+      if (Object.keys(next.columnVisibility).length === 0 && next.columnOrder.length === 0) {
         store.clear(tableKey)
       } else {
         store.save(tableKey, next)

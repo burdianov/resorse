@@ -31,9 +31,7 @@ import { resolveInitialSidebarOpen, writeStoredSidebarOpen } from './sidebar-pre
  * desktop, collapsed on the source's tablet band.
  */
 export function AppShell({ access = ANONYMOUS_ACCESS }: { access?: NavigationAccess }) {
-  const [sidebarOpen, setSidebarOpen] = useState(() =>
-    resolveInitialSidebarOpen(window.innerWidth),
-  )
+  const [sidebarOpen, setSidebarOpen] = useState(() => resolveInitialSidebarOpen(window.innerWidth))
   const [paletteOpen, setPaletteOpen] = useState(false)
 
   // The access default is anonymous because there is no session until F032 —

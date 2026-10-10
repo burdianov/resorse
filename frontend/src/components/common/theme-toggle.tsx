@@ -33,9 +33,7 @@ export function ThemeToggle() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button variant="ghost" size="icon-sm" aria-label="Theme" />}
-      >
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Theme" />}>
         {/* The dark variant of the custom variant is driven by the `.dark` class
             on <html> (F009), so only one icon is ever painted. */}
         <SunIcon className="size-4 dark:hidden" />

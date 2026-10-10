@@ -37,7 +37,9 @@ function makeAdapter(
 
 function renderSlot(adapter?: ContextSwitcherAdapter<Workspace>) {
   const props = adapter ? { adapter } : {}
-  return render(<ContextSwitcherSlot<Workspace> {...props} getKey={(w) => w.id} getLabel={(w) => w.name} />)
+  return render(
+    <ContextSwitcherSlot<Workspace> {...props} getKey={(w) => w.id} getLabel={(w) => w.name} />,
+  )
 }
 
 describe('ContextSwitcherSlot', () => {

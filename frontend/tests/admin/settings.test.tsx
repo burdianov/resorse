@@ -1,4 +1,4 @@
-import { configure, render, screen, waitFor, within } from '@testing-library/react'
+import { configure, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -91,7 +91,9 @@ afterEach(() => {
 
 describe('reload: the form is seeded from the server', () => {
   it('shows persisted values and defaults on first render', async () => {
-    renderSettings({ snapshot: { 'branding.app_name': 'Acme Manpower', 'display.date_format': 'YYYY-MM-DD' } })
+    renderSettings({
+      snapshot: { 'branding.app_name': 'Acme Manpower', 'display.date_format': 'YYYY-MM-DD' },
+    })
 
     await screen.findByRole('heading', { name: 'Settings' })
     // The page renders the form first and seeds it when the snapshot lands
@@ -192,7 +194,9 @@ describe('saving', () => {
   })
 
   it('renders the values read-only without settings.manage', async () => {
-    renderSettings({ meUser: me({ permissions: ['settings.read'], is_superuser: false, roles: ['viewer'] }) })
+    renderSettings({
+      meUser: me({ permissions: ['settings.read'], is_superuser: false, roles: ['viewer'] }),
+    })
 
     await waitForForm()
 

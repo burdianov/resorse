@@ -54,13 +54,7 @@ function display(value: string): string {
   return `${hour12}:${minute} ${period}`
 }
 
-function Column({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
+function Column({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1" role="group" aria-label={label}>
       <span className="px-2 text-xs font-medium text-muted-foreground">{label}</span>

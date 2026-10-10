@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { PencilIcon, KeyRoundIcon, UserCheckIcon, UserXIcon, Trash2Icon, UserPlusIcon } from 'lucide-react'
+import {
+  PencilIcon,
+  KeyRoundIcon,
+  UserCheckIcon,
+  UserXIcon,
+  Trash2Icon,
+  UserPlusIcon,
+} from 'lucide-react'
 import type { OnChangeFn, PaginationState, SortingState } from '@tanstack/react-table'
 
 import { AppBreadcrumbs } from '@/components/layout/app-breadcrumbs'
@@ -19,10 +26,7 @@ import {
 import type { DataTableColumn } from '@/components/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -120,9 +124,7 @@ function columnsFor(options: {
       id: 'email',
       accessorKey: 'email',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">{row.original.email}</span>
-      ),
+      cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
     },
     {
       id: 'roles',
@@ -157,7 +159,9 @@ function columnsFor(options: {
       id: 'created_at',
       accessorKey: 'created_at',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
-      cell: ({ row }) => <span className="text-muted-foreground">{formatDate(row.original.created_at)}</span>,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{formatDate(row.original.created_at)}</span>
+      ),
     },
     {
       id: 'actions',
@@ -167,7 +171,10 @@ function columnsFor(options: {
         const user = row.original
         const self = options.isSelf(user)
         const hasActions =
-          options.canUpdate || options.canResetPassword || options.canDeactivate || options.canDelete
+          options.canUpdate ||
+          options.canResetPassword ||
+          options.canDeactivate ||
+          options.canDelete
         return hasActions ? (
           <div className="flex justify-end">
             <DataTableRowActions label={user.full_name}>
@@ -240,9 +247,10 @@ export function AdminUsersPage() {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<AdminUserItem | null>(null)
   const [resetting, setResetting] = useState<AdminUserItem | null>(null)
-  const [confirming, setConfirming] = useState<
-    { kind: 'deactivate' | 'delete'; user: AdminUserItem } | null
-  >(null)
+  const [confirming, setConfirming] = useState<{
+    kind: 'deactivate' | 'delete'
+    user: AdminUserItem
+  } | null>(null)
 
   const firstPage = { pageIndex: 0, pageSize: pagination.pageSize }
 
@@ -310,9 +318,7 @@ export function AdminUsersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (user: AdminUserItem) =>
-      api.delete<DeleteUserApiV1AdminUsersUserIdDeleteResponse>(
-        `/api/v1/admin/users/${user.id}`,
-      ),
+      api.delete<DeleteUserApiV1AdminUsersUserIdDeleteResponse>(`/api/v1/admin/users/${user.id}`),
     onSuccess: () => {
       void invalidateUsers()
     },
@@ -448,12 +454,19 @@ export function AdminUsersPage() {
       />
 
       <CreateUserDialog open={creating} onOpenChange={setCreating} rolesQuery={rolesQuery} />
-      <EditUserDialog user={editing} onOpenChange={(open) => {
-        if (!open) setEditing(null)
-      }} rolesQuery={rolesQuery} />
-      <ResetPasswordDialog user={resetting} onOpenChange={(open) => {
-        if (!open) setResetting(null)
-      }} />
+      <EditUserDialog
+        user={editing}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null)
+        }}
+        rolesQuery={rolesQuery}
+      />
+      <ResetPasswordDialog
+        user={resetting}
+        onOpenChange={(open) => {
+          if (!open) setResetting(null)
+        }}
+      />
 
       <ConfirmDialog
         open={confirming?.kind === 'deactivate'}

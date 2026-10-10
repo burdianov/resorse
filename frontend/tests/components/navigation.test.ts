@@ -22,7 +22,9 @@ import type { AppModule } from '@/config/modules'
  */
 const Noop = () => null
 
-function route(definition: Partial<RouteDefinition> & { id: string; path: string }): RouteDefinition {
+function route(
+  definition: Partial<RouteDefinition> & { id: string; path: string },
+): RouteDefinition {
   return {
     label: definition.id,
     icon: Activity,
@@ -114,7 +116,9 @@ describe('meetsAccess', () => {
     // any (or no) permission check.
     const settings = ROUTES[3] as RouteDefinition
     expect(meetsAccess(settings, access({ isSuperuser: true, features: [] }))).toBe(false)
-    expect(meetsAccess(settings, access({ isSuperuser: true, features: ['settings-v2'] }))).toBe(true)
+    expect(meetsAccess(settings, access({ isSuperuser: true, features: ['settings-v2'] }))).toBe(
+      true,
+    )
   })
 
   it('ignores malformed permission codes', () => {
@@ -137,10 +141,7 @@ describe('visibleNavigation', () => {
   })
 
   it('shows only the permitted items inside the administration group', () => {
-    const groups = visibleNavigation(
-      access({ permissions: ['users.read', 'audit.read'] }),
-      options,
-    )
+    const groups = visibleNavigation(access({ permissions: ['users.read', 'audit.read'] }), options)
 
     // Settings stays hidden: it also needs the disabled `settings-v2` flag.
     expect(groups.map((group) => group.id)).toEqual(['overview', 'administration'])
@@ -148,7 +149,10 @@ describe('visibleNavigation', () => {
   })
 
   it('omits routes with showInNavigation false but keeps them mounted', () => {
-    const everything = visibleNavigation(access({ isSuperuser: true, features: ['settings-v2'] }), options)
+    const everything = visibleNavigation(
+      access({ isSuperuser: true, features: ['settings-v2'] }),
+      options,
+    )
 
     const paths = everything.flatMap((group) => group.items.map((item) => item.path))
     expect(paths).not.toContain('/secret')
@@ -162,9 +166,9 @@ describe('visibleNavigation', () => {
       { id: 'overview', label: 'Overview', order: 10 },
       { id: 'empty', label: 'Empty', order: 20 },
     ]
-    expect(visibleNavigation(access({ isSuperuser: true }), { groups, routes: ROUTES }).map((g) => g.id)).toEqual([
-      'overview',
-    ])
+    expect(
+      visibleNavigation(access({ isSuperuser: true }), { groups, routes: ROUTES }).map((g) => g.id),
+    ).toEqual(['overview'])
   })
 
   it('orders groups by their `order` value', () => {
@@ -181,14 +185,18 @@ describe('visibleNavigation', () => {
       id: 'demo',
       featureFlag: 'demo-module',
       navigation: [{ id: 'demo', label: 'Demo', order: 30 }],
-      routes: [route({ id: 'demo-records', path: '/demo/records', label: 'Records', group: 'demo' })],
+      routes: [
+        route({ id: 'demo-records', path: '/demo/records', label: 'Records', group: 'demo' }),
+      ],
     }
 
     const anonymousGroups = visibleNavigation(ANONYMOUS_ACCESS, {
       groups: allNavGroups([module]),
       routes: allRoutes([module]),
     })
-    expect(anonymousGroups.flatMap((group) => group.items.map((item) => item.id))).not.toContain('demo-records')
+    expect(anonymousGroups.flatMap((group) => group.items.map((item) => item.id))).not.toContain(
+      'demo-records',
+    )
 
     const enabledGroups = visibleNavigation(access({ features: ['demo-module'] }), {
       groups: allNavGroups([module]),
@@ -238,7 +246,9 @@ describe('buildBreadcrumbs', () => {
 describe('firstPermittedAdminPath', () => {
   it('picks the first permitted /admin route in registry order', () => {
     expect(firstPermittedAdminPath(access({ isSuperuser: true }), ROUTES)).toBe('/admin/users')
-    expect(firstPermittedAdminPath(access({ permissions: ['audit.read'] }), ROUTES)).toBe('/admin/audit')
+    expect(firstPermittedAdminPath(access({ permissions: ['audit.read'] }), ROUTES)).toBe(
+      '/admin/audit',
+    )
   })
 
   it('returns null when no administration route is permitted', () => {
@@ -254,7 +264,9 @@ describe('buildRouteObjects', () => {
     const objects = buildRouteObjects(ROUTES)
 
     expect(objects).toHaveLength(ROUTES.length)
-    expect(objects.find((object) => object.path === 'admin/users')).toMatchObject({ path: 'admin/users' })
+    expect(objects.find((object) => object.path === 'admin/users')).toMatchObject({
+      path: 'admin/users',
+    })
     expect(objects.find((object) => object.path === 'secret')).toBeDefined()
   })
 

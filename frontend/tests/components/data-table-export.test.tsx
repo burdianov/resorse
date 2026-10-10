@@ -87,7 +87,10 @@ beforeEach(() => {
     createObjectURL: (blob: Blob) => {
       void blob.text().then((text) => {
         // The BOM is invisible and not part of what these tests are about.
-        latestCsv = text.replace(/^﻿/, '')
+        // Built from its code point rather than written into the source: a
+        // literal BOM is irregular whitespace to ESLint (F055) and invisible
+        // in review, so neither a string nor a regex here carries one.
+        latestCsv = text.replace(String.fromCharCode(0xfeff), '')
       })
       return 'blob:test'
     },
@@ -173,7 +176,7 @@ describe('CSV export from a table', () => {
 
   it('protects a formula in a cell on the way out', async () => {
     render(
-      <Harness rows={[{ id: '9', name: '=cmd|\'/C calc\'!A0', email: 'x@y.z', role: 'admin' }]} />,
+      <Harness rows={[{ id: '9', name: "=cmd|'/C calc'!A0", email: 'x@y.z', role: 'admin' }]} />,
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'Export CSV' }))

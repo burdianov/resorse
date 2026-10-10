@@ -29,11 +29,7 @@ export function LoadingState({
       role="status"
       aria-live="polite"
       aria-label={label}
-      className={cn(
-        'flex w-full flex-col items-center justify-center gap-3',
-        minHeight,
-        className,
-      )}
+      className={cn('flex w-full flex-col items-center justify-center gap-3', minHeight, className)}
     >
       {/* The Spinner carries its own role="status"; nested live regions
           announce twice, so this one is decorative and the region above

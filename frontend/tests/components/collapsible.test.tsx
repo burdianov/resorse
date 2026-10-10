@@ -60,10 +60,7 @@ describe('Collapsible', () => {
   it('starts open when asked', () => {
     render(<Harness defaultOpen />)
 
-    expect(screen.getByRole('button', { name: 'Details' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: 'Details' })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Hidden detail')).toBeInTheDocument()
   })
 

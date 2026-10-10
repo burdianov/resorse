@@ -49,9 +49,10 @@ function LocationProbe() {
 
 describe('PermissionGate', () => {
   it('hides a gated element from an anonymous caller', () => {
-    renderWith(ANONYMOUS_ACCESS, (
-      <PermissionGate permissions={['users.read']}>Payroll</PermissionGate>
-    ))
+    renderWith(
+      ANONYMOUS_ACCESS,
+      <PermissionGate permissions={['users.read']}>Payroll</PermissionGate>,
+    )
 
     expect(screen.queryByText('Payroll')).toBeNull()
   })
@@ -63,63 +64,70 @@ describe('PermissionGate', () => {
   })
 
   it('renders the fallback when the check fails', () => {
-    renderWith(ANONYMOUS_ACCESS, (
+    renderWith(
+      ANONYMOUS_ACCESS,
       <PermissionGate permissions={['users.read']} fallback={<span>Not available</span>}>
         Payroll
-      </PermissionGate>
-    ))
+      </PermissionGate>,
+    )
 
     expect(screen.queryByText('Payroll')).toBeNull()
     expect(screen.getByText('Not available')).toBeInTheDocument()
   })
 
   it('requires every listed permission', () => {
-    renderWith(access({ permissions: ['users.read'] }), (
-      <PermissionGate permissions={['users.read', 'users.update']}>Payroll</PermissionGate>
-    ))
+    renderWith(
+      access({ permissions: ['users.read'] }),
+      <PermissionGate permissions={['users.read', 'users.update']}>Payroll</PermissionGate>,
+    )
 
     expect(screen.queryByText('Payroll')).toBeNull()
   })
 
   it('renders the children once the permissions are held', () => {
-    renderWith(access({ permissions: ['users.read', 'users.update'] }), (
-      <PermissionGate permissions={['users.read', 'users.update']}>Payroll</PermissionGate>
-    ))
+    renderWith(
+      access({ permissions: ['users.read', 'users.update'] }),
+      <PermissionGate permissions={['users.read', 'users.update']}>Payroll</PermissionGate>,
+    )
 
     expect(screen.getByText('Payroll')).toBeInTheDocument()
   })
 
   it('enforces the adminOnly gate against administrative authority', () => {
     // reports.generate is real but not an administration namespace.
-    renderWith(access({ permissions: ['reports.generate'] }), (
-      <PermissionGate adminOnly>Role matrix</PermissionGate>
-    ))
+    renderWith(
+      access({ permissions: ['reports.generate'] }),
+      <PermissionGate adminOnly>Role matrix</PermissionGate>,
+    )
     expect(screen.queryByText('Role matrix')).toBeNull()
 
-    renderWith(access({ permissions: ['roles.manage'] }), (
-      <PermissionGate adminOnly>Role matrix</PermissionGate>
-    ))
+    renderWith(
+      access({ permissions: ['roles.manage'] }),
+      <PermissionGate adminOnly>Role matrix</PermissionGate>,
+    )
     expect(screen.getByText('Role matrix')).toBeInTheDocument()
   })
 })
 
 describe('SecureLink', () => {
   it('renders nothing when the caller lacks the permission', () => {
-    renderWith(ANONYMOUS_ACCESS, (
+    renderWith(
+      ANONYMOUS_ACCESS,
       <SecureLink to="/admin/users" permissions={['users.read']}>
         Users
-      </SecureLink>
-    ))
+      </SecureLink>,
+    )
 
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
   })
 
   it('renders a working link when the caller holds it', async () => {
-    renderWith(access({ isSuperuser: true }), (
+    renderWith(
+      access({ isSuperuser: true }),
       <SecureLink to="/admin/users" permissions={['users.read']}>
         Users
-      </SecureLink>
-    ))
+      </SecureLink>,
+    )
 
     await userEvent.click(screen.getByRole('link', { name: 'Users' }))
 
@@ -129,11 +137,12 @@ describe('SecureLink', () => {
   })
 
   it('renders the fallback instead of the link', () => {
-    renderWith(ANONYMOUS_ACCESS, (
+    renderWith(
+      ANONYMOUS_ACCESS,
       <SecureLink to="/admin/users" adminOnly fallback={<span>Ask an administrator</span>}>
         Users
-      </SecureLink>
-    ))
+      </SecureLink>,
+    )
 
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
     expect(screen.getByText('Ask an administrator')).toBeInTheDocument()

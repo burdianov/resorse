@@ -45,10 +45,7 @@ interface Fixture {
 }
 
 /** Stub the two endpoints the dashboard and the header bell read. */
-function signIn(
-  user: MeResponse,
-  unread: { status?: number; count?: number } = {},
-): Fixture {
+function signIn(user: MeResponse, unread: { status?: number; count?: number } = {}): Fixture {
   let calls = 0
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(user)),
@@ -83,12 +80,20 @@ function cardFor(title: string): HTMLElement {
 
 describe('identity', () => {
   it('shows the signed-in name, email, roles and a namespace permission summary', async () => {
-    signIn(me({ roles: ['viewer', 'auditor'], permissions: ['notifications.read', 'audit.read', 'audit.export'] }), {
-      count: 0,
-    })
+    signIn(
+      me({
+        roles: ['viewer', 'auditor'],
+        permissions: ['notifications.read', 'audit.read', 'audit.export'],
+      }),
+      {
+        count: 0,
+      },
+    )
     renderDashboard()
 
-    expect(await screen.findByRole('heading', { name: 'Welcome, Ada Lovelace' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Welcome, Ada Lovelace' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
     expect(screen.getByText('viewer')).toBeInTheDocument()
     expect(screen.getByText('auditor')).toBeInTheDocument()
@@ -121,7 +126,10 @@ describe('quick links', () => {
     renderDashboard()
 
     const links = within(await waitForQuickLinks())
-    expect(links.getByRole('link', { name: 'Notifications' })).toHaveAttribute('href', '/notifications')
+    expect(links.getByRole('link', { name: 'Notifications' })).toHaveAttribute(
+      'href',
+      '/notifications',
+    )
     expect(links.queryByRole('link', { name: 'Dashboard' })).toBeNull()
     expect(links.queryByRole('link', { name: 'Users' })).toBeNull()
     expect(links.queryByRole('link', { name: 'Roles' })).toBeNull()
@@ -143,9 +151,7 @@ describe('quick links', () => {
     signIn(me({ roles: [], permissions: [] }))
     renderDashboard()
 
-    expect(
-      await screen.findByText('No other pages are open to your account'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('No other pages are open to your account')).toBeInTheDocument()
   })
 })
 
@@ -154,7 +160,9 @@ describe('unread notices', () => {
     const fixture = signIn(me(), { count: 7 })
     renderDashboard()
 
-    expect(await screen.findByRole('button', { name: 'Notifications, 7 unread' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Notifications, 7 unread' }),
+    ).toBeInTheDocument()
     expect(await within(cardFor('Unread notifications')).findByText('7')).toBeInTheDocument()
     // One query key feeds the badge and the card: the endpoint is read once.
     expect(fixture.unreadCountCalls()).toBe(1)

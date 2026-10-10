@@ -91,6 +91,7 @@ export const queryKeys = {
   files: {
     /** Invalidation root for uploads and deletions. */
     root: (userId: string) => filesRoot(userId),
-    list: (userId: string, params: FileListParams) => [...filesRoot(userId), 'list', params] as const,
+    list: (userId: string, params: FileListParams) =>
+      [...filesRoot(userId), 'list', params] as const,
   },
 }

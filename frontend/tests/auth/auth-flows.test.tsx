@@ -91,7 +91,10 @@ beforeEach(() => {
 
 describe('the session boundary', () => {
   it('sends an anonymous visitor to the login page and back to where they were going', async () => {
-    server.use(meQueue('unauthorized', ME), http.post('/api/v1/auth/login', () => HttpResponse.json({})))
+    server.use(
+      meQueue('unauthorized', ME),
+      http.post('/api/v1/auth/login', () => HttpResponse.json({})),
+    )
     const router = renderApp('/admin')
 
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
@@ -125,7 +128,9 @@ describe('the session boundary', () => {
     server.use(meQueue({ ...ME, must_change_password: true }))
     const router = renderApp('/login')
 
-    expect(await screen.findByRole('heading', { name: 'Choose a new password' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Choose a new password' }),
+    ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/change-password')
   })
 })
@@ -177,7 +182,9 @@ describe('the forced password change', () => {
     await screen.findByRole('heading', { name: 'Sign in' })
     await signIn()
 
-    expect(await screen.findByRole('heading', { name: 'Choose a new password' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Choose a new password' }),
+    ).toBeInTheDocument()
     expect(screen.getByText(/must set its own password before continuing/)).toBeInTheDocument()
 
     await router.navigate('/dashboard')
@@ -286,7 +293,10 @@ describe('the forced password change', () => {
 
 describe('signing out', () => {
   it('signs out from the account menu', async () => {
-    server.use(meQueue(ME), http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })))
+    server.use(
+      meQueue(ME),
+      http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })),
+    )
     const router = renderApp('/dashboard')
     await screen.findByRole('heading', { name: 'Dashboard' })
 
@@ -308,7 +318,7 @@ describe('signing out', () => {
         return new HttpResponse(null, { status: 204 })
       }),
     )
-    const router = renderApp('/dashboard')
+    renderApp('/dashboard')
     await screen.findByRole('heading', { name: 'Dashboard' })
 
     await userEvent.click(screen.getByRole('button', { name: 'Account menu' }))

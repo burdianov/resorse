@@ -49,7 +49,12 @@ export function SearchField({
   /** The last value this field reported — the anchor for "did the outside change?" */
   const reported = useRef(value ?? '')
   const handler = useRef(onValueChange)
-  handler.current = onValueChange
+  // The "latest ref" pattern, written from an effect rather than during render:
+  // `react-hooks/refs` (F055) forbids touching a ref while rendering, and the
+  // effect still lands before any debounce timer this render could schedule.
+  useEffect(() => {
+    handler.current = onValueChange
+  })
 
   // External change (a reset, a route change): adopt it without re-reporting.
   useEffect(() => {
@@ -81,7 +86,10 @@ export function SearchField({
       <label htmlFor={inputId} className="sr-only">
         {ariaLabel ?? placeholder}
       </label>
-      <Search aria-hidden className="absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search
+        aria-hidden
+        className="absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      />
       <Input
         id={inputId}
         type="search"

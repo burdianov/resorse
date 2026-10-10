@@ -30,9 +30,7 @@ export function EmptyState({ icon: Icon, title, description, action, className }
     >
       {Icon ? <Icon aria-hidden className="size-8 text-muted-foreground" /> : null}
       <p className="text-sm font-medium text-foreground">{title}</p>
-      {description ? (
-        <p className="max-w-md text-sm text-muted-foreground">{description}</p>
-      ) : null}
+      {description ? <p className="max-w-md text-sm text-muted-foreground">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   )

@@ -27,9 +27,7 @@ const EXTENDED = /filename\*\s*=\s*([^;]+)/i
  *  alternative because the `=` has to follow the name directly. */
 const SIMPLE = /filename\s*=\s*"([^"]*)"|filename\s*=\s*([^;]*)/i
 
-export function filenameFromContentDisposition(
-  header: string | null | undefined,
-): string | null {
+export function filenameFromContentDisposition(header: string | null | undefined): string | null {
   if (!header) return null
 
   const extended = EXTENDED.exec(header)

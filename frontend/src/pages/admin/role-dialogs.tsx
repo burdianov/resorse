@@ -96,7 +96,13 @@ export function CreateRoleDialog({
             className="grid gap-4"
           >
             <FormError />
-            <InputField control={form.control} name="name" label="Name" autoComplete="off" required />
+            <InputField
+              control={form.control}
+              name="name"
+              label="Name"
+              autoComplete="off"
+              required
+            />
             <TextareaField control={form.control} name="description" label="Description" />
             <FormActions submitLabel="Create role" className="mt-2" />
           </form>

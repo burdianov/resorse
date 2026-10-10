@@ -69,10 +69,7 @@ export function hasAdministrationAccess(access: NavigationAccess): boolean {
  * Feature flags gate even a superuser: a flag says the module is off, not that
  * the caller is unprivileged.
  */
-export function meetsAccess(
-  requirement: AccessRequirement,
-  access: NavigationAccess,
-): boolean {
+export function meetsAccess(requirement: AccessRequirement, access: NavigationAccess): boolean {
   if (requirement.featureFlag && !access.features?.has(requirement.featureFlag)) return false
   if (requirement.adminOnly && !hasAdministrationAccess(access)) return false
   if (access.isSuperuser) return true

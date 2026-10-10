@@ -1,6 +1,17 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { Bell, FileText, FlaskConical, LayoutDashboard, Lock, Settings, Shield, ShieldCheck, UserRound, Users } from 'lucide-react'
+import {
+  Bell,
+  FileText,
+  FlaskConical,
+  LayoutDashboard,
+  Lock,
+  Settings,
+  Shield,
+  ShieldCheck,
+  UserRound,
+  Users,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
@@ -464,7 +475,10 @@ function findCurrent(
 
   // A detail URL (`/admin/users/42`) keeps the deepest registered section crumb.
   const sections = routes
-    .filter((route) => !route.path.includes(':') && route.path !== '/' && isSegmentPrefix(route.path, pathname))
+    .filter(
+      (route) =>
+        !route.path.includes(':') && route.path !== '/' && isSegmentPrefix(route.path, pathname),
+    )
     .sort((first, second) => segments(second.path) - segments(first.path))
   const section = sections[0]
   return section ? { route: section, params: {} } : null

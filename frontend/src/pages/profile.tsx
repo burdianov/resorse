@@ -96,10 +96,7 @@ export function ProfilePage() {
     },
   })
 
-  const groups = useMemo(
-    () => groupPermissions(user?.permissions ?? []),
-    [user?.permissions],
-  )
+  const groups = useMemo(() => groupPermissions(user?.permissions ?? []), [user?.permissions])
 
   if (user === null) {
     // The shell only renders for an authenticated session; this is defence

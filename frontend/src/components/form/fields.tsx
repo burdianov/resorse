@@ -4,7 +4,13 @@ import type { Control, FieldPath, FieldValues } from 'react-hook-form'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { TimePicker } from '@/components/ui/time-picker'
 import { cn } from '@/lib/utils'
@@ -54,11 +60,7 @@ function stringValue(value: unknown): string {
   return ''
 }
 
-function FieldFooter({
-  description,
-}: {
-  description?: ReactNode
-}): ReactNode {
+function FieldFooter({ description }: { description?: ReactNode }): ReactNode {
   return (
     <>
       {description ? <FormDescription>{description}</FormDescription> : null}

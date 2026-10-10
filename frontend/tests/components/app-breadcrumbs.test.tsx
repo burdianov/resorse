@@ -43,10 +43,7 @@ describe('AppBreadcrumbs', () => {
     const nav = screen.getByRole('navigation', { name: 'breadcrumb' })
     expect(nav).toBeInTheDocument()
     // Ancestors are links; the current page is text with aria-current (§1.2).
-    expect(screen.getByRole('link', { name: 'Administration' })).toHaveAttribute(
-      'href',
-      '/admin',
-    )
+    expect(screen.getByRole('link', { name: 'Administration' })).toHaveAttribute('href', '/admin')
     expect(screen.getByText('Users')).toHaveAttribute('aria-current', 'page')
   })
 

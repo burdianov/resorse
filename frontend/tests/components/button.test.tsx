@@ -77,7 +77,11 @@ describe('Button', () => {
   })
 
   it('scales the spinner with the button size', () => {
-    const small = render(<Button size="xs" loading>x</Button>)
+    const small = render(
+      <Button size="xs" loading>
+        x
+      </Button>,
+    )
     expect(small.container.querySelector('[data-slot="spinner"]')).toHaveClass('size-3')
     small.unmount()
 

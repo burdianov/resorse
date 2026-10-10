@@ -152,12 +152,10 @@ export function FileDropzone({
         )}
       >
         <UploadCloudIcon aria-hidden className="size-6 text-muted-foreground" />
-        <p className="text-sm font-medium">
-          {busy ? 'Uploading…' : 'Drop a file here'}
-        </p>
+        <p className="text-sm font-medium">{busy ? 'Uploading…' : 'Drop a file here'}</p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          One file per upload, up to {formatBytes(MAX_UPLOAD_BYTES)}. The server decides what
-          the bytes are; a type it will not store comes back as its own refusal.
+          One file per upload, up to {formatBytes(MAX_UPLOAD_BYTES)}. The server decides what the
+          bytes are; a type it will not store comes back as its own refusal.
         </p>
         <button
           type="button"

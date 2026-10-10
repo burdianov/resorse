@@ -33,7 +33,9 @@ describe('local table preferences store', () => {
     store.save('admin-users', SAVED)
 
     expect(store.load('admin-users')).toEqual(SAVED)
-    expect(window.localStorage.getItem(`${TABLE_PREFERENCES_PREFIX}.user-1.admin-users`)).not.toBeNull()
+    expect(
+      window.localStorage.getItem(`${TABLE_PREFERENCES_PREFIX}.user-1.admin-users`),
+    ).not.toBeNull()
   })
 
   it('has nothing to say about a table it has never seen', () => {
@@ -112,7 +114,9 @@ describe('local table preferences store', () => {
         throw new Error('denied')
       },
     }
-    const spy = vi.spyOn(window, 'localStorage', 'get').mockReturnValue(failing as unknown as Storage)
+    const spy = vi
+      .spyOn(window, 'localStorage', 'get')
+      .mockReturnValue(failing as unknown as Storage)
     const store = createLocalTablePreferencesStore()
 
     expect(() => {

@@ -393,6 +393,45 @@ exception. This is that exception, recorded here and in `docs/STACK_VERSIONS.md`
 - The anti-flash script in `index.html` duplicates the key and the resolution rule deliberately — it must run
   before any module loads. Both copies carry a comment pointing at each other.
 
+### The quality gate (F055)
+
+Four commands, each with one job, all runnable from `frontend/`:
+
+| Command | What it is for |
+|---|---|
+| `pnpm run lint` | ESLint 10, flat config in `eslint.config.mjs` |
+| `pnpm run format:check` | Prettier 3.9.9 against `.prettierrc.json` |
+| `pnpm run typecheck` | `tsc --noEmit` |
+| `pnpm run coverage` | Vitest with V8 coverage and the thresholds below |
+
+The config is deliberately **not type-aware** (`typescript-eslint`'s `recommended`, not
+`recommendedTypeChecked`): `tsc` already owns the types, and a second type checker on every lint run buys nothing
+here but configuration weight and a second failure surface (C43). Two React rules are off for reasons recorded
+rather than silently — `react-refresh/only-export-components` (the session provider and its `useSession` hook are
+intentionally co-exported, and splitting them would hurt the reading order) and `react-hooks/set-state-in-effect`
+(seeding state from the query cache inside an effect is the pattern several screens use deliberately). Both are
+in `eslint.config.mjs` with the reason as a comment and in `DECISIONS.md` as C43; a rule is never disabled by
+adding an inline suppression at the call site.
+
+Prettier's options are descriptive, not prescriptive: `printWidth` is **100** because that is what this
+repository already did (the 99th percentile line was 102 characters and the author splits around 96) — the
+config records the existing style instead of imposing a new one. That meant a **one-time 108-file reformat** in
+F055, after which `format:check` passes clean. `src/lib/generated/` is in `.prettierignore` because the
+generator owns it: CI regenerates the client and fails on a diff, so formatting it by hand would only be undone.
+
+Coverage excludes by category, never by convenience — the generated client, `main.tsx` (exercised by the build,
+not by tests), `src/testing/` (the harness the tests use), and `src/components/ui/` (registry output normalised
+by `fix:ui`). Everything else under `src/` counts whether or not a test reaches it, so the number cannot be
+raised by quietly narrowing the set. Two thresholds measure two things: `src/lib/**` at **85** is BP §10.5's
+requirement for the shared core, and the global `92 / 80 / 91 / 93` (statements / branches / functions / lines)
+is a ratchet set at the F055 measurement — meant to be raised as tests are added, never lowered to turn a red
+run green. The measurement that set it: **All files 92.65 / 80.49 / 91.14 / 93.71**, `src/lib` **94.04 / 85.71 /
+90.32 / 95.65**.
+
+One gap worth knowing when a check surprises you: `tsconfig.json`'s `include` is `["src", "vite.config.ts"]`,
+so `pnpm run typecheck` does **not** typecheck `tests/` — which is how eight unused test variables survived
+until the linter looked at them in F055. Lint and coverage both cover `tests/`; only the type checker does not.
+
 ### The session layer (F032)
 
 The SPA's understanding of the session lives in exactly one place (`src/lib/auth.tsx`), and its status *is*

@@ -25,7 +25,15 @@ describe('Card', () => {
       </Card>,
     )
 
-    for (const slot of ['card', 'card-header', 'card-title', 'card-description', 'card-action', 'card-content', 'card-footer']) {
+    for (const slot of [
+      'card',
+      'card-header',
+      'card-title',
+      'card-description',
+      'card-action',
+      'card-content',
+      'card-footer',
+    ]) {
       expect(container.querySelector(`[data-slot="${slot}"]`), slot).not.toBeNull()
     }
   })

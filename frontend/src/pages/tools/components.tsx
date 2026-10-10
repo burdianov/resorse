@@ -76,7 +76,13 @@ import {
 } from '@/components/ui/input-group'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -98,7 +104,15 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { TimePicker } from '@/components/ui/time-picker'
@@ -170,18 +184,15 @@ export function ComponentLabPage() {
  */
 function DevOnlyNotice() {
   return (
-    <div
-      data-slot="dev-only-notice"
-      className="flex gap-3 rounded-lg border border-dashed p-4"
-    >
+    <div data-slot="dev-only-notice" className="flex gap-3 rounded-lg border border-dashed p-4">
       <FlaskConicalIcon aria-hidden className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
       <div className="space-y-1 text-sm">
         <p className="font-medium">Development builds only.</p>
         <p className="text-muted-foreground">
           The route is registered from an <code className="font-mono">import.meta.env.DEV</code>{' '}
-          literal, so a production bundle contains neither this page nor a route to it — Vite
-          folds the expression away and the entry is simply not in the registry. To check that
-          rather than believe it: <code className="font-mono">pnpm run build</code>, then search{' '}
+          literal, so a production bundle contains neither this page nor a route to it — Vite folds
+          the expression away and the entry is simply not in the registry. To check that rather than
+          believe it: <code className="font-mono">pnpm run build</code>, then search{' '}
           <code className="font-mono">dist/</code> for a sentence from this page.
         </p>
         <p className="text-muted-foreground">
@@ -305,7 +316,10 @@ function StatusSection() {
         </Breadcrumb>
       </LabCase>
 
-      <LabCase title="BrandMark and ThemeToggle" note="Both are live controls, not pictures of them.">
+      <LabCase
+        title="BrandMark and ThemeToggle"
+        note="Both are live controls, not pictures of them."
+      >
         <BrandMark />
         <ThemeToggle />
       </LabCase>
@@ -370,7 +384,10 @@ function FormSection() {
         </div>
       </LabCase>
 
-      <LabCase title="SearchField" note="Debounced, and it says so in its docstring rather than on screen.">
+      <LabCase
+        title="SearchField"
+        note="Debounced, and it says so in its docstring rather than on screen."
+      >
         <div className="w-full max-w-sm">
           <SearchField
             value={search}
@@ -412,11 +429,7 @@ function FormSection() {
           <Label htmlFor="lab-checkbox">Include inactive accounts</Label>
         </div>
         <div className="flex items-center gap-2">
-          <Switch
-            id="lab-switch"
-            checked={enabled}
-            onCheckedChange={setEnabled}
-          />
+          <Switch id="lab-switch" checked={enabled} onCheckedChange={setEnabled} />
           <Label htmlFor="lab-switch">Notify me by email</Label>
         </div>
         <span className="font-mono text-xs text-muted-foreground">
@@ -424,7 +437,10 @@ function FormSection() {
         </span>
       </LabCase>
 
-      <LabCase title="DatePicker and TimePicker" note="Stored as strings: a calendar day and a 24-hour time.">
+      <LabCase
+        title="DatePicker and TimePicker"
+        note="Stored as strings: a calendar day and a 24-hour time."
+      >
         <div className="space-y-1.5">
           <Label htmlFor="lab-date">Start date</Label>
           <DatePicker id="lab-date" value={date} onChange={setDate} />
@@ -492,7 +508,10 @@ function StatesSection() {
         </div>
       </LabCase>
 
-      <LabCase title="LoadingState / Skeleton / Spinner" note="A first load shows the shape of what is coming.">
+      <LabCase
+        title="LoadingState / Skeleton / Spinner"
+        note="A first load shows the shape of what is coming."
+      >
         <div className="w-full space-y-3">
           <LoadingState label="Loading the thing…" />
           <div className="space-y-2">
@@ -544,8 +563,8 @@ function OverlaySection() {
             <DialogHeader>
               <DialogTitle>A dialog</DialogTitle>
               <DialogDescription>
-                It is here to ask one thing. Everything else on the page is inert while it is
-                open, which is exactly why nothing goes in one that could be said beside it.
+                It is here to ask one thing. Everything else on the page is inert while it is open,
+                which is exactly why nothing goes in one that could be said beside it.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -579,7 +598,10 @@ function OverlaySection() {
         />
       </LabCase>
 
-      <LabCase title="Sheet" note="A panel that slides in — for content too large to sit in a dialog.">
+      <LabCase
+        title="Sheet"
+        note="A panel that slides in — for content too large to sit in a dialog."
+      >
         <Button variant="outline" onClick={() => setSheetOpen(true)}>
           Open sheet
         </Button>
@@ -625,20 +647,25 @@ function OverlaySection() {
         </DropdownMenu>
       </LabCase>
 
-      <LabCase title="Popover" note="A small surface anchored to a control — richer than a tooltip, lighter than a dialog.">
+      <LabCase
+        title="Popover"
+        note="A small surface anchored to a control — richer than a tooltip, lighter than a dialog."
+      >
         <Popover>
           <PopoverTrigger render={<Button variant="outline" />}>Open popover</PopoverTrigger>
           <PopoverContent className="w-72 space-y-1">
             <PopoverTitle>Anchored content</PopoverTitle>
             <PopoverDescription className="text-muted-foreground">
-              Popovers are dismissed by clicking away, so nothing that must be answered goes in
-              one.
+              Popovers are dismissed by clicking away, so nothing that must be answered goes in one.
             </PopoverDescription>
           </PopoverContent>
         </Popover>
       </LabCase>
 
-      <LabCase title="Tooltip" note="Hover or focus. A tooltip labels a control; it never carries the only copy of something.">
+      <LabCase
+        title="Tooltip"
+        note="Hover or focus. A tooltip labels a control; it never carries the only copy of something."
+      >
         <Tooltip>
           <TooltipTrigger render={<Button variant="outline" size="icon" aria-label="Delete" />}>
             <Trash2Icon />
@@ -678,7 +705,10 @@ function DisclosureSection() {
       title="Disclosure and search"
       description="Showing a part of something, and finding a thing in a long list."
     >
-      <LabCase title="Tabs" note="Views of the same subject. Never a wizard — switching does not imply an order.">
+      <LabCase
+        title="Tabs"
+        note="Views of the same subject. Never a wizard — switching does not imply an order."
+      >
         <div className="w-full">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList aria-label="Sample tabs">
@@ -713,7 +743,10 @@ function DisclosureSection() {
         </div>
       </LabCase>
 
-      <LabCase title="ScrollArea" note="A styled scrollable region, so a scrollbar does not restyle the page.">
+      <LabCase
+        title="ScrollArea"
+        note="A styled scrollable region, so a scrollbar does not restyle the page."
+      >
         <ScrollArea className="h-32 w-full max-w-sm rounded-lg border p-3">
           <div className="space-y-2">
             {Array.from({ length: 12 }, (_, index) => (
@@ -786,7 +819,10 @@ function TableSection() {
               </TableHeader>
               <TableBody>
                 {SAMPLE_ROWS.map((row) => (
-                  <TableRow key={row.name} data-state={selected && row.name === 'Alpha' ? 'selected' : undefined}>
+                  <TableRow
+                    key={row.name}
+                    data-state={selected && row.name === 'Alpha' ? 'selected' : undefined}
+                  >
                     <TableCell className="font-medium">{row.name}</TableCell>
                     <TableCell>
                       <StatusBadge status={row.status} />
@@ -835,19 +871,25 @@ function ChartsSection() {
       title="Charts"
       description="Three shapes, drawn from the theme's own --chart-* tokens. The values are placeholders; the colours are not."
     >
-      <LabCase title="chart-tokens" note="Reading the palette, and what happens when the theme changes.">
+      <LabCase
+        title="chart-tokens"
+        note="Reading the palette, and what happens when the theme changes."
+      >
         <div className="w-full space-y-2">
           <SampleNote />
           <p className="text-sm text-muted-foreground">
             The SVG colours are read from the stylesheet rather than referenced with{' '}
             <code className="font-mono">var()</code>: an SVG presentation attribute is not part of
-            the cascade, so a custom property in one is dropped. Switch the theme above — the
-            charts are redrawn from whatever the new theme computes.
+            the cascade, so a custom property in one is dropped. Switch the theme above — the charts
+            are redrawn from whatever the new theme computes.
           </p>
         </div>
       </LabCase>
 
-      <LabCase title="TrendChart" note="One series over ordered labels. The labels are the caller's; this component does not know what a date is.">
+      <LabCase
+        title="TrendChart"
+        note="One series over ordered labels. The labels are the caller's; this component does not know what a date is."
+      >
         <TrendChart
           title={trend.title}
           description={`${trend.description} Placeholder values.`}
@@ -867,7 +909,10 @@ function ChartsSection() {
         />
       </LabCase>
 
-      <LabCase title="DonutChart" note="Parts of one whole, with the counts beside the names — comparing arcs by eye is what a donut is worst at.">
+      <LabCase
+        title="DonutChart"
+        note="Parts of one whole, with the counts beside the names — comparing arcs by eye is what a donut is worst at."
+      >
         <DonutChart
           title={donut.title}
           description={`${donut.description} Placeholder values.`}
@@ -937,15 +982,15 @@ function NotShownSection() {
     >
       <div className="space-y-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
         <p>
-          <span className="font-mono text-xs">sidebar.tsx</span> — the shell's own frame
-          (provider, rail, inset, groups, menu). A sidebar shown inside the shell's content area
-          would be a sidebar inside a sidebar; it is exercised by every screen that has one, and
-          by its own tests.
+          <span className="font-mono text-xs">sidebar.tsx</span> — the shell's own frame (provider,
+          rail, inset, groups, menu). A sidebar shown inside the shell's content area would be a
+          sidebar inside a sidebar; it is exercised by every screen that has one, and by its own
+          tests.
         </p>
         <p>
           <span className="font-mono text-xs">sonner.tsx</span> — the <code>Toaster</code> is
-          mounted once, by <code>app/providers.tsx</code>. A second one on this page would
-          compete with it, so the section above raises real toasts through the mounted one.
+          mounted once, by <code>app/providers.tsx</code>. A second one on this page would compete
+          with it, so the section above raises real toasts through the mounted one.
         </p>
       </div>
     </LabSection>

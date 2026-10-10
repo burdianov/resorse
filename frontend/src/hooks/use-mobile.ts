@@ -1,4 +1,4 @@
-import * as React from "react"
+import * as React from 'react'
 
 /**
  * True below the source's mobile boundary (BIG-PROMPT §1.2): under 768px the
@@ -16,9 +16,9 @@ export function useIsMobile() {
     const onChange = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }
-    mql.addEventListener("change", onChange)
+    mql.addEventListener('change', onChange)
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
+    return () => mql.removeEventListener('change', onChange)
   }, [])
 
   return !!isMobile
