@@ -640,6 +640,39 @@ item carries `details` and `correlation_id`, so the detail modal needs no second
 renders nothing mutable: there is no write path for the trail, and a disabled button would pretend
 there could be.
 
+### Notifications (F045)
+
+`notifications` (migration `0008`) is the per-user inbox behind the header bell (F046's UI): title,
+message, an optional link, `is_read`, timestamps, `ON DELETE CASCADE` from the user — an inbox is
+personal data with no audit value (the F041 preference edge, not the audit trail's SET NULL).
+
+- **Producers and readers are two audiences, one table.** Producers call
+  `services/notifications.py::notify`, which *adds* a row to the caller's transaction and never
+  commits — the notice rides the transaction of the event it announces (the F043 discipline: no
+  orphan notices, no notices for changes that rolled back). There is deliberately **no public create
+  endpoint**: "notify me about things I did" is not a feature, and a create route would be a spam
+  relay for one's own inbox. Readers are the six HTTP endpoints (list, unread count, mark one, mark
+  all, delete one, clear all), guarded by the C16 codes `notifications.read` (reads) and
+  `notifications.manage_own` (mutations), both scoped in SQL to the session's user.
+- **The link is a path, not a URL — the database says so.** A stored `https://evil.example` or a
+  protocol-relative `//host` would turn the inbox into an open redirect for anyone who can write a
+  row, which is every future producer; the CHECK pins the shape at the floor (`^/[A-Za-z0-9]` —
+  the strict head also closes `/\host` and percent-decoding tricks) and `notify` enforces the same
+  rule at the door (the F024 two-layer convention).
+- **Cross-user denial is the SQL filter itself.** Every query runs `(id AND user_id)` together, so a
+  foreign id is never looked up alone; marking or deleting another account's notice answers **404,
+  never 403** — a 403 would confirm the id exists — and bulk operations are scoped the same way.
+  There is no parameter through which another user's id could arrive (F041's structural pattern; the
+  acceptance is two real users with real rows).
+- **The list carries the unread count with the page** (the bell and the inbox in one request);
+  `GET /notifications/unread-count` is the deliberately cheap endpoint F046's ~30 s polling uses.
+- **No audit rows.** Reading or clearing one's own inbox is not an administrative mutation; the
+  trail (F043) records changes to *authority and configuration*, not a user tidying their notices.
+- **One producer ships with the table**: the admin password reset (`services/users.py`) notifies its
+  target — "your password was reset" with a `/change-password` link — inside the reset's own
+  transaction. Future producers (user created, role changed) arrive with their tasks and call the
+  same `notify`.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -802,7 +835,8 @@ unrestricted rows in Python. **No domain table is created in Stage A.**
   group (revision `0002`); F025 the `sessions` table (revision `0003` — hashed token key, rotation family, two
   ordered deadlines, an all-or-nothing revocation over a closed reason vocabulary, and a unique replacement
   chain); F026 the `rate_limit_buckets` table (revision `0004`); F039 the `app_settings` table
-  (revision `0005`). The full chain `upgrade head` / `downgrade base` / `upgrade head` runs clean against
+  (revision `0005`); F041 the `user_preferences` table (revision `0006`); F043 the `audit_logs` table
+  (revision `0007`); F045 the `notifications` table (revision `0008`). The full chain `upgrade head` / `downgrade base` / `upgrade head` runs clean against
   PostgreSQL 18.6 (run the round-trip against a **scratch database** — `app_test` — never `app_dev`: the
   downgrade drops every table it touches).
 
@@ -1311,4 +1345,7 @@ owning every row it touches.
   audit trail** (record-within-the-transaction atomicity, append-only by construction, frozen
   attribution, the door-level redaction, the request-id middleware — C32, §5), and **F044 the audit
   viewer** (the fixed chronological order, validated-and-server-supplied filter vocabularies, the
-  one-request modal, a screen with nothing mutable — C33, §5).
+  one-request modal, a screen with nothing mutable — C33, §5), and **F045 the notifications
+  backend** (the producer/reader split with no create endpoint, path-not-URL links pinned in the
+  database, SQL-scoped cross-user denial answering 404-never-403, the count-with-the-page list,
+  no audit rows — C34, §5).

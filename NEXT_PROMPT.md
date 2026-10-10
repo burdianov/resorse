@@ -2,7 +2,7 @@
 
 > **Read this file first** in any new Claude Code session started in `D:\resors`.
 > It is the **single cold-start handoff**; `claude_code_pack/STATE.md` is now just a pointer to it.
-> Last updated: 2026-10-10 — after task F044.
+> Last updated: 2026-10-10 — after task F045.
 
 **Rules for Claude Code:**
 - **Commit at the end of each completed task** (C13). Push, deploy and final acceptance stay with the operator.
@@ -29,13 +29,13 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md,
-docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F045 in
-claude_code_pack/TASKS.md. Implement F045 only. Follow the one-task protocol.
+docs/ARCHITECTURE.md, docs/STACK_VERSIONS.md, NEXT_PROMPT.md and task F046 in
+claude_code_pack/TASKS.md. Implement F046 only. Follow the one-task protocol.
 Commit the task at the end. Update NEXT_PROMPT.md, then stop and give me the
 operator checks — I run the suites myself.
 ```
 
-Replace `F045` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
+Replace `F046` with the next ID from §3 when it changes. Read only the spec sections the task needs, and never
 re-read the whole requirements text — it sits **in-repo** at `claude_code_pack/BIG-PROMPT.txt` (§2); jump to a
 section using the index in `docs/REQUIREMENT_TRACEABILITY.md` §1–§11.
 
@@ -67,38 +67,36 @@ the archive original — `sha256sum` both to check):
 ## 3. Current position
 
 - Stage: **A — domain-neutral foundation** (F001–F063; Stage B D001–D091 adds the construction domain).
-- Last completed: **F044 — Audit viewer** (`GET /api/v1/admin/audit` (`audit.read`) — F033 pagination
-  shape, **fixed `created_at DESC` + `id` tiebreaker** (chronological data has nothing else to sort
-  by), SQL-side filters: `action`/`entity_type` **validated against the model vocabularies** (unknown
-  → 422 naming the allowed set — a filter that silently matches nothing is a lie), escaped `search`
-  over summary + frozen actor email, `since`/`until`; the response **carries the vocabularies** so the
-  viewer's selects come from the server's constants (no drift); the item carries `details` +
-  `correlation_id` so there is **no `GET /{id}`**. The screen (`/admin/audit`, `audit.read` +
-  `adminOnly`, FileText) is the F034 server-mode shape — nothing mutable anywhere (the trail has no
-  write path), a detail modal rendering `before`/`after` as a two-column diff, the `changes` shape
-  per key, or formatted JSON, with the correlation id or "— (no request)". DECISIONS C33; +6 backend
-  tests (**236 passing**), +5 frontend (**485 passing**); `openapi.json` + types regenerated).
-- **Next task: F045 — Notifications backend.** "Per-user CRUD read/clear/count and safe links." Accept
-  (TASKS.md): "Cross-user denial tests". §8.2's model: `notifications` — id, user_id, title, message,
-  link?, is_read, created_at (+ optional type/priority). F045 owns: the model + **migration `0008`**,
-  the endpoints per §7.7's needs (list the caller's notifications newest-first with a **count** —
-  `GET /api/v1/notifications` (paginated like F044?) + `GET .../unread-count`? decide C34: shapes for
-  read-one, mark-all-read, clear-all, delete-one — §7.7 "mark-all, clear-all with confirm, per-item
-  delete" — plus the **~30s polling** consumer is F046's UI; the count endpoint answers the bell),
-  the permission codes already seeded (`notifications.read`, `notifications.manage_own` — the C16
-  "scoped in SQL to the caller" codes), **cross-user denial at the SQL level** (the acceptance —
-  every query filters by the session's user id, F041's structural pattern), **safe internal links**
-  (the `link` is a stored path — validate on write (they arrive from OTHER services later? F045 has
-  no producer yet — decide whether write endpoints exist at all in F045 or notifications are purely
-  service-written; the acceptance is deny-tests, so a `create` endpoint is NOT required — decision
-  C34: no public create endpoint; a `services/notifications.py::notify(...)` for future producers +
-  the read/clear/delete HTTP endpoints. **And wire F043's audit?** Notification reads are not
-  administrative mutations — no audit rows; record that). The `Notification` events from §7.7's
-  "real lifecycle events" arrive when their producers do (user created, etc. — decide whether F045
-  wires any producer now or leaves the store + service for later tasks; recommend ONE honest
-  producer if trivial, else none and a recorded note).
-- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F044 sits on top of
-  `8df5d51` (F043).
+- Last completed: **F045 — Notifications backend** (`notifications`, **migration `0008`** — title,
+  message, optional `link`, `is_read`, `ON DELETE CASCADE` from the user). **No public create
+  endpoint** (C34): producers call `services/notifications.py::notify`, which *adds* to the caller's
+  transaction and **never commits** (F043's discipline); readers get six endpoints under
+  `/api/v1/notifications`, gated by the C16 codes (`notifications.read` for list + count,
+  `notifications.manage_own` for mutations). The list is F033-shaped (newest-first with an `id`
+  tiebreaker; `{items, total, unread_count, page, page_size}` — the count travels with the page);
+  `GET /unread-count` is the bell's cheap poll (F046's ~30 s); `POST /{id}/read` (200 with the
+  item, idempotent for the owner), `POST /read-all` (`{updated}`), `DELETE /{id}` (204; repeat →
+  **404** — never 403 for a foreign id, so nothing enumerates), `DELETE ""` (clear all,
+  `{deleted}`). **Links are paths, not URLs** (`^/[A-Za-z0-9]` at the door and in the table's
+  CHECK — `//host`, `/\host` and percent-decode tricks all refused); **cross-user denial is the
+  `(id AND user_id)` SQL filter itself** — there is no user-id parameter to get wrong. **No audit
+  rows** — inbox operations are not administrative mutations (recorded in C34). **One producer
+  wired**: the admin password reset notifies its target inside the reset's transaction.
+  DECISIONS C34; +9 backend tests (**245 passing**); frontend unchanged (**485**); `openapi.json`
+  + types regenerated.
+- **Next task: F046 — Notifications UI.** "Inbox bell count mark/delete clear and polling." Accept
+  (TASKS.md): "UI state tests". The header bell (F015 deliberately withheld it) over F045's six
+  endpoints: unread count from `GET /api/v1/notifications/unread-count` with **~30 s polling**
+  (consider pausing or backing off while the tab is hidden — a hidden tab polling forever is
+  noise), the list newest-first with its `unread_count`, mark-one / mark-all / delete-one /
+  clear-all wired to F045's shapes — clear-all behind F019's `ConfirmDialog` (§7.7's "clear-all
+  with confirm"), and delete-one treating the 404-on-repeat as done (the row is gone either way).
+  **Links render through the router** (a notice's `link` is an internal path; never a raw `<a>` —
+  F045's whole point is that it cannot be a URL). Permission mirrors on `notifications.read`/
+  `notifications.manage_own`; the server refuses regardless. No route expected unless a real page
+  is added — F042/C31's menu-reached rules apply if one is.
+- Git: branch `main`, one commit per completed task; the tree is clean after each commit. F045 sits on top of
+  `e424174` (F044).
 - Last human verification: the operator **opened the app on 2026-10-09** and hit
   `ReferenceError: Cannot access 'ANONYMOUS_ACCESS' before initialization` — a blank page caused by a circular
   import F017 introduced (fixed immediately afterwards; see §7). No gate suite has been run yet; F015's
@@ -218,7 +216,22 @@ the archive original — `sha256sum` both to check):
   server-mode screen passes the full set explicitly. Client-side is CSV only — XLSX belongs to the backend
   (`openpyxl`, F051).
 - **The header still shows fewer controls than the reference on purpose.** CLAUDE_MASTER forbids inert buttons;
-  notifications and the profile menu arrive with F046/F032 (`ARCHITECTURE.md` §12).
+  the profile menu arrived with F032, and notifications arrive with F046 (`ARCHITECTURE.md` §12).
+- **The inbox is live (F045):** `notifications` (**migration `0008`**, applied to `app_dev`) —
+  per-user rows (title, message, optional `link`, `is_read`, `ON DELETE CASCADE`). Six endpoints
+  under `/api/v1/notifications` (C34): list (F033 shape — `page`/`page_size` ≤100, newest-first
+  with an `id` tiebreaker, `{items, total, unread_count, page, page_size}` so the bell and the
+  page are one request), `GET /unread-count` (the F046 bell poll), `POST /{id}/read` (200 item),
+  `POST /read-all` (`{updated}`), `DELETE /{id}` (204; repeat → 404), `DELETE ""` (clear all,
+  `{deleted}`). **Producers** call `services/notifications.py::notify` — adds to the caller's
+  transaction, never commits; **no create endpoint exists by design** (a spam relay for one's own
+  inbox). **Links are internal paths** (`^/[A-Za-z0-9]`, ≤ 500 — at the door and in the table's
+  CHECK; `//host`, `/\host`, percent-decode tricks refused). **Cross-user denial is the
+  `(id AND user_id)` SQL filter** — foreign ids answer 404, never 403; no user-id parameter
+  exists. **No audit rows** for inbox operations (not administrative mutations). **One producer
+  wired**: the admin password reset notifies its target inside the reset's transaction.
+  **Tests:** +9 in `tests/test_notifications.py` (**245 backend**); frontend untouched (**485**);
+  `openapi.json` + generated types regenerated.
 - **The audit viewer is live (F044):** `GET /api/v1/admin/audit` (`audit.read`) — fixed newest-first
   order with an id tiebreaker; filters `action`/`entity_type` (validated against the vocabularies; a
   422 names the allowed set), escaped `search` (summary + actor email), `since`/`until`; the response
@@ -706,11 +719,24 @@ the archive original — `sha256sum` both to check):
   time, and do not add any mutation to the viewer.
 - **Every new mutation owes an audit event (F043, C32):** when a task adds a service mutation,
   call `audit.record` **inside its transaction** (never commit in `record`), with a changed-only
-  diff and no credential-shaped keys — the F044+ tasks (F045 notifications, F049 files, F035's
-  future additions) are on that list; the vocabulary constants are on `app/models/audit.py` (a new
-  action is a one-line change plus a migration). Request id: services read it via the contextvar —
+  diff and no credential-shaped keys — the remaining candidates (F049 files, F035's future
+  additions) are on that list; **F045's inbox operations are deliberately not** (C34: reading or
+  clearing one's own notices is not a change to authority or configuration — do not "fix" the
+  absence); the vocabulary constants are on `app/models/audit.py` (a new action is a one-line
+  change plus a migration). Request id: services read it via the contextvar —
   never plumb a parameter. The viewer (F044) must stay read-only: do not add update/delete buttons
   or endpoints for the trail.
+- **The inbox's rules are F046's contract (F045, C34):** producers call
+  `services/notifications.py::notify` **inside their own transaction** (it never commits — the
+  notice rides the event that caused it) and only for real events about the *recipient*; never add
+  a public create endpoint. The link rule is two-layer and load-bearing — an internal path
+  (`^/[A-Za-z0-9]`, ≤ 500, never a URL) enforced at the door *and* by the table's CHECK; do not
+  relax either, and F046 renders links through the router. Foreign and stale ids answer **404, never
+  403** — a 403 would confirm the id exists; do not "improve" the message. The list carries
+  `unread_count` with the page; `GET /unread-count` exists for the bell's poll (it is the
+  deliberate cheap path). A delete's repeat-404 is success as far as the UI is concerned (the row
+  is gone); clear-all is the confirmed bulk (F019's `ConfirmDialog`). No audit rows for inbox
+  operations.
 - **Profile pages are menu-reached, never nav-listed (F042, C31):** any future personal page follows
   `showInNavigation: false` + `requiredPermissions: []` (the shell's boundary is the gate) and is
   linked from the account menu; the password form stays one component (`ChangePasswordForm`) — never
@@ -873,6 +899,34 @@ the archive original — `sha256sum` both to check):
 
 ## 7. Completed work (newest first)
 
+- **F045 — Notifications backend.** The per-user inbox (§8.2; §7.7's API half), shaped so the
+  acceptance — "cross-user denial tests" — is a property of the SQL rather than of remembering to
+  check. `notifications` (**migration `0008`**, applied to `app_dev`) carries title, message, an
+  optional link, `is_read` and timestamps, with `ON DELETE CASCADE` from the user — an inbox is
+  personal data with no audit value (the F041 preference edge, not the trail's SET NULL).
+  **Two audiences, one table** (C34): producers call `services/notifications.py::notify`, which
+  *adds* a row to the caller's transaction and **never commits** — the notice rides the
+  transaction of the event it announces (F043's discipline) — and **no public create endpoint
+  exists**, because "notify me about things I did" is not a feature and a create route would be a
+  spam relay for one's own inbox. Readers are six endpoints under `/api/v1/notifications` behind
+  the C16-seeded codes (`notifications.read` for the list and count, `notifications.manage_own`
+  for mutations): the list is F033-shaped (newest-first with an `id` tiebreaker,
+  `{items, total, unread_count, page, page_size}` — the bell and the page are one request);
+  `GET /unread-count` is the deliberately cheap path F046's ~30 s polling uses; `POST /{id}/read`
+  answers 200 with the item, idempotent for the owner; `POST /read-all` and `DELETE ""` (clear
+  all) report `{updated}`/`{deleted}`; and `DELETE /{id}` is 204 while its repeat is a **404 —
+  the same 404 a foreign id gets**, because `(id AND user_id)` is one SQL filter and a 403 would
+  confirm the id exists (the same reasoning keeps bulk operations scoped). **The link is a path,
+  not a URL**: `^/[A-Za-z0-9]` is enforced at the door *and* pinned by the table's CHECK — the
+  strict head closes `//host`, `/\host` and percent-decode tricks — because an inbox that could
+  store a URL would be an open redirect for every future producer (F046 renders links through
+  the router). **No audit rows** for inbox operations — not administrative mutations — and **one
+  honest producer ships**: the admin password reset notifies its target inside the reset's own
+  transaction (tested end to end, including the forced change that gates the inbox until the
+  target sets their own password). Checks run: `uv run pytest` **245 passed** (9 new in
+  `tests/test_notifications.py`); `ruff check`/`format --check` clean; `mypy app migrations`
+  clean (65 files); **migration `0008`** applied to `app_dev`; `openapi.json` + generated
+  frontend types regenerated (frontend suite unchanged: 485). DECISIONS C34.
 - **F044 — Audit viewer.** The trail's read side, shaped by what a trail *is* (C33). `GET
   /api/v1/admin/audit` (`audit.read`) uses F033's pagination shape with a **fixed newest-first order
   and an `id` tiebreaker** — chronological data has nothing to sort it by other than time, so the
@@ -1642,15 +1696,15 @@ and prints the real URL; uvicorn fails with a clear error.
 |---|---|---|
 | Frontend types (F006) | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no output |
 | Frontend build (F006) | `cd D:\resors\frontend; pnpm run build` | exit 0, writes `frontend/dist/` |
-| **Frontend tests (F011–F022)** | `cd D:\resors\frontend; pnpm run test:run` | **416 passing** across 49 files |
+| **Frontend tests (F011–F044)** | `cd D:\resors\frontend; pnpm run test:run` | **485 passing** across 56 files |
 | Frontend tests, watch mode | `cd D:\resors\frontend; pnpm test` | re-runs on save; `q` to quit |
 | **API client tests (F018)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib` | **29 passing** in 3 files (MSW; no network) |
 | **Form kit tests (F019)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/form-fields.test.tsx tests/components/form-submission.test.tsx tests/components/confirm-dialog.test.tsx tests/components/unsaved-changes-guard.test.tsx` | **23 passing** in 4 files — validation, the `aria-describedby`/`aria-invalid` wiring, server 422 mapping with and without the toast opt-out, and the unsaved-changes prompt on a real data router |
 | **DataTable tests (F020)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table.test.tsx tests/components/search-field.test.tsx tests/components/filter-chip.test.tsx` | **23 passing** in 3 files — sorting/search/pagination over real fixtures, server-mode reporting without local slicing, facet counts that respect the other filters, the search debounce and the chip |
 | **Table preferences (F021)** | `cd D:\resors\frontend; pnpm exec vitest run tests/components/data-table-preferences.test.tsx tests/lib/table-preferences.test.ts` | **20 passing** in 2 files — hiding/ordering a column survives a fresh mount, Reset clears both the columns and the stored entry, and preferences do not leak across table keys or user scopes |
 | **CSV export/import (F022)** | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/csv.test.ts tests/components/data-table-export.test.tsx` | **59 passing** in 2 files — the injection guard (including `-42` staying a number), quoting/parsing round-trips, filename sanitation, the BOM'd download with URL cleanup, all-errors import validation, and an export that follows the column preferences |
-| **Database migrations (F023–F043)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) → `0005` (app settings) → `0006` (user preferences) → `0007` (audit log) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0007 (head)`** (`app_dev` is at `0007`; F027–F038 added no revision, **F039 added `0005`**, **F041 added `0006`**, **F043 added `0007`**); `uv run alembic history` shows the seven revisions. **The round-trip check targets a scratch database only** — `downgrade base` drops every table it touches; derive the test URL in PowerShell: `$t = uv run python -c "from sqlalchemy.engine import make_url; from app.core.config import get_settings; print(make_url(get_settings().database_url).set(database='app_test').render_as_string(hide_password=False))"; $env:DATABASE_URL = $t; uv run alembic downgrade base; uv run alembic upgrade head; uv run alembic current` → ends **`0007 (head)`**. **Never run `downgrade base` against `app_dev`** |
-| **Backend tests (F023–F044)** | `cd D:\resors\backend; uv run pytest` | **236 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 20 admin-users + 14 admin-roles + 9 admin-permissions + 8 admin-settings + 8 profile + 10 audit + 6 audit-viewer tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
+| **Database migrations (F023–F045)** | `cd D:\resors\backend; uv run alembic upgrade head` | runs `0001` → `0002` (identity) → `0003` (sessions) → `0004` (rate-limit buckets) → `0005` (app settings) → `0006` (user preferences) → `0007` (audit log) → `0008` (notifications) on an empty database; a second run prints only the context lines (a no-op). `uv run alembic current` → **`0008 (head)`** (`app_dev` is at `0008`; F027–F038 added no revision, **F039 added `0005`**, **F041 added `0006`**, **F043 added `0007`**, **F045 added `0008`**); `uv run alembic history` shows the eight revisions. **The round-trip check targets a scratch database only** — `downgrade base` drops every table it touches; derive the test URL in PowerShell: `$t = uv run python -c "from sqlalchemy.engine import make_url; from app.core.config import get_settings; print(make_url(get_settings().database_url).set(database='app_test').render_as_string(hide_password=False))"; $env:DATABASE_URL = $t; uv run alembic downgrade base; uv run alembic upgrade head; uv run alembic current` → ends **`0008 (head)`**. **Never run `downgrade base` against `app_dev`** |
+| **Backend tests (F023–F045)** | `cd D:\resors\backend; uv run pytest` | **245 passed** — 5 schema conventions (no database needed) + 22 password/policy/generator + 12 rate-limit (5 pure window-math + 6 DB + 1 concurrency over real connections) + 18 RBAC constraints + 18 session + 11 seed + 17 bootstrap + 11 login + 13 session-lifecycle + 11 CSRF + 14 password-lifecycle + 9 authorization + 20 admin-users + 14 admin-roles + 9 admin-permissions + 8 admin-settings + 8 profile + 10 audit + 6 audit-viewer + 9 notifications tests, all against a dedicated `app_test` database (created and migrated by the fixtures on first run; the development database is never touched) |
 | **Login tests (F028)** | `cd D:\resors\backend; uv run pytest tests/test_auth_login.py` | **11 passed** — six credential-failure causes answered with the *same* 401 body, the unknown-email path proven to run a real Argon2 verification against the decoy (whose parameters are pinned current), both throttle buckets (per account and per address) incl. the identical 429 for a non-existent email, `hit_count == 5` persisted after five failures (commit-on-failure), the account-bucket reset on success, rehash-on-login, the exact cookie attributes, and 422 for malformed bodies |
 | **Session lifecycle tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_auth_sessions.py` | **13 passed** — resolution returns the user, the idle slide (committed by the resolver, capped at the absolute deadline, which never moves), expiry refused without a write, disabled users refused and left for the admin flow, rotation (same family, `rotated` + `replaced_by_id`, absolute deadline inherited), the replay killing exactly its own family as `theft_detected` while the presented row keeps `rotated`, logout (204, both cookies cleared, revoked `logout`, idempotent for junk/already-ended cookies), logout-all (401 without a session; every live row of *one* user revoked `logout_all`, others untouched), and a replay through logout still killing the family |
 | **CSRF tests (F029)** | `cd D:\resors\backend; uv run pytest tests/test_csrf_protection.py` | **11 passed** — the double-submit enforced whenever the session cookie is present (four refusal shapes, each changing nothing) and passing with no origin for scripted clients, the origin matrix refused even with a perfect double-submit (`https://evil.example`, `null`, scheme mismatch, lookalike host), the `Referer` fallback (and Origin winning when both are present), safe methods never checked, a latin-1 hostile header earning 403 not 500, login refusing a cross-site origin, and the carve-out: a dead session cookie does not lock the login form |
@@ -1681,11 +1735,13 @@ and prints the real URL; uvicorn fails with a clear error.
 | **Profile & preferences tests (F041)** | `cd D:\resors\backend; uv run pytest tests/test_profile_api.py` | **8 passed** — the gating split (only `GET /auth/me` survives a forced change); PATCH me trims, clears the phone with null, 400s an empty edit and **422s an email attempt** (extra=forbid); preference CRUD round-trips, upserts one row, deletes idempotently; key shapes and null/oversized values refused; **the acceptance: two users share one key and never see or touch each other's rows**; deleting a user cascades their preferences |
 | **Audit tests (F043)** | `cd D:\resors\backend; uv run pytest tests/test_audit.py` | **10 passed** — a failed mutation (409 duplicate) leaves **no** event while a successful one leaves exactly one with its before/after; `record` refuses credential-shaped keys recursively (and unknown actions) before any row is added; the reset event never carries the temporary and a submitted password never reaches the trail; role/matrix (`one event per save`, changed entries only), settings (per-key diffs), profile and preference (`key` only) events are asserted; `X-Request-Id` joins response and row, hostile ids are replaced not reflected, and service-level events have `correlation_id IS NULL` |
 | **Audit-viewer tests (F044)** | `cd D:\resors\backend; uv run pytest tests/test_admin_audit.py` | **6 passed** — 401/403 guards; newest-first order with the server-supplied vocabularies in the response; filters narrow exactly (action/entity), escaped search (`%` matches nothing), unknown action → 422 naming the vocabulary; pagination totals from the same criteria with no row on two pages; `since` bounds the timeline; the item carries everything the modal needs (details, correlation id) |
+| **Notification tests (F045)** | `cd D:\resors\backend; uv run pytest tests/test_notifications.py` | **9 passed** — the guards (401; a read-only caller's mutation answered with the generic 403; the forced change gating the inbox); pagination newest-first with the unread count; mark-read idempotent for the owner; read-all/clear-all counts and the empty-clear idempotence; delete-one's repeat 404; **the acceptance — two real users: each sees only their own rows, foreign ids are 404 for read and delete, bulk operations stay scoped**; the link rule at both layers (the service refusing `https://…`, `//evil.example`, `/\evil`, `/%2Fevil`…; the CHECK rejecting a hand-inserted bad row); and the reset producer end to end (the notice lands in the *target's* inbox, same transaction, gated until the forced change completes) |
 | **Audit viewer UI tests (F044)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/audit.test.tsx` | **5 passed** — the table renders read-only with no sort buttons or mutation controls; the action/entity selects offer the **server's** vocabulary and the period select sends a real `since`; pagination counts from the server total; the detail modal renders the before/after diff and the correlation id without a second request, and the `changes` shape per key with "— (no request)" for service-level events |
 | **Profile UI tests (F042)** | `cd D:\resors\frontend; pnpm exec vitest run tests/profile/profile.test.tsx` | **8 passed** — the page renders identity/roles/grouped permissions; a save PATCHes the owned fields and the **session refresh moves the header menu**; clearing the phone sends null; the server's 422 lands on the named field; the menu leads to `/profile` and `/profile/security` and the sidebar never lists them; the forced-change redirect outranks `/profile`; the reused password form submits for real |
 | **Permissions UI tests (F038)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/permissions.test.tsx` | **9 passed** — the table renders and sorts/searches in the browser; no management controls without `permissions.manage`; create posts the dialog and closes; a malformed code is refused locally with **no request**; server 422/409 refusals render in the right surfaces (field, dialog root alert, confirmation-then-toast) with the draft intact |
 | **Settings smoke (F039)** | with the bootstrap account signed in (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`): read: `curl.exe -s -b $env:TEMP\resors-cookies.txt http://localhost:8000/api/v1/admin/settings`; write: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PUT http://localhost:8000/api/v1/admin/settings -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"branding.app_name":"Resors","display.date_format":"YYYY-MM-DD"}'` | read: **200** with all four registry keys at their defaults. write: **200** echoing the fresh snapshot; re-read returns the new values — and they **survive an API restart** (stop/start uvicorn; the row is in PostgreSQL). Refusals: `{"nope.key":"x"}` → **422** at `nope.key`; `{"display.date_format":"31/12/2026"}` → **422** at that key |
 | **Audit smoke (F043)** | with the bootstrap jar (same `<csrf>`): do any mutation — e.g. `PATCH http://localhost:8000/api/v1/auth/me` with `{"full_name":"Audited Operator"}` — then inspect the trail in psql: `docker exec -it resors-postgres psql -U app -d app_dev -c "select action, actor_email, correlation_id, summary from audit_logs order by created_at desc limit 5;"` | the newest row is `profile.update` with the admin's email, the `X-Request-Id` the response carried (run the call with `-i` to see it), and a summary; `select details from audit_logs ...` shows the before/after of the changed field only — **no password or token material anywhere**, by design. A failed mutation (e.g. duplicate email on create) adds **no row** |
+| **Notifications smoke (F045)** | needs a second account **holding at least `viewer`** (both seeded roles carry the notification codes; create one via the F033 row — give it the `viewer` role — or any existing non-super-admin account). With the bootstrap jar (F029 row steps 1–2; **`<csrf>`** = the jar's `__Host-csrf`) and that account's id: reset it — `curl.exe -i -b $env:TEMP\resors-cookies.txt -X POST http://localhost:8000/api/v1/admin/users/<id>/reset-password -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>"` → **200** with a new temporary (record it at once). Sign that account into its own jar: `curl.exe -s -c $env:TEMP\resors-cookies-2.txt -o NUL -X POST http://localhost:8000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"second@example.com","password":"<temporary>"}'`, read its `<csrf2>` from the jar (`Select-String __Host-csrf $env:TEMP\resors-cookies-2.txt`, last column), then complete the forced change: `curl.exe -i -b $env:TEMP\resors-cookies-2.txt -c $env:TEMP\resors-cookies-2.txt -X POST http://localhost:8000/api/v1/auth/change-password -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf2>" -d '{"current_password":"<temporary>","new_password":"<new, policy-passing>"}'` | before the change, `GET http://localhost:8000/api/v1/notifications` on jar 2 is **403** `Your password must be changed before continuing.` After it (**204**; the jar now holds the rotated pair, and **update `LOCAL_CREDENTIALS.md`**): `GET /api/v1/notifications` → **200** with the reset notice — `title` "Your password was reset", `link` `/change-password`, `is_read:false` — plus `total:1` and `unread_count:1`; `GET /api/v1/notifications/unread-count` → `{"unread_count":1}`. Mutations on jar 2 (Origin + **`<csrf2>`** from the *fresh* jar read): `POST /api/v1/notifications/<notice id>/read` → 200 `is_read:true`; `DELETE /api/v1/notifications/<id>` → **204**, the repeat → **404** (never 403 — a foreign id answers the same 404); `DELETE /api/v1/notifications` → `{"deleted":n}`. Cross-user check: the admin's own `GET /api/v1/notifications` never lists the second account's notice |
 | **Profile & preferences smoke (F041)** | with the bootstrap jar (same `<csrf>`): profile: `curl.exe -i -b $env:TEMP\resors-cookies.txt -X PATCH http://localhost:8000/api/v1/auth/me -H "Content-Type: application/json" -H "Origin: http://localhost:5173" -H "X-CSRF-Token: <csrf>" -d '{"full_name":"Renamed Operator"}'`; preferences: `... -X PUT http://localhost:8000/api/v1/auth/me/preferences/table.rows ... -d '{"value":25}'` | PATCH: **200** with the full MeResponse (identity + roles + permissions); `{"email":"x@y.z"}` → **422** (`extra_forbidden`); `{}` → **400**. PUT → **200** `{"key":"table.rows","value":25}`; `GET /api/v1/auth/me/preferences` lists it; `DELETE` → **204** and again → **204**; `PUT .../BadKey` → **422** at the path key |
 | Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | prints the v8 report — **485 tests passing**, ~89% statements overall. The threshold gate is F055/F061's; corrected in F015 because the old "100%" claim overstated what this run prints |
 | **Frontend auth-flow tests (F032)** | `cd D:\resors\frontend; pnpm exec vitest run tests/auth/auth-flows.test.tsx` | **14 passed** — the session boundary (anonymous redirect with intended-path return; network failure → Retry, **not** login), sign-in failures shown verbatim, local validation without a request, the forced-change landing/bounce/completion with the CSRF header asserted on the wire, 422 field mapping, mismatch refusal, both sign-out flows, the registered 401 re-resolution (one retry), and `readCsrfToken` |

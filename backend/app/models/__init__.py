@@ -11,6 +11,7 @@ the rate-limit buckets. Each later group arrives with the task that owns it.
 
 from app.models.audit import AUDIT_ACTIONS, AUDIT_ENTITY_TYPES, AuditLog
 from app.models.identity import Permission, Role, User, role_permissions, user_roles
+from app.models.notifications import Notification
 from app.models.preferences import UserPreference
 from app.models.rate_limit import RateLimitBucket
 from app.models.session import REVOCATION_REASONS, UserSession
@@ -22,6 +23,7 @@ __all__ = [
     "REVOCATION_REASONS",
     "AppSetting",
     "AuditLog",
+    "Notification",
     "Permission",
     "RateLimitBucket",
     "Role",

@@ -49,6 +49,7 @@ from app.core.permissions import PermissionCode, effective_permissions
 from app.core.security import generate_password, hash_password, password_policy_violations
 from app.models.identity import Role, User
 from app.services import audit
+from app.services.notifications import notify
 from app.services.passwords import PasswordPolicyViolation, reset_password
 from app.services.sessions import revoke_user_sessions
 
@@ -403,6 +404,18 @@ async def reset_user_password(session: AsyncSession, *, actor: User, target: Use
         entity_id=target.id,
         summary=f"Reset the password of {target.email}.",
         details={"email": target.email},
+    )
+    # The one producer F045 wires (C34): a reset is exactly the event the
+    # account's owner wants to see in their inbox, and it rides the same
+    # transaction as the reset itself.
+    await notify(
+        session,
+        user_id=target.id,
+        title="Your password was reset",
+        message=(
+            "An administrator reset your password. You must choose a new one at your next sign-in."
+        ),
+        link="/change-password",
     )
     return await reset_password(session, target)
 

@@ -187,6 +187,16 @@ export type ChangePasswordRequest = {
 };
 
 /**
+ * ClearAllResponse
+ */
+export type ClearAllResponse = {
+    /**
+     * Deleted
+     */
+    deleted: number;
+};
+
+/**
  * CreatePermissionRequest
  */
 export type CreatePermissionRequest = {
@@ -313,6 +323,16 @@ export type LoginResponse = {
 };
 
 /**
+ * MarkAllReadResponse
+ */
+export type MarkAllReadResponse = {
+    /**
+     * Updated
+     */
+    updated: number;
+};
+
+/**
  * MatrixRoleEntry
  *
  * One column of the matrix save: this role, exactly these codes.
@@ -386,6 +406,62 @@ export type MeResponse = {
      * Roles
      */
     roles: Array<string>;
+};
+
+/**
+ * NotificationItem
+ */
+export type NotificationItem = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Read
+     */
+    is_read: boolean;
+    /**
+     * Link
+     */
+    link: string | null;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
+ * NotificationListResponse
+ */
+export type NotificationListResponse = {
+    /**
+     * Items
+     */
+    items: Array<NotificationItem>;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Page Size
+     */
+    page_size: number;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Unread Count
+     */
+    unread_count: number;
 };
 
 /**
@@ -557,6 +633,16 @@ export type SettingsResponse = {
     values: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * UnreadCountResponse
+ */
+export type UnreadCountResponse = {
+    /**
+     * Unread Count
+     */
+    unread_count: number;
 };
 
 /**
@@ -1817,3 +1903,210 @@ export type HealthApiV1HealthGetResponses = {
 };
 
 export type HealthApiV1HealthGetResponse = HealthApiV1HealthGetResponses[keyof HealthApiV1HealthGetResponses];
+
+export type ClearAllApiV1NotificationsDeleteData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/notifications';
+};
+
+export type ClearAllApiV1NotificationsDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing notifications.manage_own or a pending password change.
+     */
+    403: unknown;
+};
+
+export type ClearAllApiV1NotificationsDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    200: ClearAllResponse;
+};
+
+export type ClearAllApiV1NotificationsDeleteResponse = ClearAllApiV1NotificationsDeleteResponses[keyof ClearAllApiV1NotificationsDeleteResponses];
+
+export type ListNotificationsApiV1NotificationsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Page Size
+         */
+        page_size?: number;
+    };
+    url: '/api/v1/notifications';
+};
+
+export type ListNotificationsApiV1NotificationsGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing notifications.read or a pending password change.
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListNotificationsApiV1NotificationsGetError = ListNotificationsApiV1NotificationsGetErrors[keyof ListNotificationsApiV1NotificationsGetErrors];
+
+export type ListNotificationsApiV1NotificationsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: NotificationListResponse;
+};
+
+export type ListNotificationsApiV1NotificationsGetResponse = ListNotificationsApiV1NotificationsGetResponses[keyof ListNotificationsApiV1NotificationsGetResponses];
+
+export type MarkAllReadApiV1NotificationsReadAllPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/notifications/read-all';
+};
+
+export type MarkAllReadApiV1NotificationsReadAllPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing notifications.manage_own or a pending password change.
+     */
+    403: unknown;
+};
+
+export type MarkAllReadApiV1NotificationsReadAllPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: MarkAllReadResponse;
+};
+
+export type MarkAllReadApiV1NotificationsReadAllPostResponse = MarkAllReadApiV1NotificationsReadAllPostResponses[keyof MarkAllReadApiV1NotificationsReadAllPostResponses];
+
+export type UnreadCountApiV1NotificationsUnreadCountGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/notifications/unread-count';
+};
+
+export type UnreadCountApiV1NotificationsUnreadCountGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing notifications.read or a pending password change.
+     */
+    403: unknown;
+};
+
+export type UnreadCountApiV1NotificationsUnreadCountGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: UnreadCountResponse;
+};
+
+export type UnreadCountApiV1NotificationsUnreadCountGetResponse = UnreadCountApiV1NotificationsUnreadCountGetResponses[keyof UnreadCountApiV1NotificationsUnreadCountGetResponses];
+
+export type DeleteNotificationApiV1NotificationsNotificationIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Notification Id
+         */
+        notification_id: string;
+    };
+    query?: never;
+    url: '/api/v1/notifications/{notification_id}';
+};
+
+export type DeleteNotificationApiV1NotificationsNotificationIdDeleteErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing notifications.manage_own or a pending password change.
+     */
+    403: unknown;
+    /**
+     * No such notification belongs to the caller.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteNotificationApiV1NotificationsNotificationIdDeleteError = DeleteNotificationApiV1NotificationsNotificationIdDeleteErrors[keyof DeleteNotificationApiV1NotificationsNotificationIdDeleteErrors];
+
+export type DeleteNotificationApiV1NotificationsNotificationIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteNotificationApiV1NotificationsNotificationIdDeleteResponse = DeleteNotificationApiV1NotificationsNotificationIdDeleteResponses[keyof DeleteNotificationApiV1NotificationsNotificationIdDeleteResponses];
+
+export type MarkReadApiV1NotificationsNotificationIdReadPostData = {
+    body?: never;
+    path: {
+        /**
+         * Notification Id
+         */
+        notification_id: string;
+    };
+    query?: never;
+    url: '/api/v1/notifications/{notification_id}/read';
+};
+
+export type MarkReadApiV1NotificationsNotificationIdReadPostErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing notifications.manage_own or a pending password change.
+     */
+    403: unknown;
+    /**
+     * No such notification belongs to the caller.
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MarkReadApiV1NotificationsNotificationIdReadPostError = MarkReadApiV1NotificationsNotificationIdReadPostErrors[keyof MarkReadApiV1NotificationsNotificationIdReadPostErrors];
+
+export type MarkReadApiV1NotificationsNotificationIdReadPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: NotificationItem;
+};
+
+export type MarkReadApiV1NotificationsNotificationIdReadPostResponse = MarkReadApiV1NotificationsNotificationIdReadPostResponses[keyof MarkReadApiV1NotificationsNotificationIdReadPostResponses];

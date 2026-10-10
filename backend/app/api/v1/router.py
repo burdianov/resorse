@@ -14,6 +14,7 @@ from app.api.v1 import (
     auth,
     health,
     me_preferences,
+    notifications,
 )
 
 api_router = APIRouter()
@@ -25,3 +26,4 @@ api_router.include_router(admin_roles.router, tags=["admin"])
 api_router.include_router(admin_permissions.router, tags=["admin"])
 api_router.include_router(admin_settings.router, tags=["admin"])
 api_router.include_router(admin_audit.router, tags=["admin"])
+api_router.include_router(notifications.router, tags=["notifications"])
