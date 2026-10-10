@@ -112,6 +112,9 @@ function directoryHandlers(
   const requests: CapturedRequests = { listParams: [], deletes: [], resets: [] }
   const handlers = [
     http.get('/api/v1/auth/me', () => HttpResponse.json(meUser)),
+    // The shell reads the account's preferences once per session (F048); the
+    // directory's column layout lives there, so this is its seed.
+    http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     http.get('/api/v1/admin/roles', () => HttpResponse.json({ items: [ADMIN_ROLE, VIEWER_ROLE] })),
     http.get('/api/v1/admin/users', ({ request }) => {
       const params = new URL(request.url).searchParams

@@ -52,6 +52,8 @@ function signIn(
   let calls = 0
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(user)),
+    // The shell reads the account's preferences once per session (F048).
+    http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     http.get('/api/v1/notifications/unread-count', () => {
       calls += 1
       if (unread.status !== undefined) {

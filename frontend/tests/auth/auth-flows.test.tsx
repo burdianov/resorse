@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { toast } from 'sonner'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppProviders } from '@/app/providers'
 import { buildAppRoutes } from '@/app/router'
@@ -81,6 +81,12 @@ async function signIn() {
 afterEach(() => {
   toast.dismiss()
   vi.restoreAllMocks()
+})
+
+/** The shell reads the account's preferences once per session (F048). None of
+ * these flows store one, so the snapshot is empty for every test here. */
+beforeEach(() => {
+  server.use(http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })))
 })
 
 describe('the session boundary', () => {

@@ -64,6 +64,8 @@ function renderAudit(items: AuditItem[] = [item()], total = items.length) {
   const captured: Captured = { params: [] }
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(me())),
+    // The shell also reads the account's preferences once per session (F048).
+    http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     // The shell's bell polls this on every authenticated page (F046); this
     // file does not exercise notifications, so it stands at zero.
     http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),

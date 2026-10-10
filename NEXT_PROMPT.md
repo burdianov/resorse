@@ -9,30 +9,32 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F048
-in claude_code_pack/TASKS.md. Implement F048 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F049
+in claude_code_pack/TASKS.md. Implement F049 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F049.
+me the operator checks. Do not push. Do not start F050.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F047 — Dashboard. Committed together with this handoff (`git log -1 --format="%h %s"`).
-  It replaces the F017 placeholder with `frontend/src/pages/dashboard.tsx`: identity and permission summary from
-  `useAuth()`, the unread count from `useUnreadCount(userId)` (the bell's query, no second poller), and quick links
-  from `visibleNavigation(access)` with the Dashboard entry excluded. No backend or migration changes.
-- **Previous task:** F046 — Notifications UI. Commit **`96e86f8`** (`feat(F046): ...`).
-- **Next: F048 — Table prefs integration.** TASKS.md accept line: "Cross-account reload tests."
-- **Gates:** tasks F016, F032 and F047 are complete. Operator gate results are **not recorded in this handoff**.
-  Next gate: **G-A3, after F048**.
+- **Last completed:** F048 — Table prefs integration. Committed together with this handoff (`git log -1 --format="%h %s"`).
+  The account's `user_preferences` (F041) now back the admin tables: `frontend/src/lib/preferences.ts` names the keys
+  (`app.theme`, `app.table.<tableKey>`), `components/providers/preferences-provider.tsx` reads the snapshot once per
+  identity, installs F021's server-backed store **before** the first table render, and reconciles the theme. No backend,
+  OpenAPI or migration changes.
+- **Previous task:** F047 — Dashboard. Commit **`3970120`** (`feat(F047): ...`).
+- **Next: F049 — Private storage core.** TASKS.md accept line: "Traversal and MIME tests."
+- **Gates:** tasks F016, F032, F047 and F048 are complete. Operator gate results are **not recorded in this handoff**.
+  **G-A3 (after F048) is now due and is the operator's to run** — see `claude_code_pack/OPERATOR_GUIDE.md` line 54.
+  Next gate after that: **G-A4, after F063**.
 - **Blockers:** none recorded.
 - **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN.** They are Stage B business rules (working-day
   calendar, rate changes within a month, percentage rules, revision semantics, and others). None is recorded as
-  blocking F047. Rules for OPEN decisions:
+  blocking F049. Rules for OPEN decisions:
   - Never treat an OPEN decision as approved, and never turn it into a confirmed rule.
   - If a task depends on an OPEN decision, stop and ask the operator one precise question.
-  - Confirmed decisions C11–C35 are recorded in `claude_code_pack/DECISIONS.md`.
+  - Confirmed decisions C11–C36 are recorded in `claude_code_pack/DECISIONS.md` (C36 is F048's).
 - **Open item:** jsdom `Select` rendering, linked to **F057** — see §5.
 
 ## 3. Essential constraints
@@ -110,23 +112,27 @@ Frontend lint and format and the coverage gate are planned for F055.
 **Not yet available:** Playwright E2E (F057), axe accessibility (F058), production Compose (F059).
 Do not hand these to the operator as runnable until their task lands.
 
-**Test counts are historical.** Every count in this file was recorded at F046. Re-running a suite produces a
-new result. Report the actual observed count and do not present a historical count as the current verified result.
+**Test counts are historical.** Every count in this file was recorded at F048, and the agent's F048 runs were
+**focused subsets, not the whole suite**. Re-running a suite produces a new result. Report the actual observed
+count and do not present a historical count as the current verified result.
 
 ## 7. Operator verification commands
 
-Run these to confirm the state before F047 starts. The "F046 record" column is historical and is not a
+Run these to confirm the state before F049 starts. The "F048 record" column is historical and is not a
 current result. Report what you observe.
 
-| Check | Command | F046 record (historical) |
+| Check | Command | F048 record (historical) |
 |---|---|---|
-| Working tree | `git -C D:\resors status --short` | empty |
-| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `ce8b703 docs: archive historical handoff documentation` at the time of writing. Last implementation commit: `96e86f8 feat(F046): ...` |
+| Working tree | `git -C D:\resors status --short` | clean after F048's commit |
+| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F048): ...` (implementation + handoff together). Previous: `3970120 feat(F047): ...` |
 | Backend health | `curl http://localhost:8000/api/v1/health` | `{"status":"ok",...}` |
-| Notifications UI tests | `cd D:\resors\frontend; pnpm exec vitest run tests/notifications/notifications.test.tsx` | 13 passed |
-| Dashboard tests (F047) | `cd D:\resors\frontend; pnpm exec vitest run tests/dashboard/dashboard.test.tsx` | 10 passed (F047 focused run, observed by the agent; re-run to confirm) |
-| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | 498 passed |
-| Backend suite | `cd D:\resors\backend; uv run pytest` | 246 passed |
+| F048 table-preference tests | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/table-preferences.test.tsx` | 5 passed (F048 focused run, observed by the agent; re-run to confirm) |
+| F048 unit tests | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/preferences.test.ts tests/lib/table-preferences.test.ts` | passed (part of the 396 below) |
+| Admin + component tests | `cd D:\resors\frontend; pnpm exec vitest run tests/admin tests/components tests/lib/preferences.test.ts tests/lib/table-preferences.test.ts` | 52 files, 396 passed |
+| Shell-rendering tests | `cd D:\resors\frontend; pnpm exec vitest run tests/dashboard tests/notifications tests/profile tests/auth` | 4 files, 45 passed |
+| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no diagnostics |
+| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **not run by the agent at F048.** F047 record: 498 passed (historical) |
+| Backend suite | `cd D:\resors\backend; uv run pytest` | **not run by the agent at F048.** F047 record: 246 passed (historical) |
 
 The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_LOG.md`. Use grep for a task ID.
 
@@ -135,8 +141,8 @@ The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F048 is at about line 195 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C35; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F049 is at about line 199 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C36; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
 | `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend, §6 authorization, §12 implementation traps |

@@ -52,6 +52,8 @@ function renderApp(initialPath: string, meUser: MeResponse = me()) {
   let current = meUser
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(current)),
+    // The shell reads the account's preferences once per session (F048).
+    http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     http.patch('/api/v1/auth/me', async ({ request }) => {
       captured.patch = (await request.json()) as Record<string, unknown>
       current = { ...current, ...(captured.patch as Partial<MeResponse>) }

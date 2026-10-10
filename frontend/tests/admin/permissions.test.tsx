@@ -51,6 +51,8 @@ function renderDictionary(meUser: MeResponse = me()) {
   const captured: Captured = { creates: null, patch: null, deletes: [] }
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(meUser)),
+    // The shell also reads the account's preferences once per session (F048).
+    http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     // The shell's bell polls this on every authenticated page (F046).
     http.get('/api/v1/notifications/unread-count', () => HttpResponse.json({ unread_count: 0 })),
     http.get('/api/v1/admin/permissions', () =>

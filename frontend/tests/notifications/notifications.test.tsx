@@ -93,6 +93,8 @@ function inboxHandlers(initial: NotificationItem[], options: { meUser?: MeRespon
 
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(options.meUser ?? me())),
+    // The shell reads the account's preferences once per session (F048).
+    http.get('/api/v1/auth/me/preferences', () => HttpResponse.json({ items: [] })),
     http.get('/api/v1/notifications/unread-count', () => {
       captured.unreadCountCalls += 1
       return HttpResponse.json({ unread_count: unread() })

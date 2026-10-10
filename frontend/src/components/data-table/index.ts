@@ -21,10 +21,19 @@ export { DataTableViewOptions } from './data-table-view-options'
 export { exportTableCsv, exportTableCsvTemplate, csvColumnsFromTable } from './data-table-export'
 export {
   ANONYMOUS_SCOPE,
+  coerceTablePreferences,
   createLocalTablePreferencesStore,
+  createServerTablePreferencesStore,
   DEFAULT_TABLE_PREFERENCES,
   getTablePreferencesStore,
+  parseTablePreferences,
+  serializeTablePreferences,
   setTablePreferencesStore,
   TABLE_PREFERENCES_PREFIX,
+  toTablePreferences,
 } from './table-preferences'
-export type { TablePreferences, TablePreferencesStore } from './table-preferences'
+export type {
+  TablePreferences,
+  TablePreferencesStore,
+  TablePreferencesWriter,
+} from './table-preferences'

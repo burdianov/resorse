@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { PreferencesProvider } from '@/components/providers/preferences-provider'
 import { QueryProvider } from '@/components/providers/query-provider'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
@@ -19,14 +20,20 @@ import { AuthProvider } from '@/lib/auth'
  *    never mount before the session resolves, because the route guard holds
  *    the shell back until it does. So no query can fire as the wrong identity,
  *    and the auth provider gets the client handle it needs.
+ * 4. the account's preferences (F048) — innermost, because it reads the session
+ *    and writes into both the query cache and the theme; it holds the shell
+ *    back for one request so the first table render already has the saved
+ *    columns.
  */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <QueryProvider>
         <AuthProvider>
-          {children}
-          <Toaster />
+          <PreferencesProvider>
+            {children}
+            <Toaster />
+          </PreferencesProvider>
         </AuthProvider>
       </QueryProvider>
     </ThemeProvider>

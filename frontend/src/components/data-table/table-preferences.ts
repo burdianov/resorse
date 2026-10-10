@@ -1,21 +1,27 @@
 import type { ColumnOrderState, ColumnVisibilityState } from '@tanstack/react-table'
 
 /**
- * Where a table's column preferences live (BIG-PROMPT §5.3b, F021).
+ * Where a table's column preferences live (BIG-PROMPT §5.3b, F021/F048).
  *
  * The requirement is that visibility and order are remembered **per table key,
- * per user**, and resettable to the defaults. Today the only place they can be
- * remembered is this browser — `localStorage` — because the server half
- * (`user_preferences`, the API in F041 and the sync in F048) does not exist yet.
- * So the deliverable is the *abstraction*: a store interface with a local
- * implementation behind it, and the seam F048 replaces.
+ * per user**, and resettable to the defaults. F048 completes it: the server's
+ * `user_preferences` (`app.table.<tableKey>`, F041's API) is now the store a
+ * signed-in user writes to, seeded once per session by `PreferencesProvider`,
+ * so the same account sees the same columns on any machine and two accounts on
+ * one machine cannot share.
  *
- * **The key is `prefix.scope.tableKey`.** `scope` identifies the user; until
- * F032 supplies a session it is `anonymous`, which is the honest answer rather
- * than a placeholder — there is no one else to be. When the session lands, the
- * scope becomes the user id and two accounts on one machine stop sharing
- * preferences; the isolation test proves the mechanism works at that boundary
- * today.
+ * **Two implementations, one interface.** `createLocalTablePreferencesStore`
+ * is the per-browser store (still the module default, and what a page rendered
+ * outside the provider — a test, or the anonymous shell — reads).
+ * `createServerTablePreferencesStore` is the server-backed one: the hydrated
+ * snapshot lives **in memory** so `load` stays synchronous (the hook's whole
+ * design is that the first render already has the saved state and the table
+ * never flashes its defaults), while `save`/`clear` write through to the API.
+ *
+ * **The server key is `app.table.<tableKey>`.** The user is the session — the
+ * preferences API is scoped by construction (F041) and no user id is ever sent
+ * — so the server spelling carries no scope segment. The local store's
+ * `prefix.scope.tableKey` spelling remains for the per-browser fallback.
  *
  * Storage is treated as hostile: it is user-writable, may hold another
  * version's shape, and throws in private mode. A corrupt or unreadable entry
@@ -41,6 +47,12 @@ export interface TablePreferencesStore {
   clear(tableKey: string): void
 }
 
+/** Where the server-backed store sends its writes (F048). */
+export interface TablePreferencesWriter {
+  put(tableKey: string, preferences: TablePreferences): Promise<void>
+  remove(tableKey: string): Promise<void>
+}
+
 export const TABLE_PREFERENCES_PREFIX = 'app.table'
 
 /** Until F032 supplies a session, every browser user is the same anonymous one. */
@@ -63,24 +75,52 @@ function isVisibilityState(value: unknown): value is ColumnVisibilityState {
   )
 }
 
-/** Anything unrecognised reads as "nothing saved", not as a broken table. */
-function parsePreferences(raw: string): TablePreferences | null {
+/** Unusable fields are dropped and the record kept — a stale shape is not a
+ * crash, it is "that part was never saved". */
+export function coerceTablePreferences(value: unknown): TablePreferences {
+  const record = value as Record<string, unknown>
+  const columnVisibility = record['columnVisibility']
+  const columnOrder = record['columnOrder']
+  return {
+    columnVisibility: isVisibilityState(columnVisibility) ? columnVisibility : {},
+    columnOrder: isStringArray(columnOrder) ? columnOrder : [],
+  }
+}
+
+/** Anything unrecognised reads as "nothing saved", not as a broken table.
+ * A record arrives from the server as JSON already parsed; the local store
+ * parses a string first. Both paths end at `coerceTablePreferences`. */
+export function parseTablePreferences(raw: string): TablePreferences | null {
   try {
     const parsed: unknown = JSON.parse(raw)
-    // An array is an object to `typeof`, and it is never a preferences record.
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
-    const record = parsed as Record<string, unknown>
-    const columnVisibility = record['columnVisibility']
-    const columnOrder = record['columnOrder']
-    const visibility = isVisibilityState(columnVisibility) ? columnVisibility : {}
-    const order = isStringArray(columnOrder) ? columnOrder : []
-    return { columnVisibility: visibility, columnOrder: order }
+    return toTablePreferences(parsed)
   } catch {
     return null
   }
 }
 
-/** The local (per-browser) store. F048 swaps in the server-backed one. */
+/** A stored value that is not a JSON object is not a preferences record: an
+ * array is an object to `typeof`, and a scalar never was one. */
+export function toTablePreferences(value: unknown): TablePreferences | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+  return coerceTablePreferences(value)
+}
+
+/** The one shape a table preference is stored in, both locally and on the
+ * server: the two fields, nothing else. */
+export function serializeTablePreferences(preferences: TablePreferences): {
+  columnVisibility: ColumnVisibilityState
+  columnOrder: ColumnOrderState
+} {
+  return {
+    columnVisibility: preferences.columnVisibility,
+    columnOrder: preferences.columnOrder,
+  }
+}
+
+/** The local (per-browser) store — the module default, and the fallback when
+ * no server-backed store is installed (F048's `PreferencesProvider` installs
+ * one for a signed-in account). */
 export function createLocalTablePreferencesStore({
   scope = ANONYMOUS_SCOPE,
 }: { scope?: string } = {}): TablePreferencesStore {
@@ -88,7 +128,7 @@ export function createLocalTablePreferencesStore({
     load(tableKey) {
       try {
         const raw = window.localStorage.getItem(storageKey(scope, tableKey))
-        return raw === null ? null : parsePreferences(raw)
+        return raw === null ? null : parseTablePreferences(raw)
       } catch {
         // Private mode or a blocked storage API: behave as if nothing is saved.
         return null
@@ -99,10 +139,7 @@ export function createLocalTablePreferencesStore({
       try {
         window.localStorage.setItem(
           storageKey(scope, tableKey),
-          JSON.stringify({
-            columnVisibility: preferences.columnVisibility,
-            columnOrder: preferences.columnOrder,
-          }),
+          JSON.stringify(serializeTablePreferences(preferences)),
         )
       } catch {
         // Quota or private mode: losing the preference is not worth an error.
@@ -131,4 +168,42 @@ export function getTablePreferencesStore(): TablePreferencesStore {
  */
 export function setTablePreferencesStore(next: TablePreferencesStore | null): void {
   store = next ?? createLocalTablePreferencesStore()
+}
+
+/**
+ * The server-backed store (F048).
+ *
+ * `seed` is the snapshot `PreferencesProvider` read from
+ * `GET /auth/me/preferences` for the signed-in account; it lives in a plain
+ * `Map` so `load` answers **synchronously** — the hook's first render already
+ * has the saved columns, which is the property that made a gate in front of
+ * the shell worth having. Writes update the map first (the UI must not wait on
+ * the network to reflect the user's own click) and then go to the server
+ * through `writer`, whose rejections are the writer's to surface.
+ *
+ * "No preference" is the same record as "defaults": `clear` removes the entry
+ * and deletes the server key, and the hook only ever calls it for an empty
+ * record.
+ */
+export function createServerTablePreferencesStore(
+  seed: Record<string, TablePreferences>,
+  writer: TablePreferencesWriter,
+): TablePreferencesStore {
+  const cache = new Map<string, TablePreferences>(Object.entries(seed))
+
+  return {
+    load(tableKey) {
+      return cache.get(tableKey) ?? null
+    },
+
+    save(tableKey, preferences) {
+      cache.set(tableKey, preferences)
+      void writer.put(tableKey, preferences)
+    },
+
+    clear(tableKey) {
+      cache.delete(tableKey)
+      void writer.remove(tableKey)
+    },
+  }
 }

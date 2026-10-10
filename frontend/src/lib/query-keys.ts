@@ -38,6 +38,13 @@ export const queryKeys = {
   /** Liveness of the API — GET /api/v1/health. */
   health: ['health'] as const,
   /**
+   * The signed-in user's preferences (F048) — `GET /auth/me/preferences`,
+   * read once per identity to seed the table store and the theme. The user id
+   * is in the key by the identity rule above; `null` is the anonymous slot,
+   * where the query is disabled and no entry is ever written.
+   */
+  preferences: (userId: string | null) => ['preferences', userId] as const,
+  /**
    * The signed-in user's inbox (F046). The user id is in the key by the
    * identity rule above — notifications are per-user data by definition.
    */
