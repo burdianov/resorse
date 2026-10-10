@@ -288,6 +288,26 @@ export type CreateUserResponse = {
 };
 
 /**
+ * DependencyCheck
+ *
+ * One dependency's answer, and whether the application needs it up.
+ */
+export type DependencyCheck = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Required
+     */
+    required: boolean;
+    /**
+     * Status
+     */
+    status: 'up' | 'down';
+};
+
+/**
  * EngineHealthResponse
  *
  * What the report engine can do right now.
@@ -637,6 +657,22 @@ export type PutPreferenceRequest = {
      * Value
      */
     value: unknown;
+};
+
+/**
+ * ReadinessResponse
+ *
+ * The verdict, and the answers it is made of.
+ */
+export type ReadinessResponse = {
+    /**
+     * Checks
+     */
+    checks: Array<DependencyCheck>;
+    /**
+     * Status
+     */
+    status: 'ready' | 'degraded' | 'not_ready';
 };
 
 /**
@@ -2442,6 +2478,31 @@ export type MarkReadApiV1NotificationsNotificationIdReadPostResponses = {
 };
 
 export type MarkReadApiV1NotificationsNotificationIdReadPostResponse = MarkReadApiV1NotificationsNotificationIdReadPostResponses[keyof MarkReadApiV1NotificationsNotificationIdReadPostResponses];
+
+export type ReadyApiV1ReadyGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ready';
+};
+
+export type ReadyApiV1ReadyGetErrors = {
+    /**
+     * A required dependency — PostgreSQL — is down.
+     */
+    503: ReadinessResponse;
+};
+
+export type ReadyApiV1ReadyGetError = ReadyApiV1ReadyGetErrors[keyof ReadyApiV1ReadyGetErrors];
+
+export type ReadyApiV1ReadyGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReadinessResponse;
+};
+
+export type ReadyApiV1ReadyGetResponse = ReadyApiV1ReadyGetResponses[keyof ReadyApiV1ReadyGetResponses];
 
 export type EngineHealthApiV1ReportsEngineHealthGetData = {
     body?: never;

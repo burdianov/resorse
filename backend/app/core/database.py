@@ -22,6 +22,7 @@ database — ``scripts/export_openapi.py`` imports the app to emit the schema,
 and that has to keep working on a machine (or CI job) with no PostgreSQL.
 """
 
+import asyncio
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
@@ -129,3 +130,44 @@ async def get_session() -> AsyncIterator[AsyncSession]:
     """
     async with get_sessionmaker()() as session:
         yield session
+
+
+READINESS_TIMEOUT_SECONDS = 5.0
+"""How long the readiness probe waits for PostgreSQL before answering *down*.
+
+A bound of the probe's own, not a deployment setting: readiness is asked over
+and over by a monitor, and a probe that can hang is worse than one that answers
+*no* — the whole point of F065 is that the question gets an answer.
+"""
+
+
+async def database_reachable(
+    *,
+    engine: AsyncEngine | None = None,
+    timeout: float = READINESS_TIMEOUT_SECONDS,
+) -> bool:
+    """Whether PostgreSQL answers a trivial query — a fact, never a raise.
+
+    ``SELECT 1`` rather than a read of some table: the question is whether the
+    database is *reachable*, and a probe that read a table would answer *down*
+    for a missing row, a rename or a permission — three situations where the
+    application is fine. The statement goes through the pooled engine, so
+    ``pool_pre_ping`` applies and a connection the server closed is replaced
+    instead of reported.
+
+    A boolean by the same argument as the converter's probe (F052) and the
+    report engine's (F051): readiness is a boolean question, and a raising
+    probe makes every caller write the same ``try/except``. The ``except``
+    here is deliberately broad — a database that is not there fails as a
+    refused connection, a timeout, a DNS error, or a ``DATABASE_URL`` that was
+    never set — and every one of them means the same thing to the caller.
+    ``engine`` is injectable the way ``convert_to_pdf``'s converter is, so a
+    caller can ask the question of a database it chooses.
+    """
+    try:
+        async with asyncio.timeout(timeout):
+            async with (engine or get_engine()).connect() as connection:
+                await connection.execute(text("SELECT 1"))
+        return True
+    except Exception:  # noqa: BLE001 — a probe answers a boolean, whatever raised
+        return False

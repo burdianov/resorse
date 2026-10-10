@@ -21,6 +21,21 @@
 		-Server
 	}
 
+	# Readiness is not public (BP-8.3: `GET /api/v1/ready` is "[protected
+	# appropriately at ingress]", and this rule *is* the protection). It answers
+	# which dependencies of this deployment are up — PostgreSQL, the converter,
+	# the report engine (F065) — so it belongs to the box and not to the
+	# internet. The API asks for no session on that route for the same reason:
+	# its callers are the container, a monitor and the operator, and none of
+	# them can hold a session cookie. A 404, not a 403: an external caller
+	# learns nothing about which internal paths exist. The body keeps the API's
+	# `{ "detail": ... }` error shape, so a client that parses it is not
+	# surprised by a refusal that did not come from the API.
+	handle /api/v1/ready* {
+		header Content-Type "application/json"
+		respond `{"detail":"Not Found"}` 404
+	}
+
 	# The only route to the API: the backend publishes no port of its own.
 	handle /api/* {
 		# Caddy's own default body cap would reject a legitimate upload before the

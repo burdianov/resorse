@@ -262,9 +262,8 @@ async def health(*, converter: GotenbergConverter | None = None) -> bool:
 
     The same shape as :func:`convert_to_pdf` for the same reason: the default
     comes from configuration, and a test may pass its own. This is the entry
-    point the reports health route reads (F053), and the one a readiness probe
-    should read rather than reaching for the adapter itself — when one exists:
-    the readiness endpoint is not built, and **F065** owns it
-    (`REQUIREMENT_TRACEABILITY.md` §14 G-9).
+    point the reports health route reads (F053) and the one the readiness probe
+    reads rather than reaching for the adapter itself (``app/api/v1/readiness.py``,
+    F065) — where a converter that is down is *degraded*, not a failure.
     """
     return await (converter or get_converter()).health()

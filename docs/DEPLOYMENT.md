@@ -174,12 +174,25 @@ report with a log line.
 ## 11. Health and readiness
 
 - **Liveness** is `GET /api/v1/health` — what the container healthcheck calls. It reports that the
-  process is up and serving, which is all it can observe.
-- **Readiness** (`/ready`, BP-8.4b), which would additionally check PostgreSQL, is **not built** — it is
-  `TASKS.md` **F065**, assigned by the operator on 2026-10-10. Do
-  not treat `/api/v1/health` as a database probe. `GET /api/v1/reports/engine-health`
-  (`reports.generate`) reports the PDF engine and the converter, where a down converter is *degraded,
-  not failed*; it deliberately does not probe PostgreSQL either.
+  process is up and serving, which is all it can observe, and it stays the healthcheck's question on
+  purpose (F065): a healthcheck that probed the database would restart the API to fix a database.
+- **Readiness** is `GET /api/v1/ready` (F065, BP-8.4b) — "should this process receive traffic", as one
+  answer per dependency: `postgresql` (a `SELECT 1`; down → **503 `not_ready`**, since no route can
+  serve without it) and the two halves of a report — `gotenberg` (`conversion.health()`) and
+  `pdf-engine` (`reports.self_test()`) — where down is **200 `degraded`**, not a failure (only DOCX
+  needs the converter). Never treat `/api/v1/health` as a database probe.
+- **`/ready` is not public, and the edge is what makes that true.** BP-8.3 lists it as
+  "[protected appropriately at ingress]": the route carries **no session**, because its callers — the
+  container, a monitor on the box, the operator — cannot hold a cookie, so `deploy/Caddyfile` refuses
+  the path for everyone outside. It answers **404 in the API's own `{"detail": …}` shape** rather than
+  403, so an external caller does not even learn that the path exists. Call it from inside the stack
+  (`docker compose -f docker-compose.prod.yml exec backend python -c "import urllib.request;
+  print(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready').read().decode())"` — the same
+  one-liner the healthcheck uses); through the edge it is a 404. Verified against the pinned Caddy,
+  `caddy:2.11.7-alpine`, in F065.
+- `GET /api/v1/reports/engine-health` (`reports.generate`) answers a **different** question, for a
+  signed-in administrator: the PDF engine and the converter as a capability report, and it deliberately
+  does not probe PostgreSQL either.
 - The API's own Swagger UI at the root (`/docs`) and `/openapi.json` are **not reachable through the
   edge**: Caddy routes only `/api/*` to the API and sends every other path to the SPA. The committed
   `backend/openapi.json` is the contract artefact; regenerate it in development with

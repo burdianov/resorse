@@ -9,36 +9,36 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and the task I name
-in claude_code_pack/TASKS.md. Stage A is complete (F001–F063, plus the two repairs F064–F065); Stage B has
-started at D001 (C52). **Every decision is CONFIRMED — C11–C59, and none is open.** **G-A3 (due since F048)
-and G-A4 are still not recorded** in docs/IMPLEMENTATION_LOG.md. Implement only the task I name — plan in at
-most five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the
-handoff, then stop and give me the operator checks. Do not push.
+in claude_code_pack/TASKS.md. Stage A is complete (F001–F063, plus the two repairs F064 and F065, both
+landed); Stage B has started at D001 (C52). **Every decision is CONFIRMED — C11–C60, and none is open.** **G-A3
+(due since F048) and G-A4 are still not recorded** in docs/IMPLEMENTATION_LOG.md. Implement only the task I
+name — plan in at most five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task
+including the handoff, then stop and give me the operator checks. Do not push.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation — is complete** (F001–F063), with **two repairs added 2026-10-10**: **F064** (the
-  roles-screen save-state defect, **landed**) and **F065** (the `/ready` probe, next) — findings the foundation recorded as open
-  and unowned (C59). **Stage B has started: D001 landed (C52).** The application runs D001–D091; its gate checkpoints (D018, D036, D063, D078, D091) are the operator's.
-- **Last completed:** **F064 — Roles screen save-state fix** (Stage A repair; **no table and no migration — head is still `0009`**).
-  `pages/admin/roles.tsx` re-seeded its draft from the cache entry the save's own re-read had not replaced yet, so the bar stayed up
-  (and the just-saved cell drew its old value) over a grant the server had already accepted. The save now re-seeds from the matrix it
-  committed — the `204` carries no body, so the mutation returns what it sent — and writes that answer into the roles cache. The
-  regression test holds the re-read open and proves the screen does not need it, and F057's browser helper asserts the bar going.
-- **Previous:** the **decision write-up** — no task ID, docs only (**C53–C59**); D001 (**C52**, docs only); F063 (**C51**, Stage A's
-  close); F061 (**C49**; seven CI jobs, actionlint clean, **no CI job ever observed running**); F060 (**C48**) → F054 (**C42**).
-- **Next:** **F065 — Readiness probe** (TASKS.md line 267), then **D002 — Disciplines migration** (line 277) — the first domain
-  table (revision `0010`) and the seven seeded codes, built against D001's map. F064 sat inside G-A3's scope and **has landed, so
-  G-A3 can be run** (C59); F065 is the other item the operator answered "now".
+  roles-screen save-state defect) and **F065** (the `/ready` probe), both **landed** — findings the foundation recorded as
+  open and unowned (C59). **Stage B has started: D001 landed (C52).** The application runs D001–D091; its gate checkpoints (D018, D036, D063, D078, D091) are the operator's.
+- **Last completed:** **F065 — Readiness probe** (Stage A repair; **no table and no migration — head is still `0009`**).
+  `GET /api/v1/ready` (F065, **C60**) answers one boolean per dependency — `postgresql` (`SELECT 1`, `app/core/database.py`),
+  `gotenberg` (`conversion.health()`), `pdf-engine` (`reports.self_test()`) — as **503 `not_ready`** when PostgreSQL is down and
+  **200 `degraded`** when an optional half is; the three probes are gathered, and `database_reachable` answers `False` rather than
+  raising, bounded by a 5 s timeout of its own. **"Not public" is the ingress**: the route carries no session (its callers cannot
+  hold a cookie) and `deploy/Caddyfile` refuses `/api/v1/ready*` with the API's own 404 shape — verified against
+  `caddy:2.11.7-alpine`. The contract is now **29 paths / 44 operations**; the "unbuilt" notes are retired.
+- **Previous:** **F064 — Roles screen save-state fix** (**C60** closed its last F057 finding); the **decision write-up** (docs
+  only, **C53–C59**); D001 (**C52**, docs only); F063 (**C51**, Stage A's close); F061 (**C49**; seven CI jobs, actionlint
+  clean, **no CI job ever observed running**); F060 (**C48**) → F054 (**C42**).
+- **Next:** **D002 — Disciplines migration** (TASKS.md line 277) — the first domain table (revision `0010`) and the seven
+  seeded codes, built against D001's map. F064 sat inside G-A3's scope and **has landed, so G-A3 can be run** (C59); F065 was
+  the other item the operator answered "now", and it has landed too.
 - **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (G-A1/G-A2 have no
-  dated run recorded). **G-A3 (due since F048) and G-A4 are still not recorded** — commands in `docs/FOUNDATION_REPORT.md` §5; D001 and F064 touched no gate evidence. **G-9 (`/ready`) now has an owner (F065)**.
-- **Open decisions (DECISIONS.md):** **none.** Every decision is CONFIRMED — `C11`–**`C59`** — and `docs/DOMAIN_ARCHITECTURE.md`
+  dated run recorded). **G-A3 (due since F048) and G-A4 are still not recorded** — commands in `docs/FOUNDATION_REPORT.md` §5; D001, F064 and F065 touched no gate evidence. **G-9 (`/ready`) is closed by F065.**
+- **Open decisions (DECISIONS.md):** **none.** Every decision is CONFIRMED — `C11`–**`C60`** — and `docs/DOMAIN_ARCHITECTURE.md`
   §4 records where each answer landed and which task owns it. The register's rule applies in reverse too: **a confirmed rule is amended by a new entry that says so, never edited in place.**
-- **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any migration task; it reads `0009 (head)` today.
-- **Open item — `/ready` is unbuilt (BP-8.4b) but no longer unowned:** F065 owns it; `conversion.health()` (F052) and
-  `reports.self_test()` (F051) belong behind it, while F053's `reports/engine-health` answers a different question. Until F065 lands,
-  **`REQUIREMENT_TRACEABILITY.md` §14 G-9 stands**, as do the "unbuilt" notes in `health.py`, C40, C41, `ARCHITECTURE.md` §10 and `DEPLOYMENT.md` §14.
+- **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any migration task; it reads `0009 (head)` today. **D002 is the first task to move it** — expect `0010 (head)` after it.
 - **Open item — orphan objects:** unlinked only *after* the caller's commit (and when it raises), so the residue is a process death in between; never unlink before commit.
 - **Open item — nothing scans uploads yet:** BP-6.4's hook ships as `MalwareScanner` + `NoMalwareScanner`, nothing is wired in, and a refusal is a 400 — never call uploads scanned.
 
@@ -139,16 +139,17 @@ The record column is **historical and the agent's own observation**, never the o
 | Frontend typecheck / coverage | `pnpm run typecheck`; `pnpm run coverage` | **F057 record** for typecheck (exit 0) and **F055 for coverage**: 67 files / **563** passed, All files **92.65 | 80.49 | 91.14 | 93.71**, `src/lib` **94.04 | 85.71 | 90.32 | 95.65** |
 | **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **F055 record**: no match — the lab page and recharts are absent from `dist/`. A match means the exclusion broke |
 | Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check. F055 record**: 563 passed (F047: 498) |
-| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F057 changes no API. **F055 record**: re-run produced **no diff** |
+| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | **F065 record**: both regenerated for the new route and the moved `engine-health` description — `29 paths / 44 operations`, `/api/v1/ready` with its 503, and the typed client byte-identical on a re-run. **F055 record** for the no-diff check |
 | **CI (F061)** | Push the branch and read the Actions run for `CI`. Locally, the workflow lint: `docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint:latest -no-color .github/workflows/ci.yml` | Agent record: actionlint clean (no output). Expect all seven jobs green; the `visual` job is the one to read first, because its PostgreSQL step is unverified (DECISIONS C49) |
-| **Operations docs (F062)** | Read the `README.md` quick start and walk it on a clean machine; then `docs/DEPLOYMENT.md` §3–§6 and `docs/BACKUP_RESTORE.md` | Documentation, so there is no gate command. The check: the quick start agrees with `OPERATOR_GUIDE.md`, the commands run as written, and every recorded gap still says so — `DEPLOYMENT.md` §14 (no real VPS, ACME/HTTPS/load untested, `/ready` not built), `BACKUP_RESTORE.md` §9 (**no backup has ever been taken**), `TESTING.md` §7 (no CI job observed running). Anything that reads as verified and is not, is a defect |
+| **Operations docs (F062)** | Read the `README.md` quick start and walk it on a clean machine; then `docs/DEPLOYMENT.md` §3–§6 and `docs/BACKUP_RESTORE.md` | Documentation, so there is no gate command. The check: the quick start agrees with `OPERATOR_GUIDE.md`, the commands run as written, and every recorded gap still says so — `DEPLOYMENT.md` §14 (no real VPS, ACME/HTTPS/load untested), `BACKUP_RESTORE.md` §9 (**no backup has ever been taken**), `TESTING.md` §7 (no CI job observed running). Anything that reads as verified and is not, is a defect |
 | **Security (F060)** | `cd D:\resors\backend; uv run pytest tests/test_production_hardening.py` | 23 passed (agent record). Edge check on a live host: `curl -sI https://<SITE_ADDRESS>/` shows the CSP, HSTS and `nosniff` (`docs/SECURITY.md` §4.2) |
 | **Foundation report (F063)** | Read `docs/FOUNDATION_REPORT.md` (BP-14.8), then `cd D:\resors\backend; uv run pytest tests/test_extension_contract.py tests/test_foundation_boundaries.py` and `cd D:\resors\frontend; pnpm exec vitest run tests/config/modules.test.tsx` | The report is the check: it must not claim a gate result, and every number in it must be attributable. Agent record: 9 / 5 / 7 passed. **G-A3 and G-A4 run against this tree** — the commands are in the report's §5 |
 | **Domain map (D001)** | Read `docs/DOMAIN_ARCHITECTURE.md`; then `cd D:\resors\backend; uv run alembic heads` and `cd D:\resors\frontend; grep -n "APP_MODULES" src/config/modules.ts` | The check is that the document claims no code: head is still `0009 (head)`, `APP_MODULES` is `[]`, `PermissionCode` has no domain member. **Every decision it once deferred to is CONFIRMED now (`C53`–`C59`), so the map must carry no `[Ox]` marker and no unwritable constraint** — its §4 records where each answer landed. A table, route or code that landed in D001 is a defect; so is a rule the map states as decided that `DECISIONS.md` does not |
+| **Readiness probe (F065)** | `cd D:\resors\backend; uv run pytest tests/test_readiness.py`; then, with the stack up, call it **inside** the container: `docker compose -f docker-compose.prod.yml exec backend python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready').read().decode())"` | **F065 record**: `11 passed` (unit leg 8, database leg 3). The check is the separation: `/api/v1/ready` answers `ready` when all three dependencies do, `degraded` with a 200 when an optional half is down, and `not_ready` with a **503** when PostgreSQL is — while `/api/v1/health` stays 200 and liveness. **Through the edge it must be a 404** (`deploy/Caddyfile` refuses the path; verified against `caddy:2.11.7-alpine` in F065), so a `curl -s https://<SITE_ADDRESS>/api/v1/ready` showing a JSON verdict is a defect, not a convenience |
 | **Roles matrix save (F064)** | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/roles.test.tsx`; in the browser suite, `pnpm exec playwright test -g "creates two roles"` | **F064 record**: `14 passed`. The check is the screen's own contract — the save clears its unsaved state **without waiting for its re-read**, so no phantom "unsaved change" and no just-saved cell drawn from the old answer. The unit test holds the re-read open to prove it; the browser helper asserts the bar going (F057 had to drop that assertion) |
 | **Production stack (F059)** | Create `.env.production` from `.env.production.example` (real values, git-ignored), then `cd D:\resors; docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait` | Agent's record (scratch env, `SITE_ADDRESS=localhost`): all five services healthy, `migrate` exit 0. The operator's check: `curl -k https://<SITE_ADDRESS>/api/v1/health` → `"environment":"production"`; `docker compose -f docker-compose.prod.yml --env-file .env.production down` leaves volumes intact (`down -v` deletes them) |
 | Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)`. Run this after any migration task — a dev database behind head serves 500s while every test is green |
-| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F064 adds no migration). F049 record: clean, ending at `0009` |
+| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F065 adds no migration). F049 record: clean, ending at `0009`. **D002 is the next revision (`0010`)** |
 
 **The end-to-end checks by hand** (F054's lab, F053's export, F050's downloads) are the last two rows of `docs/VERIFICATION_LOG.md`'s "Check the work" table.
 
@@ -157,8 +158,8 @@ The record column is **historical and the agent's own observation**, never the o
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; **F064 has landed; the other Stage A repair, F065, comes before Stage B, and D002 is next after it (line 277). D050–D053 are withdrawn (C53), D041 is re-scoped, and D083a is new** |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions **C11–C59** — **no OPEN row remains**; §"no OPEN rows" records that an amendment is a new entry, never an edit in place |
+| `claude_code_pack/TASKS.md` | Backlog; **both Stage A repairs have landed (F064, F065) — Stage A is closed for good and D002 is next (line 277). D050–D053 are withdrawn (C53), D041 is re-scoped, and D083a is new** |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions **C11–C60** — **no OPEN row remains**; §"no OPEN rows" records that an amendment is a new entry, never an edit in place |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |
 | `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's and the F057/F058 browser suites), §6 authorization, §7 boundaries, §12 traps |

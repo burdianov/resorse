@@ -128,9 +128,22 @@ policy, and `Cache-Control: no-store`, unless a route sets its own value. Behind
 | Large uploads and conversions | Upload byte cap; a 16 MB proxy cap; a bounded converter response; a conversion timeout that reports "unavailable" [F052] |
 | Database connection exhaustion | Pooled engine, disposed on shutdown [F023] |
 
-**Residual risk:** there is no request-rate limit for the general API, and no
-readiness endpoint that checks the database (BP-8.4b, not built). A flood of
+**Residual risk:** there is no request-rate limit for the general API. A flood of
 authenticated requests is bounded only by the host.
+
+### 3.9 The readiness endpoint
+
+`GET /api/v1/ready` (F065) reports whether each dependency — PostgreSQL, the
+converter, the report engine — is answering, which means it describes this
+deployment's own configuration; it is a diagnosis rather than a control. Two
+things keep it where it belongs. It carries **no session**: its callers are the
+container, a monitor on the box and the operator, and none of them can hold a
+cookie, so demanding a permission would mean no probe could ever run. And it is
+**refused at the edge**: `deploy/Caddyfile` answers 404 for the path before the
+proxy rule sees it, so the internet cannot reach it at all, and the API is never
+published on its own (section 2). The body is a boolean per dependency — no
+address, no version, no error text — the same rule `reports/engine-health`
+follows [C41].
 
 ## 4. Operating the controls
 
@@ -183,7 +196,6 @@ A development run (`uvicorn` on the host) trusts forwarded headers only from loo
 | Item | Status | Owner |
 |---|---|---|
 | Uploads are not malware-scanned | Hook in place, no engine | Operator decision (choice of engine) |
-| No readiness endpoint that checks the database | BP-8.4b, not built | Unowned — needs a task |
 | `style-src 'unsafe-inline'` in the CSP | Accepted; removing it needs the component library to stop writing style attributes | Frontend follow-up |
 | No general API rate limit | Login only | Not planned for this stage |
 | A one-time bootstrap password passes through the shell history if typed on the command line | Use `--generate-password` or the interactive prompt | Operator practice |

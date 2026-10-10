@@ -226,8 +226,11 @@ Stated so nobody infers coverage that does not exist:
 
 - **No load, performance or soak testing.** Nothing here measures throughput or behaviour under
   concurrency beyond a handful of targeted race tests.
-- **`/ready` (BP-8.4b) is not built**, so no test covers database readiness. `GET /api/v1/health` is
-  liveness only.
+- **`/ready` (BP-8.4b) is not covered end to end by this suite's own means.** `tests/test_readiness.py`
+  (F065) covers the endpoint itself — the verdicts, the two optional halves, the real PostgreSQL — but
+  what no test here can prove is the *ingress* half of "not public": that a deployed Caddy refuses
+  `/api/v1/ready` is verified against `caddy:2.11.7-alpine` in F065's record, and a real deployment
+  would re-verify it. `GET /api/v1/health` is liveness only.
 - **Uploads are not scanned.** The malware-scan seam ships as a no-op; no test should be read as
   proving a file was scanned.
 - **The migration round trip is manual or CI-only** and must run against `app_test`; it is never a

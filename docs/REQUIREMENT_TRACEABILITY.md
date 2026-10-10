@@ -104,11 +104,11 @@ and is deliberately absent here, as F002 requires. `BIG-PROMPT.txt` §3.1 is its
 | BP-8.2g | `file_assets` metadata (key, filename, content type, size, sha256, category) | files | F049 |
 | BP-8.2h | `login_attempts`/rate-limit buckets if DB-backed limiting is implemented | security | F026, F060 |
 | BP-8.2i | SQL-level scoping (not Python-side filtering of unrestricted rows); keyset/offset pagination with total; concurrency-safe transactions; idempotent role/permission bootstrap | models/services | F023, F024, F027, F031, F045, F048 |
-| BP-8.3 | `/api/v1` surface: health, ready, auth (login/refresh/logout/logout-all/me/change-password/preferences), admin (users, roles, permissions, settings, audit-logs, permission-matrix), notifications (list/unread/read/mark-all/delete/clear), files, reports | API | F007, F028–F053 |
+| BP-8.3 | `/api/v1` surface: health, ready, auth (login/refresh/logout/logout-all/me/change-password/preferences), admin (users, roles, permissions, settings, audit-logs, permission-matrix), notifications (list/unread/read/mark-all/delete/clear), files, reports | API | F007, F028–F053, F065 |
 | BP-8.3b | Consistent error shape and 200/201/204/400/401/403/404/409/422/429 semantics; OpenAPI security scheme matching the real cookie/Bearer design | API contract | F018, F028, F031, F056 |
 | BP-8.3c | No public `/auth/register`; no arbitrary setting keys written without registry checks | API | F033, F039 |
 | BP-8.4a | Migrations apply from empty DB, downgrade where feasible, no drift; one migration per change | Alembic | F023 (then per task) |
-| BP-8.4b | Startup config validation; health vs readiness separated; readiness checks PostgreSQL (and Gotenberg where reports require it) | core/config, health | F007, F052, F062 |
+| BP-8.4b | Startup config validation; health vs readiness separated; readiness checks PostgreSQL (and Gotenberg where reports require it) | core/config, health | F007, F052, F062, F065 |
 | BP-8.4c | Structured logging with request IDs, exception middleware, no PII/token leakage, no `print` | core/logging | F060 |
 | BP-8.4d | Explicit transactions, rollback on exception, audit write in the same transaction | services | F043 |
 | BP-8.4e | No Redis: bounded `BackgroundTasks` or PostgreSQL outbox — no phantom worker; test it or don't claim it | async work | F008, F063 |
@@ -316,18 +316,21 @@ against.
 | F061 | BP-0.10, BP-2.3, BP-7.9e, BP-9.4, BP-10.5, BP-11.6 |
 | F062 | BP-8.4b, BP-9.7, BP-11.1, BP-11.3–BP-11.7, BP-14.1, BP-14.4, BP-14.7 |
 | F063 | BP-0.5, BP-0.6, BP-0.9, BP-0.11, BP-3.1, BP-8.4e, BP-9.6, BP-9.7, BP-12-P7, BP-13, BP-14.2, BP-14.8 |
+| F065 | BP-8.3, BP-8.4b |
 
-All 63 Stage A tasks appear. No Stage B task is referenced.
+All 63 Stage A tasks appear. No Stage B task is referenced. F064 and F065 are the two repair tasks the
+operator opened after GPT-5.3's review (C59): F064 fixes the roles screen's save state and serves no
+requirement, and F065 builds the readiness endpoint BP-8.4b asked for.
 
 ## 14. Gaps and tracked limitations
 
 Seven items were found not named verbatim in `TASKS.md`; all were assigned owners on 2026-10-08 at the operator's
 request, so no mapping gap remains open. `TASKS.md` carries the task-level wording; this table records the
 decision. G-8 is a later, different kind of entry — a limitation discovered while implementing a task, recorded
-so it is not lost. **G-8 was resolved in F014. G-9 was assigned an owner on 2026-10-10 (F065)**: the readiness
-endpoint is part of the stated API contract, two source files attributed it to F062 (documentation only) until
-F063 corrected their docstrings, and the route is unbuilt but **no longer unowned** — `TASKS.md` F065 implements
-it, and the "not built" notes in the affected documents stay true until that task lands.
+so it is not lost. **G-8 was resolved in F014. G-9 was built in F065**: the readiness endpoint is part of the
+stated API contract, two source files attributed it to F062 (documentation only) until F063 corrected their
+docstrings, and the route did not exist until `TASKS.md` F065 (assigned by the operator on 2026-10-10, C59)
+implemented it. The "not built" notes in the affected documents are retired as of that task.
 
 | ID | Item | Resolution |
 |---|---|---|
@@ -339,7 +342,7 @@ it, and the "not built" notes in the affected documents stay true until that tas
 | G-6 | OpenAPI typed-client generation + CI drift check appeared only in D084 (Stage B) | **F018** generates the typed DTOs and `docs/OPENAPI_CLIENT.md`; **F061** enforces the drift check in CI — both added to their implement lists |
 | G-7 | Optional items unowned | Resolved as decisions, not deferrals: the **S3 adapter interface** is owned by **F049** (interface only, no S3 dependency); the **malware-scan hook** is owned by **F060** as a pluggable no-op; the **delegation capability interface** is already in **F004** (`ScopePolicy`); the **profile signature asset** is **excluded** — its only consumer was the removed domain workflow (`REFERENCE_PARITY.md` §1) |
 | G-8 | Accessibility limitation found in F013, **fixed in F014**. Base UI's Tooltip assigns no `id` to its popup and sets no `aria-describedby` on the trigger, so a screen-reader user focused the trigger and heard nothing. | **Resolved in F014.** `tooltip.tsx` now supplies one `useId` per Tooltip through a context; the trigger carries `aria-describedby` and the popup carries the matching `id`, verified in the test suite. The reference dangles while the tooltip is closed — assistive technology ignores an unresolved describedby, so the closed state is unchanged and the open state is now announced. F013's note that a dangling reference would be "worse than the omission" was reconsidered and found over-cautious: it is identical when closed and correct when open. |
-| G-9 | The readiness endpoint (`/ready`, BP-8.4b) had no owner: `ARCHITECTURE.md` §10 states it is part of the API contract, and `backend/app/api/v1/reports.py`'s docstring names **F062** as the task that would build it | **OWNED — F065 (operator, 2026-10-10).** Found by F062 (2026-10-10): F062 was Operations docs and built no route, and no other task in `TASKS.md` claimed it. `backend/app/api/v1/health.py`, `ARCHITECTURE.md` §10, `docs/DEPLOYMENT.md` §11 and `docs/ADDING_A_MODULE.md` all record it as *not built*, and `reports/engine-health` (F053) deliberately answers a different question. F063 (2026-10-10) did **not** build it — a readiness route is a route with its own tests — but corrected the two docstrings that credited F062 with it (`app/api/v1/reports.py`, whose docstring is the published `engine-health` description, so `backend/openapi.json` was regenerated; and `app/services/conversion.py`), and `docs/FOUNDATION_REPORT.md` §6 carried it as an open item. **The operator assigned it to F065 on 2026-10-10 (C59)**, which implements the endpoint — probing PostgreSQL and reporting an optional dependency *degraded* rather than failed. The "not built" notes stay true until F065 lands; F065's acceptance retires them. |
+| G-9 | The readiness endpoint (`/ready`, BP-8.4b) had no owner: `ARCHITECTURE.md` §10 states it is part of the API contract, and `backend/app/api/v1/reports.py`'s docstring names **F062** as the task that would build it | **BUILT — F065 (2026-10-10).** Found by F062 (2026-10-10): F062 was Operations docs and built no route, and no other task in `TASKS.md` claimed it. `backend/app/api/v1/health.py`, `ARCHITECTURE.md` §10, `docs/DEPLOYMENT.md` §11 and `docs/ADDING_A_MODULE.md` all recorded it as *not built*, and `reports/engine-health` (F053) deliberately answers a different question. F063 (2026-10-10) did **not** build it — a readiness route is a route with its own tests — but corrected the two docstrings that credited F062 with it (`app/api/v1/reports.py`, whose docstring is the published `engine-health` description, so `backend/openapi.json` was regenerated; and `app/services/conversion.py`), and `docs/FOUNDATION_REPORT.md` §6 carried it as an open item. **The operator assigned it to F065 on 2026-10-10 (C59)**, and F065 has landed: `GET /api/v1/ready` reports `postgresql` (`SELECT 1`; down → 503 `not_ready`), `gotenberg` (`conversion.health()`) and `pdf-engine` (`reports.self_test()`) as one boolean each, where a down *optional* half is 200 `degraded` rather than a failure. It carries no session and is refused at the edge by `deploy/Caddyfile` (BP-8.3's "protected appropriately at ingress", **C60**). The contract is now 29 paths / 44 operations; the "not built" notes are retired. |
 
 ## 15. Confirmed constraints that bound every task
 

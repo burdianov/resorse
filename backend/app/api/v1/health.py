@@ -1,9 +1,11 @@
 """Liveness endpoint.
 
 Reports only what it can actually observe: that this process is up and serving.
-A separate readiness endpoint — which will additionally check PostgreSQL — is
-part of the API contract (docs/ARCHITECTURE.md §10) but not implemented yet;
-nothing here should claim a dependency it has not measured.
+The other question — whether this process has what it needs to serve — belongs
+to readiness, which is its own route (`app/api/v1/readiness.py`, F065): the two
+answer differently, and a container restarted over a database outage would be
+restarted to fix nothing. Nothing here should claim a dependency it has not
+measured.
 """
 
 from typing import Literal

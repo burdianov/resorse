@@ -494,6 +494,34 @@
         "title": "CreateUserResponse",
         "type": "object"
       },
+      "DependencyCheck": {
+        "description": "One dependency's answer, and whether the application needs it up.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "required"
+        ],
+        "title": "DependencyCheck",
+        "type": "object"
+      },
       "EngineHealthResponse": {
         "description": "What the report engine can do right now.\n\nTwo separate facts rather than one verdict, because they fail separately:\nthe PDF engine is in this process and the converter is another service, and\na caller that only needs a rendered PDF (the user directory) is not\naffected by a converter that is down. ``status`` is the headline a reader\nor a dashboard reads — ``degraded`` means at least one of them is not\navailable.",
         "properties": {
@@ -955,6 +983,33 @@
           "value"
         ],
         "title": "PutPreferenceRequest",
+        "type": "object"
+      },
+      "ReadinessResponse": {
+        "description": "The verdict, and the answers it is made of.",
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "degraded",
+              "not_ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ],
+        "title": "ReadinessResponse",
         "type": "object"
       },
       "ResetPasswordResponse": {
@@ -3304,9 +3359,41 @@
         ]
       }
     },
+    "/api/v1/ready": {
+      "get": {
+        "description": "Whether this process can serve, and what it is missing if it cannot.",
+        "operationId": "ready_api_v1_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description": "A required dependency — PostgreSQL — is down."
+          }
+        },
+        "summary": "Readiness probe",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/api/v1/reports/engine-health": {
       "get": {
-        "description": "Whether reports can be produced, and whether DOCX conversion can.\n\nGated on ``reports.generate`` rather than being public: it is a diagnostic\nfor the capability it describes, and it reports availability without naming\nan internal address or a version (an error body is not the place to narrate\nthe deployment). PostgreSQL is deliberately *not* probed here — that is the\nreadiness endpoint's question (BP-8.4b), which is not built; it has an owner\nnow, `TASKS.md` F065 (`REQUIREMENT_TRACEABILITY.md` §14 G-9). This route\nneeds no database session at all.",
+        "description": "Whether reports can be produced, and whether DOCX conversion can.\n\nGated on ``reports.generate`` rather than being public: it is a diagnostic\nfor the capability it describes, and it reports availability without naming\nan internal address or a version (an error body is not the place to narrate\nthe deployment). PostgreSQL is deliberately *not* probed here — that is\n``/ready``'s question (BP-8.4b, built in F065), which answers the database\nand these same two halves as one verdict. This route needs no database\nsession at all.",
         "operationId": "engine_health_api_v1_reports_engine_health_get",
         "responses": {
           "200": {

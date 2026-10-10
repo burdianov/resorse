@@ -158,10 +158,10 @@ async def engine_health(
     Gated on ``reports.generate`` rather than being public: it is a diagnostic
     for the capability it describes, and it reports availability without naming
     an internal address or a version (an error body is not the place to narrate
-    the deployment). PostgreSQL is deliberately *not* probed here — that is the
-    readiness endpoint's question (BP-8.4b), which is not built; it has an owner
-    now, `TASKS.md` F065 (`REQUIREMENT_TRACEABILITY.md` §14 G-9). This route
-    needs no database session at all.
+    the deployment). PostgreSQL is deliberately *not* probed here — that is
+    ``/ready``'s question (BP-8.4b, built in F065), which answers the database
+    and these same two halves as one verdict. This route needs no database
+    session at all.
     """
     # The renderer is CPU-bound here too, and a health route is not the place
     # to block the event loop.

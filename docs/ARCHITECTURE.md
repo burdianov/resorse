@@ -20,6 +20,7 @@ manpower) be added without rewriting the foundation. Sources: `BIG-PROMPT.txt` �
   │  Caddy  (production edge)                                     │
   │    /            → static Vite files                           │
   │    /api/v1/*    → backend:8000                                │
+  │    /api/v1/ready  → 404    (F065: not public)                 │
   │    /*           → index.html      (SPA fallback, NOT for API) │
   │    TLS, HSTS, CSP, body limits                                │
   └───────────────┬──────────────────────────────────────────────┘
@@ -1123,7 +1124,8 @@ Rules that make these boundaries real:
   moment. `GET /api/v1/reports/engine-health` (`reports.generate`) answers the two halves separately —
   `reports.self_test()` renders and re-reads a document with pypdf, and `conversion.health()` reports the
   converter, where *down* is **degraded, not failed** (only the Word half needs it). It deliberately does not
-  probe PostgreSQL: that is a readiness question (`/ready`, BP-8.4b, still unbuilt — owned now by `TASKS.md` F065). A tailored file is marked
+  probe PostgreSQL: that is a readiness question, and readiness has its own route since F065 (`/ready`, which
+  asks the database and these same two halves and answers 503 when the database is down). A tailored file is marked
   exactly as a download is (F050's `content_disposition`, `nosniff`, `private, no-store`), and the preview UI
   reads the file's name from that header rather than from the browser's clock (F053, C41).
 - **A developer-only page is excluded by the module graph, not by a hidden link.** F054's component lab is
@@ -1194,8 +1196,13 @@ D001 adds no revision, so `0009` stays the head until D002.
   (DTOs generated in F018, drift-checked in CI at F061; documented in `docs/OPENAPI_CLIENT.md`).
 - Consistent error shape `{ "detail": ... }` with deliberate `200/201/204/400/401/403/404/409/422/429`
   semantics. Validation errors are field-addressable so forms can map them onto inputs.
-- Health vs readiness are separate: `/health` is liveness; `/ready` additionally checks PostgreSQL (and
-  Gotenberg where reports are required) and is not public.
+- Health vs readiness are separate, and both exist (F065): `/health` is liveness — the process is up,
+  which is all it can observe — and `/ready` answers one question per dependency, PostgreSQL
+  (`SELECT 1`; down means **503**) and the two optional report halves (`conversion.health()` for the
+  Word half and `reports.self_test()` for the PDF engine; down means **200, `degraded`**). It is not
+  public: BP-8.3 puts it "[protected appropriately at ingress]", so the route asks for no session —
+  its callers are the container, a monitor and the operator, none of which can hold a cookie — and
+  `deploy/Caddyfile` refuses the path for everyone outside (`docs/DEPLOYMENT.md` §11).
 - Pagination is keyset-or-offset **with a total**, and the UI never disagrees with the server's count.
 
 ## 11. Consequence of the session choice for the task list
