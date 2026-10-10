@@ -61,6 +61,86 @@ export type AdminUserItem = {
 };
 
 /**
+ * AuditItem
+ */
+export type AuditItem = {
+    /**
+     * Action
+     */
+    action: string;
+    /**
+     * Actor Email
+     */
+    actor_email: string | null;
+    /**
+     * Correlation Id
+     */
+    correlation_id: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Details
+     */
+    details: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Entity Id
+     */
+    entity_id: string | null;
+    /**
+     * Entity Type
+     */
+    entity_type: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * User Id
+     */
+    user_id: string | null;
+};
+
+/**
+ * AuditListResponse
+ *
+ * One page of the trail, newest first, plus the filter vocabulary.
+ */
+export type AuditListResponse = {
+    /**
+     * Actions
+     */
+    actions?: Array<string>;
+    /**
+     * Entity Types
+     */
+    entity_types?: Array<string>;
+    /**
+     * Items
+     */
+    items: Array<AuditItem>;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Page Size
+     */
+    page_size: number;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
  * AuthenticatedUser
  *
  * Who just signed in — identity only.
@@ -623,6 +703,66 @@ export type ValidationError = {
      */
     type: string;
 };
+
+export type ListAuditApiV1AdminAuditGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Page Size
+         */
+        page_size?: number;
+        /**
+         * Search
+         */
+        search?: string | null;
+        /**
+         * Action
+         */
+        action?: string | null;
+        /**
+         * Entity Type
+         */
+        entity_type?: string | null;
+        /**
+         * Since
+         */
+        since?: string | null;
+        /**
+         * Until
+         */
+        until?: string | null;
+    };
+    url: '/api/v1/admin/audit';
+};
+
+export type ListAuditApiV1AdminAuditGetErrors = {
+    /**
+     * No usable session was presented.
+     */
+    401: unknown;
+    /**
+     * Missing the audit.read permission.
+     */
+    403: unknown;
+    /**
+     * Unknown action/entity filter, or a bad date bound.
+     */
+    422: unknown;
+};
+
+export type ListAuditApiV1AdminAuditGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditListResponse;
+};
+
+export type ListAuditApiV1AdminAuditGetResponse = ListAuditApiV1AdminAuditGetResponses[keyof ListAuditApiV1AdminAuditGetResponses];
 
 export type ListPermissionsApiV1AdminPermissionsGetData = {
     body?: never;

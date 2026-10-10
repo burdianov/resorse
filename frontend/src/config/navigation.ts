@@ -1,6 +1,6 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { LayoutDashboard, Lock, Settings, Shield, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { FileText, LayoutDashboard, Lock, Settings, Shield, ShieldCheck, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
@@ -106,6 +106,11 @@ const AdminSettingsPage = lazy(async () => {
   return { default: module.AdminSettingsPage }
 })
 
+const AdminAuditPage = lazy(async () => {
+  const module = await import('@/pages/admin/audit')
+  return { default: module.AdminAuditPage }
+})
+
 const ProfilePage = lazy(async () => {
   const module = await import('@/pages/profile')
   return { default: module.ProfilePage }
@@ -155,6 +160,16 @@ export const APP_ROUTES: readonly RouteDefinition[] = [
     adminOnly: true,
     requiredPermissions: ['roles.read'],
     component: AdminRolesPage,
+  },
+  {
+    id: 'admin-audit',
+    path: '/admin/audit',
+    label: 'Audit Trail',
+    icon: FileText,
+    group: 'administration',
+    adminOnly: true,
+    requiredPermissions: ['audit.read'],
+    component: AdminAuditPage,
   },
   {
     // Personal pages: any signed-in user, never in the navigation (§4's nav

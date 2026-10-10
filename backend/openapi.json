@@ -91,6 +91,175 @@
         "title": "AdminUserItem",
         "type": "object"
       },
+      "AuditItem": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Email"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "user_id",
+          "actor_email",
+          "action",
+          "entity_type",
+          "entity_id",
+          "summary",
+          "details",
+          "correlation_id"
+        ],
+        "title": "AuditItem",
+        "type": "object"
+      },
+      "AuditListResponse": {
+        "description": "One page of the trail, newest first, plus the filter vocabulary.",
+        "properties": {
+          "actions": {
+            "default": [
+              "user.create",
+              "user.update",
+              "user.delete",
+              "user.reset_password",
+              "profile.update",
+              "preference.set",
+              "preference.delete",
+              "role.create",
+              "role.update",
+              "role.delete",
+              "role.matrix_save",
+              "permission.create",
+              "permission.update",
+              "permission.delete",
+              "setting.update"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "entity_types": {
+            "default": [
+              "user",
+              "profile",
+              "preference",
+              "role",
+              "permission",
+              "setting"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Types",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "AuditListResponse",
+        "type": "object"
+      },
       "AuthenticatedUser": {
         "description": "Who just signed in — identity only.\n\nNo roles and no permissions: the effective permission union is resolved by\nF031's dependency and served by ``/auth/me``. Login answers \"here is your\nsession\", not \"here is everything about you\"; a second round trip after\nsign-in is the honest cost of keeping one definition of the access set.",
         "properties": {
@@ -925,6 +1094,146 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/audit": {
+      "get": {
+        "operationId": "list_audit_api_v1_admin_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No usable session was presented."
+          },
+          "403": {
+            "description": "Missing the audit.read permission."
+          },
+          "422": {
+            "description": "Unknown action/entity filter, or a bad date bound."
+          }
+        },
+        "summary": "Read the audit trail",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/permissions": {
       "get": {
         "description": "Every code with its description, sorted — namespace grouping is the\nclient's presentation concern, the sort order is the contract.",

@@ -42,5 +42,7 @@ export const queryKeys = {
     permissions: ['admin', 'permissions'] as const,
     /** The effective application settings (F039's snapshot; F040 edits). */
     settings: ['admin', 'settings'] as const,
+    /** The audit trail (F044's viewer; params carry the filters). */
+    audit: (params: Record<string, unknown>) => ['admin', 'audit', params] as const,
   },
 }

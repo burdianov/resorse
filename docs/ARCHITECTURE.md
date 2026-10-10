@@ -630,6 +630,16 @@ outside a request, because "no request" is a fact. F060's structured logging ado
 Session lifecycle events are deliberately absent: the sessions table is its own append-by-reason
 record (F025/F029), and a second copy could disagree with it.
 
+`/admin/audit` (F044) is the trail's read side, and its shape follows from the trail: the order is
+**fixed** newest-first with an `id` tiebreaker (chronological data has nothing to sort by), `action`
+and `entity_type` filters validate against the model's vocabularies (a filter that silently matches
+nothing would be a lie), `search` is an escaped ILIKE over summaries and the frozen actor email, and
+`since`/`until` bound the timeline. The response carries the vocabularies themselves, so the viewer's
+selects are built from the server's constants rather than a client copy that could drift — and the
+item carries `details` and `correlation_id`, so the detail modal needs no second request. The screen
+renders nothing mutable: there is no write path for the trail, and a disabled button would pretend
+there could be.
+
 ## 6. Authorization model
 
 - **Roles and permissions are many-to-many.** Effective permissions = union of the user's roles' permissions,
@@ -1297,6 +1307,8 @@ owning every row it touches.
   owned-fields PATCH with `extra="forbid"`, the free-form preference vocabulary under structural
   session-scoped isolation, idempotent preference deletes, the gating split — C30, §5), and **F042
   the profile pages** (the two-route/one-form split, the read-only email with its reason, the
-  truthful Active badge, view-only grouped permissions, the menu wiring — C31, §5), and **F043 the
+  truthful Active badge, view-only grouped permissions, the menu wiring — C31, §5), **F043 the
   audit trail** (record-within-the-transaction atomicity, append-only by construction, frozen
-  attribution, the door-level redaction, the request-id middleware — C32, §5).
+  attribution, the door-level redaction, the request-id middleware — C32, §5), and **F044 the audit
+  viewer** (the fixed chronological order, validated-and-server-supplied filter vocabularies, the
+  one-request modal, a screen with nothing mutable — C33, §5).
