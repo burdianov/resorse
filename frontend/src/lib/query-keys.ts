@@ -34,6 +34,19 @@ export type NotificationFilter = 'all' | 'unread' | 'read'
 
 const notificationsRoot = (userId: string) => ['notifications', userId] as const
 
+/**
+ * Files are owned by a user (F050's authorization is the owner in the SQL
+ * predicate), so their keys carry the user id by the identity rule above: a
+ * file list is *this account's* files and nothing else's.
+ */
+const filesRoot = (userId: string) => ['files', userId] as const
+
+/** Request parameters that make one page of a file list distinct. */
+export interface FileListParams {
+  page: number
+  pageSize: number
+}
+
 export const queryKeys = {
   /** Liveness of the API — GET /api/v1/health. */
   health: ['health'] as const,
@@ -73,5 +86,11 @@ export const queryKeys = {
     settings: ['admin', 'settings'] as const,
     /** The audit trail (F044's viewer; params carry the filters). */
     audit: (params: Record<string, unknown>) => ['admin', 'audit', params] as const,
+  },
+  /** The signed-in user's own files (F050's API; F054 is its first consumer). */
+  files: {
+    /** Invalidation root for uploads and deletions. */
+    root: (userId: string) => filesRoot(userId),
+    list: (userId: string, params: FileListParams) => [...filesRoot(userId), 'list', params] as const,
   },
 }

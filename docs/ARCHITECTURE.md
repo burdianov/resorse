@@ -311,13 +311,20 @@ frontend/src/
   main.tsx  App.tsx
   app/            router.tsx, providers.tsx
   styles/         globals.css (Tailwind 4 tokens)
-  config/         navigation.ts, access.ts (leaf access model), permissions.ts, branding.ts
+  config/         navigation.ts, access.ts (leaf access model), permissions.ts, branding.ts, features.ts
   components/form/  form.tsx (pattern), fields.tsx, form-actions, form-errors, unsaved-changes-guard
   components/     ui/ (29 primitives), layout/, data-table/, form/, loaders/, common/, providers/
+                  charts/ (F054 — the chart wrappers), files/ (F054 — dropzone, preview, their hooks)
   features/       <feature>/{api,hooks,schemas,components}   — auth, admin/*, profile, notifications, reports
-  pages/          route components
+  pages/          route components; pages/tools/ is the dev-only lab (F054)
   hooks/  lib/  testing/
 ```
+
+A note on the last two lines: `pages/tools/` and `components/charts|files/` exist only in development builds — the
+lab's route is registered from an `import.meta.env.DEV` literal, so its page, the chart library and the file
+components are absent from a production `dist/` (`ROUTES_NAVIGATION.md` §2, C42). `hooks/` holds hooks shared across
+pages (`use-notifications.ts`, `use-table-preferences.ts`); a hook with one consumer lives in that page's file, and
+the file components' hooks sit beside them in `components/files/`.
 
 **Data flow:** page → feature hook (`useQuery`/`useMutation`) → typed API module → shared Axios instance →
 relative `/api/v1`. Query keys are centralised and identity-scoped; caches are cleared on logout and on identity
@@ -879,6 +886,17 @@ Rules that make these boundaries real:
   probe PostgreSQL: that is a readiness question (`/ready`, BP-8.4b, still unbuilt). A tailored file is marked
   exactly as a download is (F050's `content_disposition`, `nosniff`, `private, no-store`), and the preview UI
   reads the file's name from that header rather than from the browser's clock (F053, C41).
+- **A developer-only page is excluded by the module graph, not by a hidden link.** F054's component lab is
+  registered from an `import.meta.env.DEV` literal, which Vite replaces with `false` when it builds: a production
+  bundle has no entry in the registry and `/tools/components` is an ordinary 404. That only holds while the page's
+  *reference* sits inside the folded branch — a `const Lab = lazy(...)` hoisted above it is not harmless: the
+  branch's removal makes the binding unused, the bundler drops the binding but keeps the call (it cannot prove
+  `lazy(...)` free of side effects), and the surviving call still names the module, so the page and recharts ship
+  as an unreachable 449 kB chunk. Written inside the array, the dynamic import leaves the graph and neither chunk
+  nor library is emitted — `pnpm run build` and a search of `dist/` is how it is checked. The `dev.tools` flag does
+  the different job of hiding the *link*, and it fails closed; neither guard closes the route inside a development
+  build, because `RouteGuard` evaluates permissions and `adminOnly` rather than flags, which is the intent, since a
+  developer opens the lab by address (F054, C42).
 
 ## 8. Data model (foundation only)
 

@@ -38,7 +38,7 @@ create the manifests. Nothing here has been built, installed or run as an applic
 | `react-day-picker` | **10.0.2** | 2026-09-30 | peer `react >=16.8` |
 | `cmdk` | **1.1.1** | 2025-03-14 | peer `react ^19` |
 | `sonner` | **2.0.8** | 2026-08-09 | peer `react ^19` |
-| `recharts` | **3.10.1** | 2026-07-25 | peer `react ^19` |
+| `recharts` | **3.10.1** | 2026-07-25 | peer `react ^19`. In use from **F054** (`components/charts/*`), and only there: the charts are drawn by the developer-only component lab, so the library is absent from a production `dist/` — a fact checked by building and searching the output, not assumed (F054's C42). |
 | `lucide-react` | **1.53.0** | 2026-10-08 | peer `react ^19` |
 | `class-variance-authority` | **0.7.1** | 2024-11-26 | |
 | `clsx` | **2.1.1** | 2024-04-23 | |

@@ -43,10 +43,20 @@ Only routes whose page exists are registered — a registered route is a real li
 | Administration | Permissions | `/admin/permissions` | `permissions.read` + admin area | F038 |
 | Administration | Settings | `/admin/settings` | `settings.read` + admin area | F040 |
 | Administration | Audit Trail | `/admin/audit` | `audit.read` + admin area | F044 |
+| Tools (dev builds only) | Component Lab | `/tools/components` | dev build + admin area + `dev.tools` | F054 |
+
+The Component Lab's row is the one entry that is **conditional on the build** rather than on the caller: it is
+registered from an `import.meta.env.DEV` literal, so a production bundle has no such route at all and the path
+answers 404 like any other unknown one. Inside a development build the entry is real, and its link is filtered the
+usual way — the Tools group carries `adminOnly` **and** the `dev.tools` flag, so it appears for an administrator
+holding the flag and for nobody else. The flag hides the *link*; it does not close the route, because `RouteGuard`
+evaluates permissions and `adminOnly`, not flags. That is intended: a developer opens the lab by typing its address.
 
 The groups themselves are also declarative: `Overview` and `Administration` exist from the start, and a group with
 no visible item **renders nothing** (§4.8: no fake empty groups) — the Administration group appears for exactly
-the callers holding a read code in its namespaces, and is absent (not empty) for everyone else.
+the callers holding a read code in its namespaces, and is absent (not empty) for everyone else. `Tools` (F054) is
+the third and the only one gated twice: it needs administrative authority *and* the `dev.tools` flag, which in
+practice means a development build, since `ENABLED_FEATURES` is empty in a production one.
 
 `/` is deliberately **not** a registry entry: the router redirects it (§4.1). F032 makes that redirect auth-aware.
 
@@ -98,12 +108,9 @@ stops a permission error from being misread as "log in again".
 
 ## 5. Not yet registered (planned pages)
 
-Every page the requirements plan (BIG-PROMPT §4) is registered as of **F046**; what remains is the dev-only
-Component Lab, listed here so the mapping is not lost. (F047 swaps the dashboard *component*, not its entry.)
-
-| Group | Page | Path | Required permissions | Task |
-|---|---|---|---|---|
-| (dev only) | Component Lab | `/tools/components` | dev-mode/admin | F054 |
+**Nothing is outstanding.** Every page BIG-PROMPT §4 plans is registered — the pages as of F046, and the last one,
+the dev-only Component Lab, in **F054** — so §2 is the complete list. The section is kept rather than deleted, so
+that "not listed here" keeps meaning "not planned" instead of "not looked for".
 
 ## 6. Extension slot
 

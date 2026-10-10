@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import { ANONYMOUS_ACCESS } from '@/config/access'
 import type { NavigationAccess } from '@/config/access'
+import { ENABLED_FEATURES } from '@/config/features'
 import { api, setUnauthorizedHandler } from '@/lib/api'
 import { toApiError } from '@/lib/errors'
 import type { MeResponse } from '@/lib/generated/api'
@@ -82,9 +83,22 @@ const AuthContext = createContext<AuthContextValue>({
   refresh: () => Promise.resolve(),
 })
 
+/**
+ * The caller's access, from the server's answer plus **this build's** feature
+ * flags. The two halves have different sources on purpose: permissions are the
+ * account's (resolved server-side from its roles, §6), while a feature flag
+ * describes what the running frontend offers at all — `dev.tools` is enabled
+ * exactly when the frontend was built in development mode (F054). A production
+ * build enables nothing, and nothing registers a route behind those flags
+ * either, so the two mechanisms fail closed together.
+ */
 function accessFrom(user: MeResponse | null): NavigationAccess {
   if (!user) return ANONYMOUS_ACCESS
-  return { permissions: new Set(user.permissions), isSuperuser: user.is_superuser }
+  return {
+    permissions: new Set(user.permissions),
+    isSuperuser: user.is_superuser,
+    features: ENABLED_FEATURES,
+  }
 }
 
 async function fetchMe(): Promise<MeResponse> {

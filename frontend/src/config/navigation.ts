@@ -1,6 +1,6 @@
 import { createElement, lazy } from 'react'
 import type { ComponentType } from 'react'
-import { Bell, FileText, LayoutDashboard, Lock, Settings, Shield, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { Bell, FileText, FlaskConical, LayoutDashboard, Lock, Settings, Shield, ShieldCheck, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
@@ -14,6 +14,7 @@ import { hasAdministrationAccess, meetsAccess } from './access'
 import type { AccessRequirement, NavigationAccess } from './access'
 import { APP_MODULES } from './modules'
 import type { AppModule } from './modules'
+import { DEV_TOOLS_FLAG } from './features'
 
 /**
  * The one navigation registry (BIG-PROMPT §4.7–§4.10).
@@ -79,6 +80,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   // Present from the start so admin routes have their home; it renders only
   // once it holds visible items (§4.8: no fake empty groups).
   { id: 'administration', label: 'Administration', order: 20, adminOnly: true },
+  // The developer-only Tools group (F054, §4.5). Flagged rather than merely
+  // dev-registered: `visibleNavigation` drops the group for any caller whose
+  // feature set lacks the flag — which, in a production build, is every
+  // caller, since nothing registers a route into it either.
+  { id: 'tools', label: 'Tools', order: 30, adminOnly: true, featureFlag: DEV_TOOLS_FLAG },
 ]
 
 const DashboardPage = lazy(async () => {
@@ -125,6 +131,67 @@ const ProfileSecurityPage = lazy(async () => {
   const module = await import('@/pages/profile-security')
   return { default: module.ProfileSecurityPage }
 })
+
+/**
+ * The developer-only component lab (BIG-PROMPT §4.5, §12 Phase 5; F054).
+ *
+ * **Registration is what excludes it, and the flag is what hides its link.** The
+ * two are different jobs and it is worth being exact about which one does which.
+ *
+ * - **`import.meta.env.DEV` below** is the exclusion. Vite replaces the
+ *   expression with a literal while it builds, so a production bundle gets an
+ *   empty `DEV_ROUTES`: the entry is not in the registry, the sidebar never
+ *   learns of a Tools group with items, and `/tools/components` is an ordinary
+ *   404 — the same answer as any other unregistered path.
+ * - **`adminOnly`** — the lab drives real components, including the file
+ *   dropzone that stores bytes in this deployment, so it needs the authority
+ *   those calls need. A viewer who could open it would find half a screen of
+ *   refusals.
+ * - **`featureFlag`** — the sidebar entry and its group are dropped for every
+ *   caller whose feature set lacks the flag (`meetsAccess` is fail-closed, and
+ *   `visibleNavigation` honours the flag on the group as well as the item), so
+ *   in a development build only an administrator with the flag sees the link.
+ *
+ * **Why the `lazy()` call is written inside the array rather than beside it.**
+ * The page, the chart library it draws with and the file components it
+ * demonstrates are meant to be absent from a production `dist/` altogether, and
+ * that is a fact about the *graph*, not about the registry. A `const
+ * ComponentLabPage = lazy(...)` declared next to this comment reads as harmless,
+ * and is not: when the DEV literal folds the branch away the binding becomes
+ * unused, and the bundler drops the binding but keeps the call, because
+ * `lazy(...)` is a call it cannot prove free of side effects. The call it keeps
+ * still mentions `import('@/pages/tools/components')`, so the module stays in the
+ * graph and ships as an unreachable chunk — 449 kB of lab and recharts in the
+ * first build of this page, which is how the mistake was found. Written inside
+ * the array, the whole object literal is inside the dead branch, the dynamic
+ * import is gone from the graph, and neither the chunk nor the library is
+ * emitted. `pnpm run build` followed by a search of `dist/` for a sentence from
+ * the page is how that is checked rather than believed.
+ *
+ * **What the flag does not do**, stated because a reader will assume it does:
+ * `RouteGuard` evaluates permissions and `adminOnly`, not flags, so inside a
+ * development build `/tools/components` is reachable by typing it — for an
+ * administrator. That is the intent: the lab exists to be opened by address.
+ * Closing the *route* is the DEV literal's job, and it does it in production,
+ * where there is no route to guard.
+ */
+const DEV_ROUTES: readonly RouteDefinition[] = import.meta.env.DEV
+  ? [
+      {
+        id: 'tools-components',
+        path: '/tools/components',
+        label: 'Component Lab',
+        icon: FlaskConical,
+        group: 'tools',
+        adminOnly: true,
+        featureFlag: DEV_TOOLS_FLAG,
+        component: lazy(async () => {
+          const module = await import('@/pages/tools/components')
+          return { default: module.ComponentLabPage }
+        }),
+      },
+    ]
+  : []
 
 /**
  * Built-in routes. `/dashboard` renders the home screen (F047, which replaced
@@ -234,6 +301,7 @@ export const APP_ROUTES: readonly RouteDefinition[] = [
     requiredPermissions: ['settings.read'],
     component: AdminSettingsPage,
   },
+  ...DEV_ROUTES,
 ]
 
 /** Built-ins plus module contributions, with module flags folded in. */

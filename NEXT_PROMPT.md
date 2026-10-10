@@ -9,43 +9,41 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F054
-in claude_code_pack/TASKS.md. Implement F054 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F055
+in claude_code_pack/TASKS.md. Implement F055 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F055.
+me the operator checks. Do not push. Do not start F056.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F053 — User directory report. Committed with this handoff (`git log -1 --format="%h %s"`).
-  The stack's first report routes: `POST /api/v1/reports/user-directory` (`reports.generate` **and** `users.read`;
-  selects through the list endpoint's own predicate; rendered in a worker thread; **409** past 1,000 rows) and
-  `GET /api/v1/reports/engine-health` (`reports.self_test()` + `conversion.health()` — its first product caller),
-  plus the export and preview UI on `/admin/users`. OpenAPI and the generated client grew both routes. Recorded
-  as C41.
-- **Previous task:** F052 — DOCX conversion. Commit **`15e8cc9`** — the docxtpl renderer and the Gotenberg
-  adapter, the stack's only outbound HTTP; no route (C40). F051 (`9c4fdd8`) before it.
-- **Next: F054 — Frontend component lab.** TASKS.md: "Dev-only primitives and chart examples"; accept line
-  "Excluded from production nav". It is also the first consumer of the two file components F050 deferred (C38).
+- **Last completed:** F054 — Frontend component lab. Committed with this handoff (`git log -1 --format="%h %s"`).
+  `/tools/components` is registered from an `import.meta.env.DEV` literal, so a production bundle has no such route
+  and the path 404s; the `dev.tools` flag and `adminOnly` gate only the *link*, and `RouteGuard` reads neither — a
+  dev build's lab is reachable by address, which is how a developer opens it. It holds the primitives, the recharts
+  wrappers (`components/charts/`) and the first real use of the `FileDropzone`/`FilePreview` F050 deferred (C38).
+  Recorded as C42, whose lesson came from a build: a `lazy(...)` hoisted above the DEV ternary survives DCE and
+  ships the page as an unreachable **449 kB** chunk — verify the exclusion **by building and searching `dist/`**.
+- **Previous task:** F053 — User directory report. Commit **`cbad877`** — the stack's first report routes
+  (`POST /reports/user-directory`, `GET /reports/engine-health`) and the export UI (C41). F052 (`15e8cc9`) before it.
+- **Next: F055 — Frontend quality gate.** TASKS.md: "Lint format typecheck Vitest coverage"; accept line
+  "Recorded actual results." It is what adds the frontend lint/format and coverage gates §6 names as planned.
 - **Gates:** F016, F032, F047 and F048 are complete; operator gate results are **not recorded in this handoff**.
   **G-A3 (after F048) is due and is the operator's to run** (`OPERATOR_GUIDE.md` line 54); then **G-A4, after F063**.
 - **Blockers:** none recorded.
 - **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules (working-day calendar, rate
-  changes within a month, percentage rules, revision semantics, and others). None is recorded as blocking F054;
+  changes within a month, percentage rules, revision semantics, and others). None is recorded as blocking F055;
   never treat one as approved or turn one into a confirmed rule, and if a task depends on one, stop and ask the
-  operator one precise question. Confirmed: C11–C41 (C41 is F053's).
+  operator one precise question. Confirmed: C11–C42 (C42 is F054's).
 - **Open item — the `/ready` endpoint is not built (BP-8.4b):** `conversion.health()` is the probe that belongs
-  behind it, but no readiness route exists — F053's `reports/engine-health` reports the *report* engine (and the
-  converter behind it), which is a different question. Do not report `/ready` as existing; whichever task builds
-  it should read `health()` rather than re-implement the call.
+  behind it, but no readiness route exists; F053's `reports/engine-health` reports the *report* engine instead, which
+  is a different question. Whichever task builds `/ready` should read `health()`, not re-implement the call.
 - **Open item — orphan objects:** the object is unlinked only *after* the caller's commit (and when it raises), so
   the residue is a process death in between — an unreferenced object, never a dangling row. No scheduler exists, so
   no sweep is built; never unlink before commit.
 - **Open item — nothing scans uploads yet:** BP-6.4's hook ships as `MalwareScanner` + `NoMalwareScanner` (the
   name is the disclosure). Nothing is wired in; the API answers 400 if one ever refuses — never call uploads scanned.
-- **Open item — two file components are deferred:** `FileDropzone`/`FilePreview` did not ship with F050 (operator
-  scope decision: backend only); they belong to **F054**, the component lab and their first consumer (C38).
 - **Open item:** jsdom `Select` rendering, linked to **F057** — see §5.
 
 ## 3. Essential constraints
@@ -99,10 +97,9 @@ Start the services, each in its own terminal:
 
 ## 5. Open item (unresolved, linked to F057)
 
-**jsdom `Select` rendering.** In jsdom, an uncontrolled `Select` shows the raw value (`site`) on its trigger
-instead of the label (`Site`), and leaves the listbox mounted. It may be a layout-less DOM artefact rather than a
-defect, so tests neither assert nor forbid it. **Confirm in a real browser when Playwright arrives in F057.**
-Detail: `docs/CARRIED_CONSTRAINTS.md` §6.
+**jsdom `Select` rendering.** In jsdom, an uncontrolled `Select` shows the raw value (`site`) on its trigger instead
+of the label (`Site`), and leaves the listbox mounted. It may be a layout-less DOM artefact rather than a defect, so
+tests neither assert nor forbid it. **Confirm in a real browser when Playwright arrives in F057** (`docs/CARRIED_CONSTRAINTS.md` §6).
 
 ## 6. Testing and quality gates
 
@@ -112,6 +109,9 @@ Detail: `docs/CARRIED_CONSTRAINTS.md` §6.
   `uv run ruff check <files>`, `uv run mypy <files>`
 - If the API contract changed: `cd D:\resors\backend; uv run python -m scripts.export_openapi`, then
   `cd D:\resors\frontend; pnpm run api:types`. Both committed artefacts must be byte-stable apart from the task's own diff.
+- If the change touches a **dev-only surface** (F054's rule): `cd D:\resors\frontend; pnpm run build`, then search
+  `dist/` for a lab-only string ("Development builds only", `recharts`) and for the route path — any match means
+  the exclusion failed. Do not infer the exclusion from the `import.meta.env.DEV` ternary.
 
 **Gate checks** (the operator runs these; the agent supplies the commands and never reports their results):
 - `cd D:\resors\frontend; pnpm run typecheck` and `pnpm run build`
@@ -120,44 +120,47 @@ Detail: `docs/CARRIED_CONSTRAINTS.md` §6.
 
 **Ruff and mypy are runnable** — `cd D:\resors\backend; uv run ruff format --check <files>` / `uv run ruff check
 <files>` / `uv run mypy <files>` — and F053 ran all three on its touched files as focused checks. They are still
-**not operator gate checks**: `OPERATOR_GUIDE.md` (lines 38–39) associates them with F056, which also adds CI
-enforcement. Frontend lint and format and the coverage gate are planned for F055.
+**not operator gate checks**: `OPERATOR_GUIDE.md` (lines 38–39) associates them with F056. Frontend lint/format and
+coverage remain F055's to add.
 
-**Not yet available:** Playwright E2E (F057), axe accessibility (F058), production Compose (F059) — do not hand
-these to the operator as runnable until their task lands. **Test counts are historical** (recorded at F053, from
-the agent's focused subsets): report the count you observe, not a historical one.
+**Not yet available:** Playwright E2E (F057), axe accessibility (F058), production Compose (F059) — do not hand these
+to the operator as runnable until their task lands. **Test counts are historical**: report the count you observe.
 
 ## 7. Operator verification commands
 
-Run these before F054 starts. The "F053 record" column is historical, not a current result.
+Run these before F055 starts. The "F054 record" column is historical, not a current result.
 
-| Check | Command | F053 record (historical) |
+| Check | Command | F054 record (historical) |
 |---|---|---|
-| Working tree | `git -C D:\resors status --short` | clean after F053's commit |
-| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F053): user directory report` (implementation + handoff together). Previous: `15e8cc9 feat(F052): ...` |
+| Working tree | `git -C D:\resors status --short` | clean after F054's commit |
+| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F054): frontend component lab` (implementation + handoff together). Previous: `cbad877 feat(F053): ...` |
 | Backend health | `curl http://localhost:8000/api/v1/health` | `{"status":"ok",...}` |
 | Report engine (opt-in) | `curl http://localhost:8000/api/v1/reports/engine-health` with an admin session, and for the DOCX half `curl http://localhost:3100/health` then `$env:RESORS_LIVE_GOTENBERG=1; cd D:\resors\backend; uv run pytest tests/test_report_conversion.py -q -k live` | **not run by the agent at F053** — the first needs a signed-in session and the second a running Gotenberg (`docker compose up -d`); that one is still the only test that proves LibreOffice actually ran |
-| F053 focused batch | `cd D:\resors\backend; uv run pytest tests/test_reports_api.py tests/test_reports.py tests/test_report_conversion.py tests/test_admin_users.py -q` | 76 passed, 1 skipped (observed at F053; the skip is the opt-in live conversion). `tests/test_reports_api.py` alone: 14 |
-| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F053 **adds two routes**, so both artefacts were regenerated and are part of its commit; a re-run should be byte-stable (observed at F053) |
-| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | **not run by the agent at F053** (F053 adds no migration). F049 record: clean, ending at `0009` (historical — never run this against `app_dev`) |
-| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no diagnostics (observed at F053 — the agent ran the same `tsc --noEmit` the script runs) |
+| F053 focused batch (backend) | `cd D:\resors\backend; uv run pytest tests/test_reports_api.py tests/test_reports.py tests/test_report_conversion.py tests/test_admin_users.py -q` | 76 passed, 1 skipped (observed at F053; the skip is the opt-in live conversion) |
+| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F054 changes no API. F053 added two routes, both committed, so a re-run should be byte-stable (observed at F053) |
+| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | **not run by the agent** (F054 adds no migration). F049 record: clean, ending at `0009` (historical — never run this against `app_dev`) |
+| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no diagnostics (observed at F054; `pnpm run build` runs that same `tsc --noEmit` first) |
+| **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **no match** (observed at F054): the lab page and recharts are absent from `dist/` and no `components-*.js` chunk is emitted. A match means the exclusion broke |
+| F054 focused batch (frontend) | `cd D:\resors\frontend; pnpm exec vitest run tests/config/features.test.ts tests/components/charts.test.tsx tests/components/file-dropzone.test.tsx tests/components/file-preview.test.tsx tests/tools/components.test.tsx` | 25 passed (5 files, 5 tests each): the feature-flag module, the chart wrappers, the two file components, the lab page. After the registry change, the navigation-dependent suites re-run together with the lab: 38 passed (4 files, observed) |
 | Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check: the operator owns the result.** The agent ran it once at F053 while checking its own diff: 62 files, 539 passed. F047 record: 498 passed (historical) |
-| Backend suite | `cd D:\resors\backend; uv run pytest` | **a gate check; not run by the agent at F053.** F047 record: 246 passed (historical) |
+| Backend suite | `cd D:\resors\backend; uv run pytest` | **a gate check; not run by the agent at F054.** F047 record: 246 passed (historical) |
 
-**The end-to-end check F052 left open is now real.** Signed in as an `admin`, open `/admin/users`, set a filter and
-press **Export PDF**: the dialog should draw the document F053 rendered, and the download be named
-`user-directory-<date>.pdf` — the server's own name. A filter matching more than **1,000** accounts must show the
-server's sentence about the limit, not a status code. F050's download checks (an `attachment` disposition with
-`nosniff` and `private, no-store`; a second account getting **404** for a foreign file id) remain worth running by hand
-at `http://localhost:8000/docs`. The full command history is in `docs/VERIFICATION_LOG.md` — grep for a task ID.
+**The F054 end-to-end check.** In a **dev** build (`pnpm run dev`), signed in as an `admin`, the sidebar should show
+a **Tools** group holding **Component Lab**; `/tools/components` should render the primitives, the charts and the
+files section, and that section should upload a real file, preview the text one, download it under the server's own
+name, and delete it through the confirm dialog. In a **production** build the same path must 404 — the build row
+above checks that without a browser. F053's export check (`/admin/users` → **Export PDF** →
+`user-directory-<date>.pdf`, and the 1,000-row limit sentence) and F050's download checks (an `attachment`
+disposition with `nosniff` and `private, no-store`; a second account getting **404** for a foreign file id) remain
+worth running by hand at `http://localhost:8000/docs`. Command history: `docs/VERIFICATION_LOG.md` — grep a task ID.
 
 ## 8. Reference documents (read only the section a task needs)
 
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F054 is at about line 219 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C41; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F055 is at about line 223 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C42; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
 | `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend, §6 authorization, §7 extension boundaries, §12 implementation traps |
@@ -184,15 +187,13 @@ DECISIONS/BLOCKERS: <only material items>
 NEXT: <ID> — <task name>
 ```
 
-The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F053 — User directory report`.
+The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F054 — Frontend component lab`.
 
 ## 10. Accounts
 
-Accounts are created by the operator. Credentials live only in the git-ignored `LOCAL_CREDENTIALS.md`, which the
-agent never reads. Record a generated password when it is shown; most are shown once.
+Accounts are created by the operator. Credentials live only in the git-ignored `LOCAL_CREDENTIALS.md`, which the agent never reads; record a generated password when it is shown, since most are shown once.
 
 ## 11. Maintaining this file
 
-- Update this file at the end of every completed task: §1 task IDs, §2 position and open items, §6 counts, §7
-  operator checks. Per-task history goes in `docs/COMPLETION_LOG.md`, recipes in `docs/VERIFICATION_LOG.md`, and
-  git history is the record of commits. Keep it **under 200 lines** — move detail to a `docs/` file to grow it.
+- Update this file at the end of every completed task: §1 task IDs, §2 position and open items, §6 counts, §7 operator
+  checks. Per-task history → `docs/COMPLETION_LOG.md`, recipes → `docs/VERIFICATION_LOG.md`, commits → git. **Keep it under 200 lines**; to grow it, move detail into `docs/`.
