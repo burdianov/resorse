@@ -8,29 +8,29 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F060
-in claude_code_pack/TASKS.md. Implement F060 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F061
+in claude_code_pack/TASKS.md. Implement F061 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F061.
+me the operator checks. Do not push. Do not start F062.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F059 — Production Docker (record: **C47**, `DECISIONS.md`; stack in `docker-compose.prod.yml`).
-  Only Caddy publishes ports; postgres, gotenberg, `migrate` (`alembic upgrade head`) and the non-root API sit on an
-  `internal: true` network. **Agent-checked** (scratch env, `resors-prod` project, `down -v` after): config validates, both
-  images build, five services healthy, `/` and `/admin/users` 200, `/api/v1/health` `environment: production`, missing
-  asset 404, foreign-Origin POST 403, `alembic current` `0009 (head)`. **Not checked:** a real domain and certificate
-  (`localhost` used Caddy's local CA); uploads-volume ownership on a Linux host.
-- **Previous tasks:** F058 — Accessibility and visuals (**C46**; `docs/STACK_VERSIONS.md` §6); F057 — Browser E2E (**C45**);
+- **Last completed:** F060 — Security hardening (**C48**; `docs/SECURITY.md` = threat model). Production refuses unsafe
+  config at startup (`app/core/startup.py`); API headers + Caddy CSP/HSTS; JSON logs and a JSON 500 with the request id;
+  `get_malware_scanner()` seam (no-op); `X-Forwarded-For` trusted only from the web proxy (`FORWARDED_ALLOW_IPS`). **Agent-checked:**
+  `pytest -m "not integration"` 191 passed; full `uv run pytest` 455 passed, 2 skipped; ruff/mypy clean; scratch prod stack
+  boots with the CSP/HSTS set, missing asset 404, API JSON, weak password refused (exit 1). **Not checked:** a real domain,
+  the proxy trust at runtime (the log does not record the client address), and the CSP against a live browser session.
+- **Previous tasks:** F059 — Production Docker (**C47**); F058 — Accessibility and visuals (**C46**); F057 — Browser E2E (**C45**);
   F056 — Backend quality gate (**C44**, §7); F055 (**C43**); F054 (**C42**).
-- **Next: F060 — Security hardening** (TASKS.md ~line 243; owns the `X-Forwarded-For` trust and the placeholder refusal, C17/C47).
+- **Next: F061 — CI workflows** (TASKS.md ~line 247; owns the platform-tagged visual baselines and the OpenAPI drift check).
 - **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (new — G-A1/G-A2
   have no dated run recorded). **G-A3 (after F048) is due and is the operator's to run**, then G-A4 after F063.
 - **Blockers:** none recorded.
-- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules. None blocks F060; never treat one
-  as approved, and if a task depends on one, stop and ask. Confirmed: C11–**C47** (C47 is F059's).
+- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules. None blocks F061; never treat one
+  as approved, and if a task depends on one, stop and ask. Confirmed: C11–**C48** (C48 is F060's).
 - **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can
   be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any
   migration task; it reads `0009 (head)` today.
@@ -151,6 +151,7 @@ The record column is **historical and the agent's own observation**, never the o
 | **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **F055 record**: no match — the lab page and recharts are absent from `dist/`. A match means the exclusion broke |
 | Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check. F055 record**: 563 passed (F047: 498) |
 | OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F057 changes no API. **F055 record**: re-run produced **no diff** |
+| **Security (F060)** | `cd D:\resors\backend; uv run pytest tests/test_production_hardening.py` | 23 passed (agent record). Edge check on a live host: `curl -sI https://<SITE_ADDRESS>/` shows the CSP, HSTS and `nosniff` (`docs/SECURITY.md` §4.2) |
 | **Production stack (F059)** | Create `.env.production` from `.env.production.example` (real values, git-ignored), then `cd D:\resors; docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait` | Agent's record (scratch env, `SITE_ADDRESS=localhost`): all five services healthy, `migrate` exit 0. The operator's check: `curl -k https://<SITE_ADDRESS>/api/v1/health` → `"environment":"production"`; `docker compose -f docker-compose.prod.yml --env-file .env.production down` leaves volumes intact (`down -v` deletes them) |
 | Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)`. Run this after any migration task — a dev database behind head serves 500s while every test is green |
 | Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F057 adds no migration). F049 record: clean, ending at `0009` |
@@ -162,8 +163,8 @@ The record column is **historical and the agent's own observation**, never the o
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F060 is at about line 243 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C47; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F061 is at about line 247 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C48; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |
 | `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's and the F057/F058 browser suites), §6 authorization, §7 boundaries, §12 traps |

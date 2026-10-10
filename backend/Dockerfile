@@ -44,4 +44,6 @@ EXPOSE 8000
 
 # Liveness only (the API's /health). Readiness, which would also check the
 # database, is not built yet (docs/ARCHITECTURE.md §10).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --no-access-log: the application writes one structured access line per request
+# (app/core/request_context.py), so uvicorn's plain-text duplicate is switched off.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

@@ -384,6 +384,18 @@ class LocalVolumeStorage:
             return
 
 
+def get_malware_scanner() -> MalwareScanner:
+    """The scanner the upload route uses (F060; BP-6.4 "malware-scan hook").
+
+    The shipped answer is :class:`NoMalwareScanner`, and it is the only one
+    this codebase provides. A deployment that has a scanning engine changes
+    this function (or overrides the route's dependency) — the route, the
+    refusal mapping and the audit trail do not change with it. Uploads are
+    never described as scanned while this is the answer.
+    """
+    return NoMalwareScanner()
+
+
 @lru_cache
 def get_storage() -> StorageBackend:
     """The configured backend, created once per process.

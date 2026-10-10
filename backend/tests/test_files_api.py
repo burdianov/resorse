@@ -558,8 +558,12 @@ async def test_a_failed_commit_takes_the_object_back_out(
 
     monkeypatch.setattr(AsyncSession, "commit", refuse_commit)
 
-    with pytest.raises(RuntimeError):
-        await upload(client)
+    # An unhandled error is answered, not propagated (F060): a JSON 500 that
+    # carries the request id, never the exception text.
+    response = await upload(client)
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Internal server error."
+    assert "commit refused" not in response.text
 
     # The row was flushed and never became durable, so the object it names is
     # unreachable: the volume holds nothing.

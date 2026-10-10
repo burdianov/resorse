@@ -98,6 +98,7 @@ async def upload_file(
     session: Annotated[AsyncSession, Depends(get_session)],
     file: Annotated[UploadFile, File(description="The file's bytes.")],
     category: Annotated[str, Form(description="A slug like `templates` or `reports`.")],
+    scanner: Annotated[storage.MalwareScanner, Depends(storage.get_malware_scanner)],
 ) -> FileItem:
     """Store one upload, recording what its bytes are rather than what they claim.
 
@@ -118,6 +119,7 @@ async def upload_file(
             original_filename=file.filename or "",
             category=category,
             declared_content_type=file.content_type,
+            scanner=scanner,
         )
     except storage.FileTooLarge as refused:
         raise HTTPException(

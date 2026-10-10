@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: Literal["development", "test", "production"] = "development"
     api_v1_prefix: str = "/api/v1"
+    # Root logger level for the JSON log lines (F060). INFO is the operator's
+    # default: request lines and warnings, not per-query noise.
+    log_level: str = "INFO"
 
     # Postgres 18, via asyncpg (ARCHITECTURE §8). Unset means "no database is
     # configured": the engine refuses to start rather than guessing, while

@@ -71,7 +71,11 @@ services:
     build: ./backend
     image: resors-backend:latest
     restart: unless-stopped
-    environment: *backend-environment
+    environment:
+      <<: *backend-environment
+      # Trust X-Forwarded-For only from the web proxy's fixed address on the
+      # internal network (F060). Any other peer's header is ignored.
+      FORWARDED_ALLOW_IPS: 172.31.250.10
     volumes:
       - uploads:/var/lib/resors/uploads
     depends_on:
@@ -108,7 +112,10 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    networks: [edge, internal]
+    networks:
+      edge:
+      internal:
+        ipv4_address: 172.31.250.10
 
 networks:
   # Outbound-capable, reachable from outside: Caddy only. It needs the internet
@@ -118,6 +125,9 @@ networks:
   # even if one of them were compromised.
   internal:
     internal: true
+    ipam:
+      config:
+        - subnet: 172.31.250.0/24
 
 volumes:
   postgres_data:

@@ -29,7 +29,9 @@ from app.core.database import Base, get_engine
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False: the application's loggers exist before a
+    # migration runs (F060). The default would silence them for the rest of the process.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

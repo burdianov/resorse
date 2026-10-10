@@ -5,6 +5,22 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
+	# Browser-facing headers (F060; BP-6.4). One policy for the SPA and the API,
+	# since both are this origin. The CSP allows what the built SPA needs and
+	# nothing it does not: no inline script (the theme script is a file), no
+	# third-party origin, no plugin, no framing. style-src allows inline style
+	# because the component library positions popovers with style attributes.
+	# blob: is for the object URLs the file preview and the PDF viewer create.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		-Server
+	}
+
 	# The only route to the API: the backend publishes no port of its own.
 	handle /api/* {
 		# Caddy's own default body cap would reject a legitimate upload before the
@@ -14,7 +30,13 @@
 		request_body {
 			max_size 16MB
 		}
-		reverse_proxy backend:8000
+		# The address the API logs and throttles on. Caddy sets it to the peer it
+		# actually sees, discarding anything the client sent. The API trusts this
+		# header only from this proxy's fixed address (FORWARDED_ALLOW_IPS in
+		# docker-compose.prod.yml).
+		reverse_proxy backend:8000 {
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 
 	# Built assets are content-hashed. A missing one is a 404, not index.html: a

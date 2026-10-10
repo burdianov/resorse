@@ -21,14 +21,19 @@ and ``audit.record`` stores that as SQL NULL: "no request" is a fact worth
 recording, not a gap to hide.
 """
 
+import logging
 import re
+import time
 import uuid
 from contextvars import ContextVar
 
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 REQUEST_ID_HEADER = "X-Request-Id"
 VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+
+logger = logging.getLogger("app.request")
 
 _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
 
@@ -62,14 +67,45 @@ class RequestContextMiddleware:
                 break
         request_id = _accepted(supplied)
         token = _request_id.set(request_id)
+        started = time.perf_counter()
+        status = 0
 
         async def send_with_header(message: Message) -> None:
+            nonlocal status
             if message["type"] == "http.response.start":
+                status = int(message["status"])
                 headers = message.setdefault("headers", [])
                 headers.append((b"x-request-id", request_id.encode("ascii")))
             await send(message)
 
         try:
             await self.app(scope, receive, send_with_header)
+        except Exception:
+            # An unhandled error is the one the client must not see as a bare
+            # 500 from the server: it gets this JSON body and the id that the
+            # log line below carries, so a report and its log join.
+            logger.exception("unhandled error", extra={"request_id": request_id})
+            if status:
+                # The response already started; the connection is the only
+                # thing left to end, so let the server close it.
+                raise
+            status = 500
+            await JSONResponse(
+                status_code=500,
+                content={"detail": "Internal server error.", "request_id": request_id},
+                headers={REQUEST_ID_HEADER: request_id},
+            )(scope, receive, send)
         finally:
+            # Logged before the id is reset, so the access line carries it.
+            elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
+            logger.info(
+                "request",
+                extra={
+                    "method": scope.get("method", ""),
+                    "path": scope.get("path", ""),
+                    "status": status,
+                    "duration_ms": elapsed_ms,
+                    "request_id": request_id,
+                },
+            )
             _request_id.reset(token)

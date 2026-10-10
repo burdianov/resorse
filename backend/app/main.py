@@ -14,7 +14,10 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.csrf import CsrfMiddleware
 from app.core.database import dispose_engine
+from app.core.logs import configure_logging
 from app.core.request_context import RequestContextMiddleware
+from app.core.security_headers import SecurityHeadersMiddleware
+from app.core.startup import assert_production_ready
 
 
 @asynccontextmanager
@@ -29,6 +32,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    # Production refuses to start on unsafe configuration (F060). This runs
+    # before anything is wired, so the refusal names every problem at once.
+    assert_production_ready(settings)
+    configure_logging(settings.log_level)
     application = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
@@ -42,8 +49,11 @@ def create_app() -> FastAPI:
         trusted_origins=settings.trusted_origins,
         session_exempt_paths=frozenset({f"{settings.api_v1_prefix}/auth/login"}),
     )
-    # The request id (F043) wraps even the CSRF refusal: every response
-    # carries X-Request-Id, and audit rows written downstream record it.
+    # Headers go on every response, including a CSRF refusal (added after CSRF,
+    # so it wraps it). The request id (F043) wraps everything: every response
+    # carries X-Request-Id, unhandled errors are answered with it (F060), and
+    # the access line is written with it.
+    application.add_middleware(SecurityHeadersMiddleware)
     application.add_middleware(RequestContextMiddleware)
     application.include_router(api_router, prefix=settings.api_v1_prefix)
     return application
