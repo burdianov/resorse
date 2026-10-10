@@ -11,8 +11,11 @@ remote code, and **a frontend module can never grant itself authority** — perm
 server-side.
 
 The example below is a neutral `demo_records` module: one table, one route, one nav item, one
-permission. It is the shape F063 builds as a test-only proof of this contract; keep any real proof
-module out of production navigation.
+permission. It is the shape F063 built as a **test-only** proof of this contract —
+`backend/tests/demo_records.py` and `frontend/tests/config/demo-module.tsx`, with the three places
+where test-only-ness made it diverge from this recipe recorded in `docs/FOUNDATION_REPORT.md` §2 —
+and the rule that keeps a proof out of production is the module graph: nothing in `app/` or `src/`
+imports it.
 
 ## 1. Decide the permission codes first
 
@@ -209,6 +212,11 @@ A module is not done until it is tested and the gate considers it:
 
 `docs/ARCHITECTURE.md` §7 and BP-9.7 require the extension contract to be proven by a **test-only**
 module that registers one route, nav item, permission, model, migration and endpoint — and is then
-removed from production navigation. **F063 owns that proof**; this document is the recipe it follows,
-and any divergence between the two is a defect in one of them worth recording rather than smoothing
-over.
+removed from production navigation. **F063 delivered that proof**: the module is
+`backend/tests/demo_records.py` (with `frontend/tests/config/demo-module.tsx` for the registry half),
+the tests that drive it are `backend/tests/test_extension_contract.py` and
+`frontend/tests/config/modules.test.tsx`, and `docs/FOUNDATION_REPORT.md` §2 records the three places
+where being test-only forced a divergence from this recipe — a permission code the server does not
+register, a table with no revision, and an audit event nobody registers. This document is the recipe;
+a divergence between the two found later is a defect in one of them, worth recording rather than
+smoothing over.

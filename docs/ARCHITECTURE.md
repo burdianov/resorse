@@ -1062,8 +1062,13 @@ Rules that make these boundaries real:
 - **Permissions are registered server-side.** A frontend module cannot grant itself authority.
 - **The navigation registry is single-source**: sidebar, command palette, breadcrumbs and route guards all read
   the same permission-filtered definition (F016).
-- **The extension contract is proven by a test-only module** in F063 — one route, nav item, permission, model,
-  migration and endpoint, then removed from production — per §12 Phase 7.
+- **The extension contract is proven by a test-only module** (F063) — one route, nav item, permission,
+  model, migration and endpoint, then removed from production — per §12 Phase 7. The proof is
+  `backend/tests/demo_records.py` + `backend/tests/test_extension_contract.py` and
+  `frontend/tests/config/demo-module.tsx` + `frontend/tests/config/modules.test.tsx`. It is a *test*
+  module, so "removed from production" is structural: the composition root never mounts its router and
+  the model registry never imports its model, and a test asserts exactly that
+  (`docs/FOUNDATION_REPORT.md` §2).
 - **Rates and personal data stay least-privilege** when Stage B arrives; `ScopePolicy` is where project scoping
   lands, and membership is always verified server-side.
 - **Uploaded bytes are reachable only through the API.** There is no public uploads volume and no

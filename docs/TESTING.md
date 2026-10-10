@@ -55,6 +55,16 @@ uv run pytest -m integration          # the PostgreSQL leg
 uv run pytest                         # both legs
 ```
 
+**Two files are checks rather than subject tests** (F063). `test_foundation_boundaries.py` scans
+the trees that ship — and the config files that carry values — for a forbidden dependency, import or
+artefact (no Next.js, no Redis) and for construction-domain vocabulary; it touches no database, so it
+deliberately carries no `integration` marker. `test_extension_contract.py` mounts a **test-only**
+module (`demo_records.py`) on an app the test builds — the shape `test_authorization.py`'s
+`build_scratch_app` established — and asserts the guards, ownership isolation, and that an
+unregistered permission code and an unregistered audit event are both refused; it reaches the
+database, so the whole file is marked. Both exist to make a boundary executable; see
+[`FOUNDATION_REPORT.md`](FOUNDATION_REPORT.md) §2–§3.
+
 **The suite fails rather than skips when no database is configured.** With no `DATABASE_URL` /
 `TEST_DATABASE_URL`, `conftest.py` calls `pytest.fail()` naming both legs — a suite that reported
 every database test as skipped and still exited 0 is a green light with nothing behind it. The two

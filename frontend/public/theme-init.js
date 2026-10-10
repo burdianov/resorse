@@ -12,7 +12,7 @@
     var dark = mode === 'dark' || (mode === 'system' && prefersDark)
     document.documentElement.classList.toggle('dark', dark)
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
-  } catch (error) {
-    /* storage blocked — fall through to the light default */
+  } catch {
+    /* storage blocked — fall through to the light default (no binding: nothing reads it) */
   }
 })()

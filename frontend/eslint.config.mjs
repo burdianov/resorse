@@ -80,4 +80,20 @@ export default defineConfig([
     files: ['tests/**/*.{ts,tsx}'],
     rules: {},
   },
+  {
+    // `public/` holds hand-written browser scripts — `theme-init.js` is loaded by
+    // `<script src>` from `index.html` before any bundle, so it has no module
+    // graph, no TypeScript, and no bundler to rewrite it (F060). `no-undef` is on
+    // for `.js` here (it is switched off only for `.ts`/`.tsx`, above), so the
+    // environment has to be declared rather than assumed: the two DOM globals the
+    // script uses, and script rather than module scope, which is what the tag in
+    // `index.html` actually gives it. This states a fact about the file; no rule
+    // is switched off, and a typo — or an `import` a classic script cannot have —
+    // still fails.
+    files: ['public/**/*.js'],
+    languageOptions: {
+      globals: { window: 'readonly', document: 'readonly' },
+      sourceType: 'script',
+    },
+  },
 ])

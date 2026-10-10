@@ -88,8 +88,8 @@ class PageLayout(StrEnum):
     """The four geometries the stack's reports use (CLAUDE_MASTER §Engineering).
 
     A caller picks a name, never a tuple of points: A3 landscape is the default
-    for wide manpower matrices and A4 for documents, and both are here so the
-    choice is explicit at the call site rather than buried in a geometry.
+    for a wide table and A4 for a document, and both are here so the choice is
+    explicit at the call site rather than buried in a geometry.
     """
 
     A4_PORTRAIT = "a4_portrait"
@@ -472,7 +472,7 @@ def render_docx(document: ReportDocument, *, template: bytes | None = None) -> b
     a report takes to Word and, through Gotenberg (F052), to a PDF as well. It is
     the *narrative* half of the pair: the built-in template draws the title, the
     fact block and the sections, and deliberately not the tables, because a wide
-    manpower matrix is the PDF engine's job. A caller that wants tables in Word
+    table is the PDF engine's job. A caller that wants tables in Word
     passes ``template``; the context carries them either way
     (:func:`_docx_context`), which is the seam a house template needs.
 

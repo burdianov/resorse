@@ -22,8 +22,9 @@
   verified against the reference). Tailwind 4 goes through `@tailwindcss/vite`; dark mode is the `.dark` class
   on `<html>`, not a media query — F010 supplies the provider that sets it.
 - **UI primitives and tests are live:** all **29 of the source's primitives** are present in
-  `frontend/src/components/ui/` — the last one, `table`, arrived with F020 — plus `calendar`, `date-picker`,
-  `time-picker` (F014, all three hand-written: not registry items) and `sonner` (F018), with the
+  `frontend/src/components/ui/` — the last one, `table`, arrived with F020, and `date-picker` and
+  `time-picker` are two of those 29, not extras — plus `calendar` (F014, hand-written: not a registry
+  item) and `sonner` (F018), so the directory holds **31 files**. With the
   generation-and-correction workflow
   in `ARCHITECTURE.md` §5 — after every `shadcn add` run **`pnpm run fix:ui`**, which restores components the
   generator reverted. Component tests live in `frontend/tests/components/`; Vitest config sits in `vite.config.ts`

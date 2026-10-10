@@ -159,7 +159,8 @@ async def engine_health(
     for the capability it describes, and it reports availability without naming
     an internal address or a version (an error body is not the place to narrate
     the deployment). PostgreSQL is deliberately *not* probed here — that is the
-    readiness endpoint's question (BP-8.4b, F062), and this route needs no
+    readiness endpoint's question (BP-8.4b), and that endpoint is not built and
+    has no owner (`REQUIREMENT_TRACEABILITY.md` §14 G-9). This route needs no
     database session at all.
     """
     # The renderer is CPU-bound here too, and a health route is not the place

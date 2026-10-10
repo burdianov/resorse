@@ -8,30 +8,38 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F063
-in claude_code_pack/TASKS.md. Implement F063 only, following the one-task protocol: plan in at most
-five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start Stage B (D001).
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and the task I name
+in claude_code_pack/TASKS.md. Stage A is complete (F001–F063, C51) and **G-A3 and G-A4 have not been run**:
+do not start Stage B (D001) until they are recorded in docs/IMPLEMENTATION_LOG.md. Implement only the task I
+name — plan in at most five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task
+including the handoff, then stop and give me the operator checks. Do not push.
 ```
 
 ## 2. Current position
 
-- **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F062 — Operations docs (**C50**; documentation only, no code). `README.md` rewritten at the root and
-  four new documents added — `docs/DEPLOYMENT.md`, `docs/BACKUP_RESTORE.md`, `docs/TESTING.md` and
-  `docs/ADDING_A_MODULE.md`; each states its own gaps (no VPS deployment, no backup ever taken, no CI run observed).
-- **Previous tasks:** F061 — CI workflows (**C49**; seven jobs, actionlint clean, **no CI job ever observed running**);
-  F060 — Security hardening (**C48**); F059 — Production Docker (**C47**); F058 — Accessibility and visuals (**C46**);
-  F057 — Browser E2E (**C45**); F056 — Backend quality gate (**C44**, §7); F055 (**C43**); F054 (**C42**).
-- **Next: F063 — Foundation handoff** (TASKS.md line 255 — the last Stage A task: test extension registry, no domain
-  leakage, a foundation gate report). **It closes Stage A**; the operator then runs G-A3 (due since F048) and G-A4.
-- **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (new — G-A1/G-A2
-  have no dated run recorded). **G-A3 (after F048) is due and is the operator's to run**, then G-A4 after F063. **Blockers:** none recorded.
-- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules. None blocks F063; never treat one
-  as approved, and if a task depends on one, stop and ask. Confirmed: C11–**C50** (C50 is F062's).
+- **Stage A — domain-neutral foundation — is complete** (F001–F063). Stage B (D001–D091, construction domain) has not
+  started. **Nothing is authorized next:** G-A3 and G-A4 are due, and Stage B waits on them.
+- **Last completed:** F063 — Foundation handoff (**C51**). The extension contract is proven by a test-only module (9
+  backend + 7 frontend tests), BP-0.5/BP-0.6/BP-3.1 are executable (5 scan tests), and `docs/FOUNDATION_REPORT.md` is
+  the Stage A report. F063 also fixed a **red frontend lint gate** (`public/theme-init.js`, shipped by F060: five
+  errors, so CI would have failed on its first run) and the docstrings crediting F062 with the unbuilt `/ready` probe.
+- **Previous tasks:** F062 — Operations docs (**C50**, docs only); F061 — CI workflows (**C49**; seven jobs, actionlint
+  clean, **no CI job ever observed running**); F060 (**C48**) → F054 (**C42**), each recorded in `DECISIONS.md`.
+- **Next:** **D001 — Domain architecture map** (TASKS.md line 261, the first Stage B task) — **only after G-A3 and G-A4
+  are recorded in `docs/IMPLEMENTATION_LOG.md`**. It is construction-domain work; later Stage B tasks are blocked by
+  OPEN decisions.
+- **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (G-A1/G-A2 have
+  no dated run recorded). **G-A3 (due since F048) and G-A4 both run against the F063 tree now** — the commands and
+  expected outcomes are in `docs/FOUNDATION_REPORT.md` §5. **Blockers:** G-9 (below) is unresolved, not blocking.
+- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules, and Stage B's first tasks depend
+  on some of them; never treat one as approved, and if a task depends on one, stop and ask. Confirmed: C11–**C51**.
 - **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can be
   missing from the running server while every test is green (it happened after F050). Run `alembic current` after any migration task; it reads `0009 (head)` today.
-- **Open item — `/ready` is not built (BP-8.4b), and now unowned:** `conversion.health()` belongs behind it but no readiness route exists; F053's `reports/engine-health` answers a different question, and `reports.py`'s docstring wrongly attributes the route to F062 (docs only) — **`REQUIREMENT_TRACEABILITY.md` §14 G-9; assign an owner or an exclusion before Stage A closes.** Read `health()`, don't re-implement it.
+- **Open item — `/ready` is not built (BP-8.4b), and unowned:** `conversion.health()` belongs behind it but no
+  readiness route exists; F053's `reports/engine-health` answers a different question. F063 corrected the two
+  docstrings that credited F062 with it, and did **not** build it — a readiness route is a route with its own tests
+  and no task in `TASKS.md` owns it. **`REQUIREMENT_TRACEABILITY.md` §14 G-9; the operator must assign an owner or
+  record an exclusion.** Read `health()`, don't re-implement it.
 - **Open item — orphan objects:** unlinked only *after* the caller's commit (and when it raises), so the residue is a process death in between; never unlink before commit.
 - **Open item — nothing scans uploads yet:** BP-6.4's hook ships as `MalwareScanner` + `NoMalwareScanner`, nothing is wired in, and a refusal is a 400 — never call uploads scanned.
 
@@ -77,54 +85,44 @@ Start the services, each in its own terminal:
 | Frontend | `cd D:\resors\frontend; pnpm run dev` | `VITE ... ready` → http://localhost:5173 |
 | Backend | `cd D:\resors\backend; uv run uvicorn app.main:app --reload --port 8000` | `Application startup complete` → http://localhost:8000/docs |
 
-- The frontend calls relative `/api/v1`; Vite proxies it to port 8000 (same-origin, no CORS). `.env` sits at the
-  repository root and is git-ignored.
-- **Port clash:** other local projects also publish 5432 (and possibly 3100). Change `POSTGRES_PORT` /
-  `GOTENBERG_PORT` in `.env` to run side by side — and change `GOTENBERG_URL` with the converter's port.
+- The frontend calls relative `/api/v1` (Vite proxies it to 8000; same-origin, no CORS); `.env` sits at the repository root and is git-ignored.
+- **Port clash:** other local projects also publish 5432 (and 3100) — change `POSTGRES_PORT` / `GOTENBERG_PORT` in `.env` (and `GOTENBERG_URL`) to run side by side.
 - **The browser suite needs only the database container** (its own API and frontends on 8001/5174/4174) + `pnpm exec playwright install chromium` once per machine.
 
 ## 5. Open items
 
 - **Needs an operator decision — the roles screen after a successful save.** `pages/admin/roles.tsx` re-seeds its draft
   from the *pre-request* cache entry when `saveMutation` succeeds, so the save bar can stay visible (and a just-saved cell
-  render unchanged) **while the grant is persisted** — verified against `app_e2e`. **No backlog task owns it**: a new task
-  must; C46 records it as the one F057 finding F058 deliberately did not touch. The other four are fixed (palette header,
-  breadcrumb separator, three link-buttons, raw column ids) and the specs assert the last of them.
-- **The visual baselines are platform-tagged**, and `pnpm run test:visual` on a Linux runner finds none of them
-  (`…-quality-win32.png`), failing every state as new — F061 (CI) runs them in a Windows job. Not a defect if you meet it: the masked
-  notification `<time>` carries a 7rem minimum width, so the 390px card wraps a line earlier than the app wraps it (§12).
-- **Dismissed — the jsdom `Select` item** (`CARRIED_CONSTRAINTS.md` §6): an uncontrolled `Select` is unreachable
-  here (every `<Select` under `src/` passes `value`); its rendered label is now one of F058's baselines.
+  render unchanged) **while the grant is persisted** (`app_e2e`-verified). **No backlog task owns it**; C46 records it as
+  the one F057 finding F058 deliberately did not touch (the other four are fixed).
+- **The visual baselines are platform-tagged** (`…-quality-win32.png`): on Linux, `pnpm run test:visual` finds none of
+  them and fails every state as new — F061 (CI) runs them in a Windows job. Not a defect if you meet it (`ARCHITECTURE.md` §12).
+- **Dismissed — the jsdom `Select` item** (`CARRIED_CONSTRAINTS.md` §6): an uncontrolled `Select` is unreachable here (every `<Select` under `src/` passes `value`); its label is now an F058 baseline.
 
 ## 6. Testing and quality gates
 
 **Focused checks** (the agent runs these and reports observed results):
-- Frontend: `cd D:\resors\frontend; pnpm exec vitest run <touched test files>`, `pnpm run typecheck`,
-  `pnpm run lint <paths>`, `pnpm run format:check <paths>`; backend: `cd D:\resors\backend; uv run pytest <touched
-  files>`, `uv run ruff format --check <files>`, `uv run ruff check <files>`, `uv run mypy <files>`.
+- Frontend (from `frontend/`): `pnpm exec vitest run <touched test files>`, `pnpm run typecheck`, `pnpm run lint <paths>`,
+  `pnpm run format:check <paths>`; backend (from `backend/`): `uv run pytest <files>`, `uv run ruff format --check <files>`, `uv run ruff check <files>`, `uv run mypy <files>`.
 - **Browser specs (F057) and the two quality suites (F058):** `cd D:\resors\frontend; pnpm exec playwright test` runs
   them all; `pnpm run test:a11y` / `test:visual` are the same project filtered to one file, and both make `workflow.spec.ts`
   run first. The postgres container must be up (each invocation builds its own `app_e2e`). A failure keeps its screenshot in
   `frontend/test-results/` — **`error-context.md` snapshots only the test's first page**. **A visual difference is looked at,
-  never re-pinned blind**: `test:visual:update` writes, `test:visual` is the run that says they are stable. **Poll both races**: a one-shot `activeElement`
-  read after `Tab` races base-ui's focus guard, and `useTheme` polls `html.dark` because the app applies an emulated theme a task later — never a single read.
+  never re-pinned blind** (`test:visual:update` writes; `test:visual` is the run that says they are stable), and **poll both races** — a one-shot `activeElement` read after `Tab` races base-ui's focus guard, and `useTheme` polls `html.dark`.
 - **Mark a new backend test with `integration` iff it reaches the database** — `tests/test_markers.py` fails in both
   directions, so a database test without the marker and a marked test without a database fixture are both red.
 - If the API contract changed: `cd D:\resors\backend; uv run python -m scripts.export_openapi`, then
   `cd D:\resors\frontend; pnpm run api:types`. Both committed artefacts must be byte-stable apart from the task's own diff.
 - Dev-only surface (F054's rule): `pnpm run build`, then search `dist/` for a lab-only string or the route path — a
   match means the exclusion failed. Never infer it from the `import.meta.env.DEV` ternary.
-- Lint only what you touched; whole-repo `pnpm run lint`/`format:check`/`coverage` and — from F056 — bare
-  `uv run ruff check .`/`ruff format --check .`/`mypy` are **gate checks**. Never relax a threshold to pass one.
+- Lint only what you touched; whole-repo `pnpm run lint`/`format:check`/`coverage` and — from F056 — bare `uv run ruff check .`/`ruff format --check .`/`mypy` are **gate checks**. Never relax a threshold to pass one.
 
 **Gate checks** (the operator runs these; the agent supplies the commands and never reports their results):
 frontend → `pnpm run lint`, `format:check`, `typecheck`, `build`, `pnpm exec vitest run`, `pnpm run coverage`,
 `pnpm exec playwright test`; backend → `uv run ruff format --check .`, `uv run ruff check .`, `uv run mypy`,
-`uv run pytest` (both legs), `uv run python -m scripts.coverage_gate`. Non-zero means a missed threshold, a red suite,
-or a group below its floor.
+`uv run pytest` (both legs), `uv run python -m scripts.coverage_gate`. Non-zero means a missed threshold, a red suite, or a group below its floor.
 
-**Gaps:** none in either gate. The frontend's `typecheck` covers `tests/` (F055 follow-up), and the backend's two
-database-dependent checks **fail** rather than skip — start the container, don't run the other leg and call it a gate.
+**Gaps:** none in either gate. The frontend's `typecheck` covers `tests/` (F055 follow-up), and the backend's two database-dependent checks **fail** rather than skip — start the container, don't run the other leg and call it a gate.
 
 **Production Compose (F059)** is `docker-compose.prod.yml`; its boot check is in §7. **Test counts are historical**; both quality suites are live as of F058.
 
@@ -134,7 +132,7 @@ The record column is **historical and the agent's own observation**, never the o
 
 | Check | Command | Record (F056 unless marked) |
 |---|---|---|
-| Working tree & HEAD | `git -C D:\resors status --short`; `git -C D:\resors log -1 --format="%h %s"` | clean after the commit; **F062 record**: HEAD = `docs(F062): operations docs`, the documentation and the handoff in the same commit |
+| Working tree & HEAD | `git -C D:\resors status --short`; `git -C D:\resors log -1 --format="%h %s"` | clean after the commit; **F063 record**: HEAD = `feat(F063): foundation handoff` (the implementation and the updated handoff in one commit). F062 recorded `docs(F062): operations docs` the same way |
 | **Browser E2E (F057)** | `docker compose up -d --wait postgres`; `cd D:\resors\frontend; pnpm exec playwright install chromium`; `pnpm exec playwright test` | **F057 record**: `11 passed` on two consecutive runs (1.1m, 1.3m) — BP-10.4's eleven steps as one serial file against API 8001 / dev 5174 / preview 4174 on the run's own `app_e2e`. Needs ~3 min (it builds the frontend). `pnpm exec playwright test` now also runs F058's two files; the console noise it used to log (breadcrumb `<li>`, `nativeButton`) had its causes removed in F058 and **no spec asserts the console**. The HTML report lands in `frontend/playwright-report/` |
 | **Visual baselines (F058)** | `docker compose up -d --wait postgres`; `cd D:\resors\frontend; pnpm run test:visual` | **F058 record**: `105 passed` — the 11 workflow steps plus **94 screenshots** — and what certifies them is `pnpm run test:visual:update` (wrote them; `105 passed (3.5m)`) followed by a plain `pnpm run test:visual` that reproduced all 94 and **wrote nothing** (`105 passed (3.3m)`; the newest baseline's mtime predates it). Getting there took a second pass: a re-run of the committed baselines failed **10 of 105**, because a worker restarts after any failure and re-runs the suite's setup — the run photographed its own history (a stored sidebar preference, one more inbox notice per restart, and the masked `<time>`'s box moving with the phrase's width). All three are fixed in the suite (`State.sidebar`, the inbox trimmed to the one notice the run just caused, a 7rem minimum width on `<time>`), and the ten diffs were read before their baselines were re-pinned — exactly ten files changed, 94 in and 94 out. A difference fails the run and writes actual/expected/diff into `frontend/test-results/`; `maxDiffPixels: 0`. Snapshots are committed (`frontend/tests/e2e/visual.spec.ts-snapshots/`, `*-quality-win32.png`) |
 | **Accessibility (F058)** | `docker compose up -d --wait postgres`; `cd D:\resors\frontend; pnpm run test:a11y` | **F058 record**: `25 passed (1.5m)` — the 11 workflow steps plus **14 axe scans over 9 screens** (five of them in both themes, plus 403 / 404 / unreachable-server / mobile drawer). WCAG 2.2 A/AA, failing on `critical` **and** `serious`, no rule suppressed. The theme check is **polled**: reading `html.dark` once after `emulateMedia` lost the race on the sign-in screen — 1 scan of 14 — and the fix was the assertion, not the app |
@@ -142,7 +140,7 @@ The record column is **historical and the agent's own observation**, never the o
 | Backend types | `cd D:\resors\backend; uv run mypy` | `Success: no issues found in 97 source files` — the file list is in `[tool.mypy]`, so the bare command covers `app`, `tests` and `scripts` |
 | Backend suite | `cd D:\resors\backend; uv run pytest -m "not integration"`; `uv run pytest` | no-database leg: 168 passed, 2 skipped, 264 deselected in 1.09 s (the skips are conditional — the live Gotenberg test and this platform's symlink test). **Both legs** are a gate check, run by the agent inside the coverage gate: **432 passed, 2 skipped in 30.02 s**, needing `docker compose up -d --wait` first |
 | Backend coverage gate | `cd D:\resors\backend; uv run python -m scripts.coverage_gate` | exit **0**; `core` 25 files **96.72%** (floor 85), `auth_rbac` 13 files **97.34% branches** (floor 97), `total` 65 files / 2742 stmts / 96 miss / 516 branch / 38 brpart **95.64%** (floor 95) |
-| Frontend lint / format | `cd D:\resors\frontend; pnpm run lint`; `pnpm run format:check` | **F057 record**: exit 0 / `All matched files use Prettier code style!` — `.prettierignore` now excludes `playwright-report/` and `test-results/`, which the runner writes into the working tree |
+| Frontend lint / format | `cd D:\resors\frontend; pnpm run lint`; `pnpm run format:check` | **F063 record**: exit 0 / `All matched files use Prettier code style!` — but the lint gate had been **red since F060** (`public/theme-init.js`, 5 errors) and CI would have failed on its first run; fixed in F063 (C51). `.prettierignore` excludes `playwright-report/` and `test-results/`, which the runner writes into the working tree |
 | Frontend typecheck / coverage | `pnpm run typecheck`; `pnpm run coverage` | **F057 record** for typecheck (exit 0) and **F055 for coverage**: 67 files / **563** passed, All files **92.65 | 80.49 | 91.14 | 93.71**, `src/lib` **94.04 | 85.71 | 90.32 | 95.65** |
 | **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **F055 record**: no match — the lab page and recharts are absent from `dist/`. A match means the exclusion broke |
 | Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check. F055 record**: 563 passed (F047: 498) |
@@ -150,6 +148,7 @@ The record column is **historical and the agent's own observation**, never the o
 | **CI (F061)** | Push the branch and read the Actions run for `CI`. Locally, the workflow lint: `docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint:latest -no-color .github/workflows/ci.yml` | Agent record: actionlint clean (no output). Expect all seven jobs green; the `visual` job is the one to read first, because its PostgreSQL step is unverified (DECISIONS C49) |
 | **Operations docs (F062)** | Read the `README.md` quick start and walk it on a clean machine; then `docs/DEPLOYMENT.md` §3–§6 and `docs/BACKUP_RESTORE.md` | Documentation, so there is no gate command. The check: the quick start agrees with `OPERATOR_GUIDE.md`, the commands run as written, and every recorded gap still says so — `DEPLOYMENT.md` §14 (no real VPS, ACME/HTTPS/load untested, `/ready` not built), `BACKUP_RESTORE.md` §9 (**no backup has ever been taken**), `TESTING.md` §7 (no CI job observed running). Anything that reads as verified and is not, is a defect |
 | **Security (F060)** | `cd D:\resors\backend; uv run pytest tests/test_production_hardening.py` | 23 passed (agent record). Edge check on a live host: `curl -sI https://<SITE_ADDRESS>/` shows the CSP, HSTS and `nosniff` (`docs/SECURITY.md` §4.2) |
+| **Foundation report (F063)** | Read `docs/FOUNDATION_REPORT.md` (BP-14.8), then `cd D:\resors\backend; uv run pytest tests/test_extension_contract.py tests/test_foundation_boundaries.py` and `cd D:\resors\frontend; pnpm exec vitest run tests/config/modules.test.tsx` | The report is the check: it must not claim a gate result, and every number in it must be attributable. Agent record: 9 / 5 / 7 passed. **G-A3 and G-A4 run against this tree** — the commands are in the report's §5 |
 | **Production stack (F059)** | Create `.env.production` from `.env.production.example` (real values, git-ignored), then `cd D:\resors; docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait` | Agent's record (scratch env, `SITE_ADDRESS=localhost`): all five services healthy, `migrate` exit 0. The operator's check: `curl -k https://<SITE_ADDRESS>/api/v1/health` → `"environment":"production"`; `docker compose -f docker-compose.prod.yml --env-file .env.production down` leaves volumes intact (`down -v` deletes them) |
 | Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)`. Run this after any migration task — a dev database behind head serves 500s while every test is green |
 | Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F057 adds no migration). F049 record: clean, ending at `0009` |
@@ -161,14 +160,15 @@ The record column is **historical and the agent's own observation**, never the o
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F063 is at line 255, then Stage B (D001+) |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C50; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; **Stage A is complete — Stage B starts at D001 (line 261)** |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C51; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |
 | `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's and the F057/F058 browser suites), §6 authorization, §7 boundaries, §12 traps |
 | `docs/REQUIREMENT_TRACEABILITY.md` | BP-x.y index (§1–§11) and §14 gaps |
 | `docs/ROUTES_NAVIGATION.md`, `docs/OPENAPI_CLIENT.md` | Routing registry; typed-client recipe |
 | `README.md`, `docs/DEPLOYMENT.md`, `docs/BACKUP_RESTORE.md`, `docs/TESTING.md`, `docs/ADDING_A_MODULE.md` | **F062's operations runbook**: quick start, deploy/migrate/rollback, backup and restore, the test matrix and gate commands, and the extension recipe |
+| `docs/FOUNDATION_REPORT.md` | **F063's Stage A report**: what shipped, the extension proof, the boundary check, BP-13's checklist judged, the G-A4 commands, and every open item. Read it before Stage B |
 | `docs/STACK_VERSIONS.md` | Version pins, the toolchain (§3), the browser stack (§6), approved deviations (§5). `docs/CARRIED_CONSTRAINTS.md` / `docs/ENVIRONMENT.md`: archived §6 constraints / §4 environment snapshot |
 
 **Do not load the four archives in full** — search them for the task ID. Use the `REQUIREMENT_TRACEABILITY.md` index rather than reading `BIG-PROMPT.txt` whole.
