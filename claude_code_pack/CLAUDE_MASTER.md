@@ -11,7 +11,7 @@ The original QTC360 source is a **reference only**, read from the extracted tree
 
 ## Mandatory stack and non-negotiables
 - Frontend: React, Vite, TypeScript strict, React Router SPA, Tailwind CSS 4, shadcn/ui base-nova/Base UI where compatible, Lucide, TanStack Query/Table, React Hook Form + Zod, Axios, Recharts; **pnpm** package manager with `pnpm-lock.yaml` (operator override 2026-10-08, see `DECISIONS.md` C11 — `BIG-PROMPT.txt` says npm); accessible responsive light/dark/system theme.
-- Backend: FastAPI, Python >=3.12, async SQLAlchemy 2, Alembic, Pydantic 2, PostgreSQL, uv, pytest.
+- Backend: FastAPI, async SQLAlchemy 2, Alembic, Pydantic 2, PostgreSQL, uv, pytest. Python version: follow `backend/pyproject.toml` (`requires-python`); do not rely on version numbers in documentation.
 - Operations: Docker Compose, Caddy HTTPS/static SPA reverse proxy, GitHub Actions, Gotenberg for DOCX conversion, ReportLab for PDF, OpenPyXL for Excel, Hetzner-compatible Linux VPS documentation.
 - No Next.js. No Redis. No public signup. No seeded production passwords. One legal entity, AED only. Use current **verified compatible stable** versions; lock and record actual versions, not speculative version numbers.
 - Admin creates users and sets/resets temporary passwords; forced change on first login/reset; users can change own passwords. A user may hold multiple roles. Server-side authorization and project scope are mandatory.
