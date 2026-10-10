@@ -854,6 +854,17 @@ Rules that make these boundaries real:
   formula-injection defence, in its markup form. `merge_pdfs` keeps caller order and reads every part before
   writing any, so a damaged part refuses the merge instead of producing a bundle missing its middle
   (F051, C39).
+- **An office suite runs, but not in this process.** Word files are converted by Gotenberg over HTTP
+  (`POST /forms/libreoffice/convert`), the one outbound call this stack makes: the API holds no office
+  suite, the container publishes nothing in production, and the seam tests use is an injectable httpx
+  *transport* rather than a mock of the module. A converter that is down is a refusal the caller handles,
+  never a start-up failure — `health()` answers a boolean, so a probe never has to invent an error path —
+  and the answer is **verified, not trusted**: a 200 carrying an error page instead of a PDF is refused,
+  because a caller that believed the status would store HTML and later serve it as somebody's report.
+  The response is read under a size cap while streaming, and the request's filename is load-bearing
+  (Gotenberg reads the input type from its extension). The Word *renderer* is the narrative half of
+  BP-7.9b: same document, built-in template generated in code rather than committed as a binary, escaping
+  left to docxtpl's own `autoescape` so nothing becomes `&amp;amp;` (F052, C40).
 
 ## 8. Data model (foundation only)
 

@@ -5,7 +5,11 @@
 # loudly if they are missing, so no password is ever baked into the repository
 # (§0.7, §11.5). Copy .env.example to .env first.
 #
-# Gotenberg joins this file with F052, where it is first needed.
+# Both services are DEVELOPMENT dependencies. Gotenberg (F052) converts Word
+# files to PDF; it holds LibreOffice, so the API never runs an office suite in
+# its own process (ARCHITECTURE §1–§2). Its published port here is a convenience
+# for an API running on the host — F059's production file publishes nothing and
+# reaches it by service name on the internal network.
 
 name: resors
 
@@ -29,6 +33,29 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Tagged by minor version rather than by `:8`: this image runs an office suite
+  # over documents, so a conversion that changed between two builds is a bug
+  # report with no fixed point. The API's route and field names are pinned to it
+  # (app/services/conversion.py), and the version moves with them.
+  gotenberg:
+    image: gotenberg/gotenberg:8.37
+    container_name: resors-gotenberg
+    restart: unless-stopped
+    ports:
+      # Host port is configurable: the API reads this address from GOTENBERG_URL
+      # in .env, so a clash only needs both numbers changed.
+      - "${GOTENBERG_PORT:-3100}:3000"
+    # The liveness route the image's own docs describe, and `curl`, which the
+    # image installs for exactly this purpose. The API calls the same path
+    # (conversion.HEALTH_PATH), so a green Compose health line and a green
+    # readiness answer mean the same thing.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 10s
       timeout: 5s
       retries: 10
       start_period: 10s

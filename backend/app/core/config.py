@@ -114,6 +114,24 @@ class Settings(BaseSettings):
     # spreadsheets removes one entry.
     storage_allowed_content_types: str = ",".join(DEFAULT_ALLOWED_CONTENT_TYPES)
 
+    # The document converter (F052; BP-7.9b "Gotenberg conversion"). Gotenberg is
+    # the only service this application calls out to, and it is not a dependency
+    # in the way PostgreSQL is: converting a DOCX is one operation, so the
+    # service being down must degrade to a clear refusal, never to a failed
+    # start-up. The development default is the host port `docker-compose.yml`
+    # publishes (ARCHITECTURE §2); in production the name is a service on the
+    # internal network and nothing publishes its port (F059).
+    gotenberg_url: str = "http://localhost:3100"
+    # The first conversion in a fresh container pays LibreOffice's cold start, so
+    # this is generous next to a database round trip. A timeout is reported as
+    # "the converter is unavailable", not as a failed conversion: a caller can
+    # tell a hang from a refusal, and neither is something the user typed wrong.
+    gotenberg_timeout_seconds: float = 60.0
+    # A runaway guard on the *response*, not a policy about report size. The
+    # conversion hands the document to a whole office suite, so what needs
+    # bounding is what comes back — read with a cap, exactly as an upload is.
+    gotenberg_max_response_bytes: int = 20 * 1024 * 1024
+
     @property
     def trusted_origins(self) -> frozenset[str]:
         """``allowed_origins`` as a lookup set: trimmed, lowercased, slash-free."""

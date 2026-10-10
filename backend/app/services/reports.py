@@ -1,11 +1,11 @@
-"""Building PDFs: a generic report renderer and a merge (F051, BP-7.9b).
+"""Building reports: a PDF renderer, a DOCX renderer and a merge (F051/F052, BP-7.9b).
 
-Two operations, and no route. F053 owns the endpoint, the ``reports.generate``
-check and the preview UI; F052 owns the DOCX half of the same requirement. What
-lives here is the part neither of them should re-implement: a ReportLab document
-that carries the furniture a report needs — a title block, a metadata block,
-tables whose headers repeat when they spill — and a pypdf merge that puts
-several documents in one file.
+Three operations, and no route. F053 owns the endpoint, the ``reports.generate``
+check and the preview UI. What lives here is the part no caller should
+re-implement: a ReportLab document that carries the furniture a report needs — a
+title block, a metadata block, tables whose headers repeat when they spill — the
+same :class:`ReportDocument` rendered as a Word file through docxtpl, and a pypdf
+merge that puts several documents in one file.
 
 Three positions worth naming, because each is a place the obvious shortcut is
 wrong:
@@ -23,10 +23,12 @@ wrong:
   until an embedded TTF is chosen for it, and that is a decision for the first
   task that needs one (C39).
 - **A value is a value.** ``<`` or ``&`` in a cell is text a user typed, not
-  markup: every string that reaches a ``Paragraph`` is escaped first. BP-7.9d's
-  CSV/Excel half calls the same class of problem formula injection; the PDF's
-  version is markup injection, and it is closed at this boundary rather than
-  trusted to every call site.
+  markup: every string that reaches a ``Paragraph`` is escaped first, and the
+  DOCX renderer switches on docxtpl's own ``autoescape`` for the same reason
+  (escaping by hand *there* would print ``&amp;amp;``). BP-7.9d's CSV/Excel half
+  calls the same class of problem formula injection; the PDF's version is markup
+  injection, and it is closed at this boundary rather than trusted to every call
+  site.
 
 Nothing here reads settings or the database. The caller supplies the words and
 the data, so the engine holds no opinion about branding (C29 is still open) and
@@ -43,10 +45,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from functools import partial
+from functools import lru_cache, partial
 from typing import Any, Final
 from xml.sax.saxutils import escape
 
+from docx import Document as DocxDocument
+from docxtpl import DocxTemplate
 from pypdf import PageObject, PdfReader, PdfWriter
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A3, A4, landscape
@@ -246,6 +250,15 @@ def escaped(value: Any) -> str:
     return escape(str(value))
 
 
+def _utc_stamp(moment: datetime) -> str:
+    """An instant as both renderers write it: UTC, to the minute, labelled.
+
+    Display conversion is the settings/UI layer's business (F048); a file is a
+    record, and a record states the zone it was written in.
+    """
+    return f"{moment.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
+
+
 # --------------------------------------------------------------------------
 # Rendering
 # --------------------------------------------------------------------------
@@ -279,7 +292,7 @@ def render_report(document: ReportDocument) -> bytes:
         canvasmaker=partial(
             _ReportCanvas,
             footer_left=document.title,
-            footer_right=f"{generated_at.astimezone(UTC):%Y-%m-%d %H:%M} UTC",
+            footer_right=_utc_stamp(generated_at),
         ),
     )
     return buffer.getvalue()
@@ -440,6 +453,113 @@ class _ReportCanvas(canvas.Canvas):  # type: ignore[misc]
         self.drawCentredString(width / 2, FOOTER_BASELINE, f"Page {self._pageNumber} of {total}")
         self.drawRightString(width - MARGIN, FOOTER_BASELINE, self._footer_right)
         self.restoreState()
+
+
+# --------------------------------------------------------------------------
+# Word documents
+# --------------------------------------------------------------------------
+
+# A Word file's type on the wire, named once so the renderer, the converter and
+# their callers cannot disagree about it.
+DOCX_CONTENT_TYPE: Final = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def render_docx(document: ReportDocument, *, template: bytes | None = None) -> bytes:
+    """Render ``document`` to the bytes of a Word file (BP-7.9b's docxtpl half).
+
+    The same document in a different medium: :func:`render_report` is the
+    executive PDF — tables, page furniture, A3 landscape — while this is the road
+    a report takes to Word and, through Gotenberg (F052), to a PDF as well. It is
+    the *narrative* half of the pair: the built-in template draws the title, the
+    fact block and the sections, and deliberately not the tables, because a wide
+    manpower matrix is the PDF engine's job. A caller that wants tables in Word
+    passes ``template``; the context carries them either way
+    (:func:`_docx_context`), which is the seam a house template needs.
+
+    ``template`` is the bytes of a ``.docx`` whose text may hold docxtpl tags;
+    the default is described in :func:`_default_docx_template`.
+    """
+    source = template if template is not None else _default_docx_template()
+    docx = DocxTemplate(io.BytesIO(source))
+    docx.render(_docx_context(document), autoescape=True)
+    output = io.BytesIO()
+    docx.save(output)
+    return output.getvalue()
+
+
+@lru_cache
+def _default_docx_template() -> bytes:
+    """The built-in template: a Word file whose text carries the tags.
+
+    Built in code rather than committed as a binary asset. A ``.docx`` nobody can
+    read in a diff is exactly what a template should not be; while the default
+    lives here, everything it says is visible in review, and a deployment that
+    wants its own letterhead passes one in.
+
+    Only two kinds of tag appear, and each is used the way docxtpl requires:
+    inline ``{{ … }}`` inside a paragraph, and paragraph-level ``{%p … %}`` alone
+    in its own paragraph — the tag stands for the whole paragraph in the XML, so
+    anything else sharing that paragraph would be discarded with it.
+    """
+    template = DocxDocument()
+    template.add_heading("{{ title }}", level=0)
+    template.add_paragraph("{%p if subtitle %}")
+    template.add_paragraph("{{ subtitle }}")
+    template.add_paragraph("{%p endif %}")
+    template.add_paragraph("{%p for fact in facts %}")
+    template.add_paragraph("{{ fact.label }}: {{ fact.value }}")
+    template.add_paragraph("{%p endfor %}")
+    template.add_paragraph("{%p for section in sections %}")
+    template.add_heading("{{ section.heading }}", level=1)
+    template.add_paragraph("{%p for paragraph in section.paragraphs %}")
+    template.add_paragraph("{{ paragraph }}")
+    template.add_paragraph("{%p endfor %}")
+    template.add_paragraph("{%p endfor %}")
+    template.add_paragraph("{{ author }} · {{ generated_at }}")
+    buffer = io.BytesIO()
+    template.save(buffer)
+    return buffer.getvalue()
+
+
+def _docx_context(document: ReportDocument) -> dict[str, Any]:
+    """The document as the template's context — every word it has, escaped once.
+
+    The values are **raw**: ``autoescape=True`` at the render call is docxtpl's
+    own switch, and escaping here as well would double it into ``&amp;amp;``. The
+    PDF engine escapes by hand only because ReportLab offers no equivalent.
+
+    Everything a :class:`ReportDocument` can say is present, including the tables
+    the built-in template does not draw, so a caller's template is not bounded by
+    the one that ships.
+    """
+    generated_at = document.generated_at or datetime.now(UTC)
+    return {
+        "title": document.title,
+        "subtitle": document.subtitle,
+        "author": document.author,
+        "generated_at": _utc_stamp(generated_at),
+        "facts": [{"label": label, "value": value} for label, value in document.metadata],
+        "sections": [
+            {"heading": section.heading, "paragraphs": list(section.paragraphs)}
+            for section in document.sections
+        ],
+        "tables": [_docx_table(table) for table in document.tables],
+    }
+
+
+def _docx_table(report_table: ReportTable) -> dict[str, Any]:
+    """A report table as context a template can loop over.
+
+    Checked by :func:`_checked` for the same reason the PDF path is: a ragged row
+    is a caller's bug, and a document that quietly drops cells is worse than one
+    that refuses to be built — a missing number reads as a zero.
+    """
+    columns, rows = _checked(report_table)
+    return {
+        "heading": report_table.heading,
+        "columns": list(columns),
+        "rows": [[str(cell) for cell in row] for row in rows],
+    }
 
 
 # --------------------------------------------------------------------------

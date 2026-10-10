@@ -21,11 +21,21 @@ dependencies = [
     "python-multipart==0.0.32",
     "email-validator==2.3.0",
     "argon2-cffi==25.1.0",
+    # Outbound HTTP (F052): the Gotenberg conversion adapter is the first caller,
+    # and it was previously a *dev* dependency only because nothing in the app
+    # made a request of its own. `httpx` is the same client the test suite uses,
+    # so the adapter and its tests speak one library.
+    "httpx==0.28.1",
     # Generic document, report and export infrastructure (F049–F053)
     "reportlab==5.0.1",
     "pypdf==6.19.0",
     "pymupdf==1.28.2",
+    # `docxtpl` renders a DOCX template with Jinja; `python-docx` is what builds
+    # the template it renders. docxtpl depends on it already, but F052 imports it
+    # by name, and a direct import of an undeclared transitive dependency is a
+    # break waiting for someone else's release (F052).
     "docxtpl==0.20.2",
+    "python-docx==1.2.0",
     "pillow==12.3.0",
     "openpyxl==3.1.5",
     "tzdata>=2026.5",
@@ -36,7 +46,6 @@ dev = [
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
-    "httpx==0.28.1",
     "ruff==0.16.10",
     "mypy==2.4.0",
 ]
@@ -55,9 +64,11 @@ line-length = 100
 python_version = "3.14"
 strict = true
 
-# ReportLab publishes no stubs, so `strict` would report the library's own
-# untyped imports as this project's errors. The exemption is scoped to the
-# package: `pypdf` ships inline types and is still checked (F051).
+# Two of the report libraries publish no type information at all, so `strict`
+# would report *their* untyped imports as this project's errors: ReportLab
+# (F051) and docxtpl (F052). The exemption is scoped to those two packages, and
+# each entry is a fact about the released package rather than a preference —
+# `pypdf` and `python-docx` ship inline types and stay fully checked.
 [[tool.mypy.overrides]]
-module = "reportlab.*"
+module = ["reportlab.*", "docxtpl.*"]
 ignore_missing_imports = true
