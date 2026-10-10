@@ -10,10 +10,12 @@ the rate-limit buckets. Each later group arrives with the task that owns it —
 D002 opens the domain's own group (``masters``), D003 adds its second table
 and D004 its third, the first that references other rows; D007 opens the
 second group (``projects``), the first table that is not a reference list, and
-D010 adds its second table (``cost_centres``).
+D010 adds its second table (``cost_centres``); D011 adds the ``masters``
+group's fourth table (``employees``), the first record table in that group.
 """
 
 from app.models.audit import AUDIT_ACTIONS, AUDIT_ENTITY_TYPES, AuditLog
+from app.models.employees import EMPLOYEE_STATUSES, Employee
 from app.models.files import FileAsset
 from app.models.identity import Permission, Role, User, role_permissions, user_roles
 from app.models.masters import Department, Designation, Discipline
@@ -28,6 +30,7 @@ __all__ = [
     "AUDIT_ACTIONS",
     "AUDIT_ENTITY_TYPES",
     "COST_CENTRE_KINDS",
+    "EMPLOYEE_STATUSES",
     "PROJECT_STATUSES",
     "REVOCATION_REASONS",
     "AppSetting",
@@ -36,6 +39,7 @@ __all__ = [
     "Department",
     "Designation",
     "Discipline",
+    "Employee",
     "FileAsset",
     "Notification",
     "Permission",
