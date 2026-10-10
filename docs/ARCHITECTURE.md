@@ -1069,6 +1069,10 @@ Rules that make these boundaries real:
   module, so "removed from production" is structural: the composition root never mounts its router and
   the model registry never imports its model, and a test asserts exactly that
   (`docs/FOUNDATION_REPORT.md` §2).
+- **A Stage B module is mapped before it is built, and the map is not the build.** `docs/DOMAIN_ARCHITECTURE.md`
+  (D001) carries the module set, the domain ERD and the action/scope matrix; `ADDING_A_MODULE.md` stays the
+  recipe for one of them. The map ships no table, route or code: a nav group whose page does not exist and a
+  permission code no route enforces are both defects here (§7's first two rules, and F016's dead-link rule).
 - **Rates and personal data stay least-privilege** when Stage B arrives; `ScopePolicy` is where project scoping
   lands, and membership is always verified server-side.
 - **Uploaded bytes are reachable only through the API.** There is no public uploads volume and no
@@ -1147,7 +1151,10 @@ rate_limit_buckets   (F026: one fixed-window counter row per key — DB-backed
 
 Every table: UUID primary keys, `timestamptz` UTC instants, explicit constraints and indexes. Money as
 `NUMERIC`/`Decimal` when Stage B introduces it. Cross-user isolation is enforced in SQL, not by filtering
-unrestricted rows in Python. **No domain table is created in Stage A.**
+unrestricted rows in Python. **No domain table is created in Stage A.** Stage B's tables — the module each
+belongs to, the constraints that carry the spec's rules, and why each arrives only with the task that owns it,
+taking the next revision after `0009` — are mapped in [`DOMAIN_ARCHITECTURE.md`](DOMAIN_ARCHITECTURE.md) §2;
+D001 adds no revision, so `0009` stays the head until D002.
 
 ## 9. Migration strategy
 

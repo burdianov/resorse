@@ -118,4 +118,5 @@ that "not listed here" keeps meaning "not planned" instead of "not looked for".
 the same metadata, and *declared* permission codes — permissions are registered server-side, so a module can
 never grant itself authority (`ARCHITECTURE.md` §7). Modules are compiled in; there is no runtime loader.
 A module-level `featureFlag` keeps the whole module dark until enabled. F063 proves the contract end to end with
-a test-only module.
+a test-only module, and `docs/DOMAIN_ARCHITECTURE.md` §1 (D001) maps the Stage B modules, their routes and their
+permission namespaces. **Nothing from that map is registered here until its page exists** — §5's rule.

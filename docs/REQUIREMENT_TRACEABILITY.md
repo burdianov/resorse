@@ -241,6 +241,14 @@ and is deliberately absent here, as F002 requires. `BIG-PROMPT.txt` §3.1 is its
 | `docs/REPOSITORY_AUDIT.md` | F001 | delivered |
 | `docs/REQUIREMENT_TRACEABILITY.md` | F002 | this document |
 
+**Stage B documents.** The table above is the set `BIG-PROMPT` §11.7/§14 requires. Stage B adds one document
+of its own, for the same reason F004 exists: a map written before the tables is what later tasks are checked
+against.
+
+| Document | Owning task | Status |
+|---|---|---|
+| `docs/DOMAIN_ARCHITECTURE.md` | D001 | **delivered by D001** — the module boundaries, the domain ERD (tables that do not exist yet) and the action/scope matrix; it defers to `DECISIONS.md` at every point an OPEN decision moves the shape |
+
 ## 13. Reverse index — Stage A task → requirements
 
 | Task | Requirements served |
