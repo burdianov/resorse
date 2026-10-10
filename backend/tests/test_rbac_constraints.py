@@ -13,10 +13,11 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Permission, Role, User, role_permissions, user_roles
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 
 def make_user(email: str = "ada@example.com", **overrides: object) -> User:
@@ -26,10 +27,12 @@ def make_user(email: str = "ada@example.com", **overrides: object) -> User:
         "hashed_password": "$argon2id$placeholder",
         **overrides,
     }
-    return User(**values)  # type: ignore[arg-type]
+    return User(**values)
 
 
-async def test_a_user_gets_a_database_generated_uuid_and_utc_instants(session) -> None:
+async def test_a_user_gets_a_database_generated_uuid_and_utc_instants(
+    session: AsyncSession,
+) -> None:
     session.add(make_user())
     await session.flush()
 
@@ -43,7 +46,7 @@ async def test_a_user_gets_a_database_generated_uuid_and_utc_instants(session) -
     assert user.updated_at.utcoffset() == timedelta(0)
 
 
-async def test_email_is_unique(session) -> None:
+async def test_email_is_unique(session: AsyncSession) -> None:
     session.add(make_user("ada@example.com"))
     await session.flush()
     session.add(make_user("ada@example.com"))
@@ -62,7 +65,7 @@ async def test_email_is_unique(session) -> None:
         ("all upper", "ADA@EXAMPLE.COM"),
     ],
 )
-async def test_email_must_be_canonical(session, label: str, email: str) -> None:
+async def test_email_must_be_canonical(session: AsyncSession, label: str, email: str) -> None:
     session.add(make_user(email))
 
     with pytest.raises(IntegrityError) as caught:
@@ -71,14 +74,14 @@ async def test_email_must_be_canonical(session, label: str, email: str) -> None:
     assert "ck_users_email_is_canonical" in str(caught.value.orig)
 
 
-async def test_a_blank_name_is_rejected(session) -> None:
+async def test_a_blank_name_is_rejected(session: AsyncSession) -> None:
     session.add(make_user(full_name="   "))
 
     with pytest.raises(IntegrityError):
         await session.flush()
 
 
-async def test_role_names_are_unique(session) -> None:
+async def test_role_names_are_unique(session: AsyncSession) -> None:
     session.add(Role(name="viewer"))
     await session.flush()
     session.add(Role(name="viewer"))
@@ -89,7 +92,7 @@ async def test_role_names_are_unique(session) -> None:
     assert "ix_roles_name" in str(caught.value.orig)
 
 
-async def test_permission_codes_are_unique(session) -> None:
+async def test_permission_codes_are_unique(session: AsyncSession) -> None:
     session.add(Permission(code="users.read"))
     await session.flush()
     session.add(Permission(code="users.read"))
@@ -110,7 +113,9 @@ async def test_permission_codes_are_unique(session) -> None:
         ("a space", "users. read"),
     ],
 )
-async def test_permission_codes_must_be_resource_dot_action(session, label: str, code: str) -> None:
+async def test_permission_codes_must_be_resource_dot_action(
+    session: AsyncSession, label: str, code: str
+) -> None:
     session.add(Permission(code=code))
 
     with pytest.raises(IntegrityError) as caught:
@@ -119,7 +124,7 @@ async def test_permission_codes_must_be_resource_dot_action(session, label: str,
     assert "ck_permissions_code_is_resource_dot_action" in str(caught.value.orig)
 
 
-async def test_a_role_cannot_be_granted_twice(session) -> None:
+async def test_a_role_cannot_be_granted_twice(session: AsyncSession) -> None:
     user = make_user()
     role = Role(name="viewer")
     session.add_all([user, role])
@@ -132,7 +137,7 @@ async def test_a_role_cannot_be_granted_twice(session) -> None:
     assert "pk_user_roles" in str(caught.value.orig)
 
 
-async def test_a_permission_cannot_be_attached_to_a_role_twice(session) -> None:
+async def test_a_permission_cannot_be_attached_to_a_role_twice(session: AsyncSession) -> None:
     role = Role(name="viewer")
     permission = Permission(code="users.read")
     session.add_all([role, permission])
@@ -149,7 +154,7 @@ async def test_a_permission_cannot_be_attached_to_a_role_twice(session) -> None:
     assert "pk_role_permissions" in str(caught.value.orig)
 
 
-async def test_memberships_must_point_at_real_rows(session) -> None:
+async def test_memberships_must_point_at_real_rows(session: AsyncSession) -> None:
     user = make_user()
     session.add(user)
     await session.flush()
@@ -160,7 +165,7 @@ async def test_memberships_must_point_at_real_rows(session) -> None:
     assert "fk_user_roles_role_id_roles" in str(caught.value.orig)
 
 
-async def test_deleting_a_user_removes_their_memberships(session) -> None:
+async def test_deleting_a_user_removes_their_memberships(session: AsyncSession) -> None:
     user = make_user()
     role = Role(name="viewer")
     session.add_all([user, role])
@@ -175,7 +180,9 @@ async def test_deleting_a_user_removes_their_memberships(session) -> None:
     assert await session.scalar(select(func.count()).select_from(Role)) == 1
 
 
-async def test_deleting_a_role_removes_memberships_and_permission_links(session) -> None:
+async def test_deleting_a_role_removes_memberships_and_permission_links(
+    session: AsyncSession,
+) -> None:
     user = make_user()
     role = Role(name="viewer")
     permission = Permission(code="users.read")
@@ -193,7 +200,7 @@ async def test_deleting_a_role_removes_memberships_and_permission_links(session)
     assert await session.scalar(select(func.count()).select_from(Permission)) == 1
 
 
-async def test_the_relationships_carry_roles_and_permissions(session) -> None:
+async def test_the_relationships_carry_roles_and_permissions(session: AsyncSession) -> None:
     role = Role(name="viewer")
     role.permissions = [Permission(code="users.read"), Permission(code="audit.read")]
     user = make_user()

@@ -25,12 +25,12 @@ from datetime import UTC, datetime
 
 import httpx
 import pytest
+from conftest import ClientFactory
 from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
-from app.core.csrf import CSRF_HEADER_NAME
+from app.core.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from app.core.permissions import PermissionCode
 from app.core.security import hash_password
 from app.models import Permission, Role, User
@@ -96,7 +96,7 @@ async def add_account(
 
 async def sign_in(
     session: AsyncSession,
-    make_client,
+    make_client: ClientFactory,
     codes: list[PermissionCode],
     *,
     ip: str = "203.0.113.7",
@@ -178,20 +178,29 @@ def answering(status: int, body: bytes = b"") -> httpx.MockTransport:
 # --------------------------------------------------------------------------
 
 
-async def test_an_anonymous_caller_reaches_neither_endpoint(session, make_client) -> None:
+@pytest.mark.integration
+async def test_an_anonymous_caller_reaches_neither_endpoint(
+    session: AsyncSession, make_client: ClientFactory
+) -> None:
     anonymous = await make_client()
 
     assert (await anonymous.post(DIRECTORY_API, json={})).status_code == 401
     assert (await anonymous.get(ENGINE_HEALTH_API)).status_code == 401
 
 
-async def test_the_export_needs_reports_generate(session, make_client) -> None:
+@pytest.mark.integration
+async def test_the_export_needs_reports_generate(
+    session: AsyncSession, make_client: ClientFactory
+) -> None:
     reader = await sign_in(session, make_client, [READ], ip="203.0.113.8")
 
     assert (await reader.post(DIRECTORY_API, json={})).status_code == 403
 
 
-async def test_the_export_needs_the_directory_code_as_well(session, make_client) -> None:
+@pytest.mark.integration
+async def test_the_export_needs_the_directory_code_as_well(
+    session: AsyncSession, make_client: ClientFactory
+) -> None:
     """The code the report engine's permission does *not* imply.
 
     A caller who may generate reports is not therefore a caller who may read the
@@ -205,7 +214,10 @@ async def test_the_export_needs_the_directory_code_as_well(session, make_client)
     assert refused.status_code == 403
 
 
-async def test_a_pending_password_change_outranks_the_report(session, make_client) -> None:
+@pytest.mark.integration
+async def test_a_pending_password_change_outranks_the_report(
+    session: AsyncSession, make_client: ClientFactory
+) -> None:
     user = await add_account(session, full_name="Pending Change")
     await session.commit()
     client = await sign_in(
@@ -228,8 +240,9 @@ async def test_a_pending_password_change_outranks_the_report(session, make_clien
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_the_export_is_a_readable_pdf_drawn_from_the_directory(
-    session: AsyncSession, make_client
+    session: AsyncSession, make_client: ClientFactory
 ) -> None:
     """The acceptance, asked once in full: bytes, rows, and the marked headers.
 
@@ -279,8 +292,9 @@ async def test_the_export_is_a_readable_pdf_drawn_from_the_directory(
     assert metadata.title == "User Directory"
 
 
+@pytest.mark.integration
 async def test_the_export_draws_only_the_rows_the_filters_select(
-    session: AsyncSession, make_client
+    session: AsyncSession, make_client: ClientFactory
 ) -> None:
     """The scope is the request's, not the caller's habit of asking for everything."""
     active = await add_account(session, full_name="Active Account", email="active@example.com")
@@ -309,8 +323,9 @@ async def test_the_export_draws_only_the_rows_the_filters_select(
     assert active.full_name not in searched
 
 
+@pytest.mark.integration
 async def test_a_search_that_matches_nothing_is_a_report_that_says_so(
-    session: AsyncSession, make_client
+    session: AsyncSession, make_client: ClientFactory
 ) -> None:
     """A header row alone looks like a table whose rows failed to print."""
     await add_account(session, full_name="Someone Else")
@@ -324,8 +339,9 @@ async def test_a_search_that_matches_nothing_is_a_report_that_says_so(
     assert "No account matches these filters." in body
 
 
+@pytest.mark.integration
 async def test_a_report_past_the_row_cap_is_refused_rather_than_truncated(
-    session: AsyncSession, make_client, monkeypatch: pytest.MonkeyPatch
+    session: AsyncSession, make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A document that stops early is a lie; the refusal names the limit.
 
@@ -344,8 +360,9 @@ async def test_a_report_past_the_row_cap_is_refused_rather_than_truncated(
     assert "more than 1 account" in response.json()["detail"]
 
 
+@pytest.mark.integration
 async def test_the_document_is_built_from_the_shared_directory_predicate(
-    session: AsyncSession, make_client
+    session: AsyncSession, make_client: ClientFactory
 ) -> None:
     """The builder and the paged list must not be able to disagree.
 
@@ -376,14 +393,18 @@ async def test_the_document_is_built_from_the_shared_directory_predicate(
 # --------------------------------------------------------------------------
 
 
-async def test_engine_health_needs_reports_generate(session, make_client) -> None:
+@pytest.mark.integration
+async def test_engine_health_needs_reports_generate(
+    session: AsyncSession, make_client: ClientFactory
+) -> None:
     reader = await sign_in(session, make_client, [READ], ip="203.0.113.14")
 
     assert (await reader.get(ENGINE_HEALTH_API)).status_code == 403
 
 
+@pytest.mark.integration
 async def test_engine_health_reports_both_halves(
-    session: AsyncSession, make_client, monkeypatch: pytest.MonkeyPatch
+    session: AsyncSession, make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """One body, two facts — and the converter is the one that can be down."""
     client = await sign_in(session, make_client, [GENERATE, READ], ip="203.0.113.15")
@@ -395,8 +416,9 @@ async def test_engine_health_reports_both_halves(
     assert healthy.json() == {"status": "ok", "pdf_engine": True, "converter": True}
 
 
+@pytest.mark.integration
 async def test_engine_health_is_degraded_when_the_converter_is_down(
-    session: AsyncSession, make_client, monkeypatch: pytest.MonkeyPatch
+    session: AsyncSession, make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client = await sign_in(session, make_client, [GENERATE, READ], ip="203.0.113.16")
     monkeypatch.setattr(conversion, "get_converter", lambda: converter(answering(503)))
@@ -424,8 +446,9 @@ async def test_the_health_route_probes_the_engine_rather_than_trusting_an_import
     assert reports.self_test() is False
 
 
+@pytest.mark.integration
 async def test_the_report_names_the_moment_it_was_generated(
-    session: AsyncSession, make_client
+    session: AsyncSession, make_client: ClientFactory
 ) -> None:
     """The footer, the metadata and the file name carry the same instant."""
     await add_account(session, full_name="Ada Lovelace")

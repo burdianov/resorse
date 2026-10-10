@@ -120,9 +120,10 @@ Resolution proven, not assumed: `uv pip compile` resolved the full set below wit
 | `httpx` | **0.28.1** | 2024-12-06 | >=3.8 |
 | `pytest` | **9.1.1** | 2026-06-19 | >=3.10 |
 | `pytest-asyncio` | **1.4.0** | 2026-05-26 | >=3.10 |
-| `pytest-cov` | **7.1.0** | 2026-03-21 | >=3.9 |
-| `ruff` | **0.16.10** | 2026-10-01 | >=3.7 |
-| `mypy` | **2.4.0** | 2026-10-01 | >=3.10 |
+| `pytest-cov` | **7.1.0** | 2026-03-21 | >=3.9 — the plugin that collects the data during a pytest run |
+| `coverage` | **7.16.2** | 2026-09-27 | >=3.10 — **new as a direct dependency in F056**: `scripts/coverage_gate.py` imports it by name to read the group numbers, and it is pinned to the version `pytest-cov` 7.1.0 already resolved, so the lock gained a declaration and no version change (`Requires-Python` read from the installed metadata, not assumed) |
+| `ruff` | **0.16.10** | 2026-10-01 | >=3.7 — formatter **and** linter, both in the F056 gate |
+| `mypy` | **2.4.0** | 2026-10-01 | >=3.10 — strict, over `app`, `tests` and `scripts` (`[tool.mypy] files`), in the F056 gate |
 
 Transitive binary wheels confirmed for CPython 3.14: `pydantic-core` 2.50.0, `asyncpg` 0.32.0, `pillow` 12.3.0
 and `greenlet` 3.5.6 publish `cp314` wheels; `pymupdf` 1.28.2 publishes a `cp310-abi3` wheel (stable ABI —
@@ -180,6 +181,16 @@ Every one of these was checked against the published manifests, not inferred:
   `next/*`, which is the static evidence behind BP §2.1's conditional "may remain only if verified to work in
   a Vite SPA". The runtime check belongs to **F010**; if it fails there, the documented fallback is an equally
   small framework-agnostic provider.
+- **`coverage` is a compatible *direct* dependency, not a second copy (observed F056).** `pytest-cov@7.1.0`
+  requires `coverage[toml]>=7.10.6`, and the resolver had already installed **7.16.2** for it. Declaring
+  `coverage==7.16.2` directly — which `scripts/coverage_gate.py` needs, since it imports the library by name —
+  left the lock with that one added declaration and **no version change**: `uv lock` re-resolved 65 packages and
+  every existing pin, `coverage`'s own included, stayed put. A pin *below* pytest-cov's floor would have moved
+  the plugin or installed two copies; this is the evidence that it does not.
+- **Both legs of the backend suite run under one pytest (observed F056).** `integration` is registered in
+  `[tool.pytest.ini_options] markers` — an unregistered marker is an **error** under the `--strict-markers`
+  this project already had, which is the check that the registration cannot be forgotten. The database-free leg
+  (`-m "not integration"`) collects the whole suite and deselects the rest: 264 of 434 items in F056.
 - **`msw@3.0.2` against Vitest's optional peer (observed F018).** `pnpm peers check` reports
   `@vitest/mocker@5.0.3` wanting `msw ^2.4.9`. The declaration is an **optional** peer, and the installed 5.0.3
   only references `msw` in `dist/browser.js` — the browser-mode module mocking this project does not use. The

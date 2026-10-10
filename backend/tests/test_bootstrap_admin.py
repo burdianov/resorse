@@ -19,8 +19,8 @@ variables**, .env file included. The database URL still comes from the
 process environment the fixture prepared.
 """
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 import pytest
 from sqlalchemy import func, select
@@ -43,13 +43,15 @@ STRONG = "correct horse battery staple"
 EMAIL = "ada@example.com"
 
 
-def forbidden_factory():
+def forbidden_factory() -> AbstractAsyncContextManager[AsyncSession]:
     """A session factory that must never be called — the proof that a refusal
     happens *before* the database stage, not one query into it."""
     raise AssertionError("the CLI reached the database it was supposed to refuse before")
 
 
-def lending_factory(session: AsyncSession, *, email: str = EMAIL):
+def lending_factory(
+    session: AsyncSession, *, email: str = EMAIL
+) -> tuple[Callable[[], AbstractAsyncContextManager[AsyncSession]], dict[str, User | None]]:
     """Lend ``main`` the fixture session. After the CLI's commit returns, the
     context resumes and captures the row for assertions — same loop, same
     transaction, rolled back by the fixture at test end."""
@@ -77,8 +79,9 @@ async def user_count(session: AsyncSession) -> int:
 # --- the transactional core, against real PostgreSQL --------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_bootstrap_creates_the_superuser_with_a_verified_hash(session) -> None:
+async def test_bootstrap_creates_the_superuser_with_a_verified_hash(session: AsyncSession) -> None:
     outcome = await bootstrap_super_admin(session, email="Ada@Example.COM ", password=STRONG)
 
     user = await session.scalar(select(User).where(User.email == EMAIL))
@@ -104,8 +107,9 @@ async def test_bootstrap_creates_the_superuser_with_a_verified_hash(session) -> 
     assert outcome.seed_report.permissions_created == len(ALL_PERMISSION_CODES)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_a_second_bootstrap_is_refused(session) -> None:
+async def test_a_second_bootstrap_is_refused(session: AsyncSession) -> None:
     await bootstrap_super_admin(session, email=EMAIL, password=STRONG)
 
     with pytest.raises(BootstrapRefused, match="super-admin already exists"):
@@ -114,13 +118,16 @@ async def test_a_second_bootstrap_is_refused(session) -> None:
     assert await user_count(session) == 1
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "retirement",
     [{"is_active": False}, {"is_deleted": True}],
     ids=["inactive", "deleted"],
 )
-async def test_a_retired_superuser_does_not_block_bootstrap(session, retirement) -> None:
+async def test_a_retired_superuser_does_not_block_bootstrap(
+    session: AsyncSession, retirement: dict[str, object]
+) -> None:
     # Fail-closed login means a retired superuser cannot sign in; blocking on
     # one would strand the operator with no recovery path (admin reset needs
     # an admin who can log in).
@@ -141,8 +148,9 @@ async def test_a_retired_superuser_does_not_block_bootstrap(session, retirement)
     assert await user_count(session) == 2
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_an_existing_email_is_never_escalated_or_reset(session) -> None:
+async def test_an_existing_email_is_never_escalated_or_reset(session: AsyncSession) -> None:
     session.add(User(email=EMAIL, full_name="Ada", hashed_password="$argon2id$placeholder"))
     await session.flush()
 
@@ -150,12 +158,14 @@ async def test_an_existing_email_is_never_escalated_or_reset(session) -> None:
         await bootstrap_super_admin(session, email=EMAIL, password=STRONG)
 
     user = await session.scalar(select(User).where(User.email == EMAIL))
+    assert user is not None
     assert user.is_superuser is False
     assert user.hashed_password == "$argon2id$placeholder"  # untouched
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_the_core_refuses_a_weak_password(session) -> None:
+async def test_the_core_refuses_a_weak_password(session: AsyncSession) -> None:
     # The CLI pre-checks this without a database; the core enforces it again
     # so a programmatic caller gets the same guarantee.
     with pytest.raises(BootstrapRefused, match="does not meet policy"):
@@ -168,7 +178,9 @@ async def test_the_core_refuses_a_weak_password(session) -> None:
 
 
 @pytest.mark.asyncio
-async def test_without_a_password_source_the_cli_creates_nothing(capsys) -> None:
+async def test_without_a_password_source_the_cli_creates_nothing(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     exit_code = await main(
         ["--email", EMAIL],
         env={},
@@ -183,7 +195,7 @@ async def test_without_a_password_source_the_cli_creates_nothing(capsys) -> None
 
 
 @pytest.mark.asyncio
-async def test_without_an_email_the_cli_creates_nothing(capsys) -> None:
+async def test_without_an_email_the_cli_creates_nothing(capsys: pytest.CaptureFixture[str]) -> None:
     exit_code = await main(
         [],
         env={PASSWORD_ENV_VAR: STRONG},
@@ -196,7 +208,9 @@ async def test_without_an_email_the_cli_creates_nothing(capsys) -> None:
 
 
 @pytest.mark.asyncio
-async def test_the_cli_refuses_a_weak_password_before_the_database(capsys) -> None:
+async def test_the_cli_refuses_a_weak_password_before_the_database(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     exit_code = await main(
         [],
         env={EMAIL_ENV_VAR: EMAIL, PASSWORD_ENV_VAR: "password"},
@@ -216,7 +230,9 @@ async def test_the_cli_refuses_a_weak_password_before_the_database(capsys) -> No
     ["admin@example.invalid", "not-an-email", "a@b"],
     ids=["special-use-domain", "no-at-sign", "no-tld"],
 )
-async def test_the_cli_refuses_an_email_the_api_would_also_reject(bad_email, capsys) -> None:
+async def test_the_cli_refuses_an_email_the_api_would_also_reject(
+    bad_email: str, capsys: pytest.CaptureFixture[str]
+) -> None:
     # The same validator F033's API will use (Pydantic EmailStr): a CLI that
     # accepted more than the API would be a trap.
     exit_code = await main(
@@ -231,7 +247,9 @@ async def test_the_cli_refuses_an_email_the_api_would_also_reject(bad_email, cap
 
 
 @pytest.mark.asyncio
-async def test_the_cli_refuses_a_mismatched_prompt_confirmation(capsys) -> None:
+async def test_the_cli_refuses_a_mismatched_prompt_confirmation(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     secrets = iter(["first-value-here", "second-value-here"])
     exit_code = await main(
         [],
@@ -249,8 +267,11 @@ async def test_the_cli_refuses_a_mismatched_prompt_confirmation(capsys) -> None:
 # --- the CLI's success paths, over the rollback fixture -----------------------
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_the_cli_prints_a_generated_password_exactly_once(session, capsys) -> None:
+async def test_the_cli_prints_a_generated_password_exactly_once(
+    session: AsyncSession, capsys: pytest.CaptureFixture[str]
+) -> None:
     factory, captured = lending_factory(session)
 
     exit_code = await main(
@@ -275,8 +296,11 @@ async def test_the_cli_prints_a_generated_password_exactly_once(session, capsys)
     assert "must change this password at first login" in out
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_the_cli_uses_environment_credentials_without_echoing_them(session, capsys) -> None:
+async def test_the_cli_uses_environment_credentials_without_echoing_them(
+    session: AsyncSession, capsys: pytest.CaptureFixture[str]
+) -> None:
     factory, captured = lending_factory(session)
 
     exit_code = await main(
@@ -297,8 +321,11 @@ async def test_the_cli_uses_environment_credentials_without_echoing_them(session
     assert verify_password(STRONG, user.hashed_password)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_the_cli_prompts_when_interactive(session, capsys) -> None:
+async def test_the_cli_prompts_when_interactive(
+    session: AsyncSession, capsys: pytest.CaptureFixture[str]
+) -> None:
     factory, captured = lending_factory(session)
     secrets = iter([STRONG, STRONG])
 
@@ -319,8 +346,11 @@ async def test_the_cli_prompts_when_interactive(session, capsys) -> None:
     assert verify_password(STRONG, user.hashed_password)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_generate_password_wins_over_an_environment_password(session, capsys) -> None:
+async def test_generate_password_wins_over_an_environment_password(
+    session: AsyncSession, capsys: pytest.CaptureFixture[str]
+) -> None:
     factory, captured = lending_factory(session)
 
     exit_code = await main(

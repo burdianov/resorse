@@ -13,13 +13,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import PERMISSION_DENIED_DETAIL
-from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
-from app.core.csrf import CSRF_HEADER_NAME
+from app.core.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from app.core.permissions import PermissionCode
 from app.core.security import hash_password
 from app.models import Permission, Role, User
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 PASSWORD = "correct horse battery staple"
 ROLES_API = "/api/v1/admin/roles"
@@ -31,7 +30,7 @@ async def add_user(session: AsyncSession, *, email: str, **overrides: object) ->
         full_name=email.split("@")[0].title(),
         hashed_password=hash_password(PASSWORD),
         roles=[],
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()

@@ -19,8 +19,9 @@ starts from an empty schema, in a fixed order or any other.
 
 import asyncio
 import os
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable
 from pathlib import Path
+from typing import Protocol
 
 import httpx
 import pytest
@@ -38,13 +39,33 @@ TEST_DATABASE_NAME = "app_test"
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
+class ClientFactory(Protocol):
+    """`make_client`'s return value: a builder for app clients.
+
+    A Protocol rather than `Callable[[str], Awaitable[httpx.AsyncClient]]`
+    because the peer address is **optional** — a test that does not care about
+    rate-limit buckets calls it bare — and `Callable` cannot express a
+    defaulted parameter: mypy reads `make_client()` against
+    `Callable[[str], ...]` as "too few arguments" even though the fixture
+    accepts the call.
+    """
+
+    def __call__(self, ip: str = "203.0.113.7") -> Awaitable[httpx.AsyncClient]: ...
+
+
 def _test_database_url() -> str:
     """The test database URL, derived from the configured one unless overridden."""
     base = os.environ.get("TEST_DATABASE_URL") or get_settings().database_url
     if not base:
-        pytest.skip(
-            "DATABASE_URL is not configured — database tests need a reachable "
-            "PostgreSQL server (see .env.example); unit tests still run.",
+        # F056: this used to skip. A suite that reported every database test as
+        # skipped and still exited 0 is not a gate — it is a green light with
+        # nothing behind it. The database-free leg is `-m "not integration"`.
+        pytest.fail(
+            "No PostgreSQL is configured (DATABASE_URL or TEST_DATABASE_URL), so "
+            'the integration leg cannot run: use `-m "not integration"` for the '
+            "database-free leg, and run this one where a database is reachable "
+            "(see .env.example).",
+            pytrace=False,
         )
     return make_url(base).set(database=TEST_DATABASE_NAME).render_as_string(hide_password=False)
 
@@ -124,7 +145,7 @@ async def session(test_database_url: str) -> AsyncIterator[AsyncSession]:
 @pytest_asyncio.fixture
 async def make_client(
     session: AsyncSession,
-) -> AsyncIterator[Callable[[str], Awaitable[httpx.AsyncClient]]]:
+) -> AsyncIterator[ClientFactory]:
     """Builders for app clients, each pretending to be a distinct peer address.
 
     The API is exercised through the real FastAPI application over httpx's
@@ -160,6 +181,6 @@ async def make_client(
 
 @pytest_asyncio.fixture
 async def client(
-    make_client: Callable[[str], Awaitable[httpx.AsyncClient]],
+    make_client: ClientFactory,
 ) -> httpx.AsyncClient:
     return await make_client()

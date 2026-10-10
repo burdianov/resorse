@@ -16,19 +16,19 @@ import uuid
 
 import httpx
 import pytest
+from conftest import ClientFactory
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import PASSWORD_CHANGE_REQUIRED_DETAIL, PERMISSION_DENIED_DETAIL
-from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
-from app.core.csrf import CSRF_HEADER_NAME
+from app.core.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from app.core.permissions import PermissionCode
 from app.core.security import hash_password
 from app.models import Notification, Permission, Role, User
 from app.services.notifications import InvalidNotification, notify
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 PASSWORD = "correct horse battery staple"
 INBOX = "/api/v1/notifications"
@@ -40,7 +40,7 @@ async def add_user(session: AsyncSession, *, email: str, **overrides: object) ->
         full_name=email.split("@")[0].title(),
         hashed_password=hash_password(PASSWORD),
         roles=[],
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()
@@ -247,7 +247,7 @@ async def test_the_read_filter_narrows_the_page_and_the_total_but_not_the_pill(
 
 
 async def test_one_users_inbox_is_invisible_and_untouchable_to_another(
-    make_client, session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     ada_client = await make_client("192.0.2.81")
     grace_client = await make_client("192.0.2.82")
@@ -324,7 +324,7 @@ async def test_the_link_must_be_an_internal_path(session: AsyncSession) -> None:
 
 
 async def test_a_password_reset_notifies_its_target_in_the_same_transaction(
-    make_client, session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     admin_client = await make_client("192.0.2.91")
     target_client = await make_client("192.0.2.92")

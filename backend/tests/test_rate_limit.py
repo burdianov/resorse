@@ -21,7 +21,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import delete, func, select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.rate_limit import (
     RateLimitRule,
@@ -102,8 +102,9 @@ def test_key_helpers_namespace_and_canonicalise() -> None:
 # --- the counter, against real PostgreSQL ------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_a_first_hit_creates_the_bucket(session) -> None:
+async def test_a_first_hit_creates_the_bucket(session: AsyncSession) -> None:
     status = await hit(session, KEY, RULE, now=NOW)
 
     assert status.count == 1
@@ -111,8 +112,9 @@ async def test_a_first_hit_creates_the_bucket(session) -> None:
     assert status.retry_after_seconds == 0
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_the_limit_is_inclusive_and_the_next_hit_is_denied(session) -> None:
+async def test_the_limit_is_inclusive_and_the_next_hit_is_denied(session: AsyncSession) -> None:
     for _ in range(RULE.limit):
         status = await hit(session, KEY, RULE, now=NOW)
         assert status.allowed is True, status
@@ -124,8 +126,9 @@ async def test_the_limit_is_inclusive_and_the_next_hit_is_denied(session) -> Non
     assert denied.retry_after_seconds == 8 * 60
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_a_new_window_reuses_the_row_and_starts_over(session) -> None:
+async def test_a_new_window_reuses_the_row_and_starts_over(session: AsyncSession) -> None:
     for _ in range(RULE.limit + 1):
         await hit(session, KEY, RULE, now=NOW)
 
@@ -140,8 +143,9 @@ async def test_a_new_window_reuses_the_row_and_starts_over(session) -> None:
     assert rows == 1
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_budgets_are_per_key(session) -> None:
+async def test_budgets_are_per_key(session: AsyncSession) -> None:
     await hit(session, account_key("ada@example.com"), RULE, now=NOW)
 
     assert await peek(session, account_key("grace@example.com"), RULE, now=NOW) == 0
@@ -149,8 +153,9 @@ async def test_budgets_are_per_key(session) -> None:
     assert await peek(session, account_key("ada@example.com"), RULE, now=NOW) == 1
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_peek_counts_without_incrementing_and_respects_windows(session) -> None:
+async def test_peek_counts_without_incrementing_and_respects_windows(session: AsyncSession) -> None:
     assert await peek(session, KEY, RULE, now=NOW) == 0
 
     await hit(session, KEY, RULE, now=NOW)
@@ -162,8 +167,9 @@ async def test_peek_counts_without_incrementing_and_respects_windows(session) ->
     assert await peek(session, KEY, RULE, now=NOW + timedelta(minutes=15)) == 0
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_clear_forgets_the_budget(session) -> None:
+async def test_clear_forgets_the_budget(session: AsyncSession) -> None:
     await hit(session, KEY, RULE, now=NOW)
 
     assert await clear(session, KEY) is True
@@ -174,6 +180,7 @@ async def test_clear_forgets_the_budget(session) -> None:
 CONCURRENT_HITS = 12
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_concurrent_hits_do_not_lose_updates(test_database_url: str) -> None:
     """Twelve real connections race one key; every hit must count.

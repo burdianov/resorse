@@ -54,7 +54,7 @@ from app.models.identity import user_roles
 from app.services.auth import log_in
 from app.services.sessions import SessionContext
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 EMAIL = "ada@example.com"
 OTHER_EMAIL = "grace@example.com"
@@ -78,7 +78,7 @@ async def add_user(session: AsyncSession, *, email: str = EMAIL, **overrides: ob
         # on a persistent object would lazy-load — a `MissingGreenlet` under
         # asyncio (the same trap `make_role` documents).
         roles=[],
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()
@@ -182,7 +182,7 @@ async def scratch(
     calls: list[str] = []
     scratch_app = build_scratch_app(calls)
 
-    async def session_override():
+    async def session_override() -> AsyncIterator[AsyncSession]:
         yield session
 
     scratch_app.dependency_overrides[get_session] = session_override

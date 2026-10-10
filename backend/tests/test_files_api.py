@@ -22,16 +22,17 @@ import hashlib
 import itertools
 import uuid
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
+from conftest import ClientFactory
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1 import files as files_api
 from app.core.config import get_settings
-from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
-from app.core.csrf import CSRF_HEADER_NAME
+from app.core.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from app.core.permissions import PermissionCode
 from app.core.security import hash_password
 from app.models import AuditLog, FileAsset, Permission, Role, User
@@ -111,7 +112,7 @@ async def add_user(session: AsyncSession, email: str | None = None) -> User:
 
 async def sign_in(
     session: AsyncSession,
-    make_client,
+    make_client: ClientFactory,
     codes: list[PermissionCode],
     *,
     email: str | None = None,
@@ -181,7 +182,7 @@ async def upload(
     )
 
 
-async def stored_asset(session: AsyncSession, item: dict) -> FileAsset:
+async def stored_asset(session: AsyncSession, item: dict[str, Any]) -> FileAsset:
     asset = await session.scalar(select(FileAsset).where(FileAsset.id == uuid.UUID(item["id"])))
     assert asset is not None
     return asset
@@ -195,8 +196,9 @@ BOTH_CODES = [PermissionCode.FILES_CREATE, PermissionCode.FILES_READ]
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_an_anonymous_caller_reaches_nothing(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     anonymous = await make_client()
 
@@ -207,8 +209,9 @@ async def test_an_anonymous_caller_reaches_nothing(
     assert (await upload(anonymous)).status_code == 401
 
 
+@pytest.mark.integration
 async def test_the_read_side_and_the_write_side_are_separate_codes(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     """`viewer` holds files.read and not files.create; that is the whole split."""
     reader, _ = await sign_in(session, make_client, [PermissionCode.FILES_READ], ip="203.0.113.8")
@@ -227,8 +230,9 @@ async def test_the_read_side_and_the_write_side_are_separate_codes(
     assert (await writer.delete(f"{FILES_API}/{file_id}")).status_code == 204
 
 
+@pytest.mark.integration
 async def test_a_pending_password_change_outranks_the_file_browser(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     """The gated `current_session` (C30's rule): a forced change 403s everything
     that is not on the auth router's exemption list."""
@@ -247,8 +251,9 @@ async def test_a_pending_password_change_outranks_the_file_browser(
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_an_upload_is_stored_as_what_its_bytes_are(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     client, user = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.11")
 
@@ -277,8 +282,9 @@ async def test_an_upload_is_stored_as_what_its_bytes_are(
     assert event.user_id == user.id
 
 
+@pytest.mark.integration
 async def test_the_wire_never_carries_the_object_name(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     """The storage key is how this application addresses the bytes; a client
     gets an id and asks the API. So the item has no key field at all."""
@@ -297,7 +303,10 @@ async def test_the_wire_never_carries_the_object_name(
     }
 
 
-async def test_an_upload_cannot_name_its_owner(session: AsyncSession, make_client, volume) -> None:
+@pytest.mark.integration
+async def test_an_upload_cannot_name_its_owner(
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
+) -> None:
     """Ownership comes from the session. A body that tries to hand the file to
     somebody else is ignored, not honoured."""
     client, owner = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.13")
@@ -310,12 +319,13 @@ async def test_an_upload_cannot_name_its_owner(session: AsyncSession, make_clien
     assert asset.owner_user_id == owner.id
 
 
+@pytest.mark.integration
 async def test_an_upload_is_refused_with_the_field_it_belongs_to(
-    session: AsyncSession, make_client, volume, small_cap: int
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage, small_cap: int
 ) -> None:
     client, _ = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.15")
 
-    def field(body: dict) -> list[str]:
+    def field(body: dict[str, Any]) -> list[str]:
         (entry,) = body["detail"]
         return list(entry["loc"])
 
@@ -350,8 +360,9 @@ async def test_an_upload_is_refused_with_the_field_it_belongs_to(
     assert await count_assets(session) == 0
 
 
+@pytest.mark.integration
 async def test_a_text_file_may_refine_its_own_type(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     """The one narrowing a client is allowed: text/plain is what the bytes
     prove, and a CSV is a claim inside that family."""
@@ -373,8 +384,9 @@ async def test_a_text_file_may_refine_its_own_type(
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_a_file_belongs_to_the_account_that_uploaded_it(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     owner_client, _ = await sign_in(
         session, make_client, BOTH_CODES, email="owner@example.com", ip="203.0.113.17"
@@ -406,8 +418,9 @@ async def test_a_file_belongs_to_the_account_that_uploaded_it(
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_a_download_serves_the_bytes_it_records(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     client, _ = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.19")
     item = (await upload(client, filename="logo.png")).json()
@@ -419,8 +432,9 @@ async def test_a_download_serves_the_bytes_it_records(
     assert response.headers["content-type"].startswith("image/png")
 
 
+@pytest.mark.integration
 async def test_a_download_is_marked_rather_than_merely_typed(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     """BP-6.4's "safe file response headers": the sniffed type, an attachment
     disposition, nosniff, and no caching of a private object."""
@@ -470,8 +484,9 @@ async def test_the_disposition_helper_cannot_have_a_header_injected_into_it() ->
     )
 
 
+@pytest.mark.integration
 async def test_a_row_whose_object_is_gone_is_a_server_fault(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     client, _ = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.21")
     item = (await upload(client)).json()
@@ -483,8 +498,9 @@ async def test_a_row_whose_object_is_gone_is_a_server_fault(
     assert response.status_code == 500
 
 
+@pytest.mark.integration
 async def test_a_swapped_object_fails_its_recorded_checksum(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     client, _ = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.22")
     item = (await upload(client)).json()
@@ -501,8 +517,9 @@ async def test_a_swapped_object_fails_its_recorded_checksum(
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_deleting_removes_the_row_the_record_and_the_bytes(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     client, user = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.23")
     item = (await upload(client)).json()
@@ -525,14 +542,18 @@ async def test_deleting_removes_the_row_the_record_and_the_bytes(
     assert (await client.delete(f"{FILES_API}/{item['id']}")).status_code == 404
 
 
+@pytest.mark.integration
 async def test_a_failed_commit_takes_the_object_back_out(
-    session: AsyncSession, make_client, volume, monkeypatch: pytest.MonkeyPatch
+    session: AsyncSession,
+    make_client: ClientFactory,
+    volume: LocalVolumeStorage,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The window F050 can close: the producer has written the object, the row
     will never be durable, so the object must not survive it."""
     client, _ = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.24")
 
-    async def refuse_commit(self) -> None:
+    async def refuse_commit(self: AsyncSession) -> None:
         raise RuntimeError("commit refused")
 
     monkeypatch.setattr(AsyncSession, "commit", refuse_commit)
@@ -550,8 +571,9 @@ async def test_a_failed_commit_takes_the_object_back_out(
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_the_list_is_paged_over_the_callers_own_files(
-    session: AsyncSession, make_client, volume
+    session: AsyncSession, make_client: ClientFactory, volume: LocalVolumeStorage
 ) -> None:
     client, _ = await sign_in(session, make_client, BOTH_CODES, ip="203.0.113.25")
     uploads = [

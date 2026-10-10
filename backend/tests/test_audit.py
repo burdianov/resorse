@@ -28,14 +28,13 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
-from app.core.csrf import CSRF_HEADER_NAME
+from app.core.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from app.core.permissions import PermissionCode
 from app.core.security import hash_password
 from app.models import AuditLog, Permission, Role, User
 from app.services import audit as audit_service
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 PASSWORD = "correct horse battery staple"
 ADMIN = "/api/v1/admin"
@@ -47,7 +46,7 @@ async def add_user(session: AsyncSession, *, email: str, **overrides: object) ->
         full_name=email.split("@")[0].title(),
         hashed_password=hash_password(PASSWORD),
         roles=[],
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()
@@ -222,6 +221,9 @@ async def test_a_submitted_password_never_reaches_the_trail(
     assert created.status_code == 201
 
     (row,) = await events(session)
+    # The column is nullable (an event without a diff is complete without one),
+    # so this test states what it asserts about: the create event *has* details.
+    assert row.details is not None
     assert secret_canary not in json.dumps(row.details)
     # The create event says *that* a credential was supplied, never which.
     assert row.details["temporary_password_generated"] is False
@@ -255,7 +257,9 @@ async def test_role_and_matrix_events_carry_sanitized_diffs(
 
     rows = await events(session)
     by_action = {row.action: row for row in rows}
-    assert by_action["role.create"].details["name"] == "reviewer"
+    role_create = by_action["role.create"]
+    assert role_create.details is not None
+    assert role_create.details["name"] == "reviewer"
     matrix = by_action["role.matrix_save"]
     assert matrix.details == {"changes": {"reviewer": {"before": [], "after": ["settings.read"]}}}
     assert matrix.actor_email == admin.email
@@ -283,6 +287,7 @@ async def test_settings_profile_and_preference_events(
         "preference.delete",
     ]
     setting_row = rows[0]
+    assert setting_row.details is not None
     assert setting_row.details["changes"]["branding.app_name"] == {
         "before": "Application Platform",
         "after": "Acme",

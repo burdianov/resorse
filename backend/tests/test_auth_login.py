@@ -32,11 +32,11 @@ The frozen instant sits exactly at the start of a 15-minute window, which also
 makes ``Retry-After`` deterministic (the full 900 seconds).
 """
 
-from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta, tzinfo
 
 import httpx
 import pytest
+from conftest import ClientFactory
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,8 +71,10 @@ FROZEN_NOW = datetime(2026, 10, 10, 12, 0, 0, tzinfo=UTC)
 @pytest.fixture(autouse=True)
 def frozen_clock(monkeypatch: pytest.MonkeyPatch) -> None:
     class FrozenDateTime(datetime):
+        # `datetime.now` returns `Self`; this double deliberately returns the
+        # frozen instant as a plain `datetime`, which `Self` cannot express.
         @classmethod
-        def now(cls, tz: tzinfo | None = None) -> datetime:
+        def now(cls, tz: tzinfo | None = None) -> datetime:  # type: ignore[override]
             if tz is None:
                 return FROZEN_NOW.replace(tzinfo=None)
             return FROZEN_NOW.astimezone(tz)
@@ -94,7 +96,7 @@ async def add_user(
         email=email,
         full_name="Ada Lovelace",
         hashed_password=hash_password(password),
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()
@@ -129,6 +131,7 @@ async def session_rows(session: AsyncSession) -> list[UserSession]:
 # --- success: what a login produces ------------------------------------------
 
 
+@pytest.mark.integration
 async def test_login_issues_a_session_row_and_both_cookies(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -174,6 +177,7 @@ async def test_login_issues_a_session_row_and_both_cookies(
     assert user.last_login_at == FROZEN_NOW
 
 
+@pytest.mark.integration
 async def test_each_login_starts_its_own_family(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -193,8 +197,9 @@ async def test_each_login_starts_its_own_family(
 # --- the uniform refusal ------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_every_credential_failure_is_the_same_401(
-    make_client: Callable[[str], Awaitable[httpx.AsyncClient]], session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     await add_user(session)
     await add_user(session, email="off@example.com", is_active=False)
@@ -230,8 +235,9 @@ async def test_every_credential_failure_is_the_same_401(
     assert await session_rows(session) == []
 
 
+@pytest.mark.integration
 async def test_unknown_email_still_pays_a_password_verification(
-    make_client: Callable[[str], Awaitable[httpx.AsyncClient]],
+    make_client: ClientFactory,
     session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -272,8 +278,9 @@ async def test_the_decoy_hash_is_current_parameter() -> None:
 # --- throttling ---------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_throttle_per_account_denies_even_the_correct_password(
-    make_client: Callable[[str], Awaitable[httpx.AsyncClient]],
+    make_client: ClientFactory,
 ) -> None:
     client = await make_client()
     for _ in range(5):
@@ -303,8 +310,9 @@ async def test_throttle_per_account_denies_even_the_correct_password(
     assert unknown_denied.json() == denied.json()
 
 
+@pytest.mark.integration
 async def test_throttle_per_address_denies_across_accounts(
-    make_client: Callable[[str], Awaitable[httpx.AsyncClient]], session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     client = await make_client("192.0.2.30")
     for index in range(5):
@@ -327,6 +335,7 @@ async def test_throttle_per_address_denies_across_accounts(
         assert row is not None and row.hit_count == 1
 
 
+@pytest.mark.integration
 async def test_a_successful_login_clears_the_account_bucket_but_not_the_address(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -360,6 +369,7 @@ async def test_a_successful_login_clears_the_account_bucket_but_not_the_address(
 # --- what happens to the stored hash -----------------------------------------
 
 
+@pytest.mark.integration
 async def test_login_rehashes_a_below_policy_stored_hash(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -381,6 +391,7 @@ async def test_login_rehashes_a_below_policy_stored_hash(
     assert password_needs_rehash(user.hashed_password) is False
 
 
+@pytest.mark.integration
 async def test_must_change_password_is_surfaced_and_still_issues_a_session(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -399,6 +410,7 @@ async def test_must_change_password_is_surfaced_and_still_issues_a_session(
 # --- request-shape validation -------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_malformed_request_bodies_are_422(client: httpx.AsyncClient) -> None:
     cases: list[dict[str, str]] = [
         {},

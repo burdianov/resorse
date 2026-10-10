@@ -22,6 +22,7 @@ What is pinned here, in the order of what a mistake would cost:
 """
 
 import json
+from typing import Any
 
 import httpx
 import pytest
@@ -108,6 +109,7 @@ async def session_is_live(session: AsyncSession, token: str) -> bool:
 # --- the double-submit --------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_double_submit_is_required_whenever_the_session_cookie_is_present(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -141,6 +143,7 @@ async def test_double_submit_is_required_whenever_the_session_cookie_is_present(
 # --- the origin check ---------------------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "origin",
     [
@@ -167,6 +170,7 @@ async def test_a_claim_that_is_not_a_trusted_origin_is_refused(
     assert await session_is_live(session, token)
 
 
+@pytest.mark.integration
 async def test_a_referer_stands_in_only_when_the_origin_is_absent(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -210,6 +214,7 @@ async def test_a_referer_stands_in_only_when_the_origin_is_absent(
 # --- everything else ----------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_safe_requests_are_never_checked(client: httpx.AsyncClient) -> None:
     as_cookies(client, session_cookies("junk", "junk"))
     response = await client.get("/api/v1/health")
@@ -232,7 +237,7 @@ async def test_a_non_ascii_double_submit_value_is_refused_not_a_crash() -> None:
             raise AssertionError("a refused request must never reach the app")
 
     middleware = CsrfMiddleware(
-        UnreachedApp(),  # type: ignore[arg-type]
+        UnreachedApp(),
         trusted_origins=frozenset({GOOD_ORIGIN}),
     )
     scope = {
@@ -245,12 +250,12 @@ async def test_a_non_ascii_double_submit_value_is_refused_not_a_crash() -> None:
             (b"x-csrf-token", b"\xe9"),
         ],
     }
-    sent: list[dict] = []
+    sent: list[dict[str, Any]] = []
 
-    async def send(message: dict) -> None:
+    async def send(message: dict[str, Any]) -> None:
         sent.append(message)
 
-    async def receive() -> dict:
+    async def receive() -> dict[str, Any]:
         return {"type": "http.request"}
 
     await middleware(scope, receive, send)  # type: ignore[arg-type]
@@ -264,6 +269,7 @@ async def test_a_non_ascii_double_submit_value_is_refused_not_a_crash() -> None:
 # --- login's carve-out --------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_login_refuses_a_cross_site_origin(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -282,6 +288,7 @@ async def test_login_refuses_a_cross_site_origin(
     assert "set-cookie" not in response.headers
 
 
+@pytest.mark.integration
 async def test_login_accepts_an_absent_or_trusted_origin(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
@@ -295,6 +302,7 @@ async def test_login_accepts_an_absent_or_trusted_origin(
     assert response.status_code == 200
 
 
+@pytest.mark.integration
 async def test_a_dead_session_cookie_does_not_lock_the_login_form(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:

@@ -13,9 +13,11 @@ identity schema and can seed from scratch.
 """
 
 import re
+import uuid
 
 import pytest
 from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import (
     ALL_PERMISSION_CODES,
@@ -53,7 +55,7 @@ EXPECTED_VIEWER_CODES = {
 EXPECTED_ADMIN_WITHHELD = {"roles.manage", "permissions.manage"}
 
 
-async def grant_codes(session, role_name: str) -> set[str]:
+async def grant_codes(session: AsyncSession, role_name: str) -> set[str]:
     rows = await session.scalars(
         select(Permission.code)
         .join(role_permissions, role_permissions.c.permission_id == Permission.id)
@@ -63,7 +65,7 @@ async def grant_codes(session, role_name: str) -> set[str]:
     return set(rows.all())
 
 
-async def role_id_of(session, role_name: str):
+async def role_id_of(session: AsyncSession, role_name: str) -> uuid.UUID | None:
     return await session.scalar(select(Role.id).where(Role.name == role_name))
 
 
@@ -90,8 +92,9 @@ def test_a_noop_report_reads_like_a_no_op() -> None:
 # --- the first run -----------------------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_seed_creates_every_code_and_the_three_roles(session) -> None:
+async def test_seed_creates_every_code_and_the_three_roles(session: AsyncSession) -> None:
     report = await seed(session)
 
     assert not report.is_noop
@@ -108,8 +111,9 @@ async def test_seed_creates_every_code_and_the_three_roles(session) -> None:
         assert description == PERMISSION_DESCRIPTIONS[code], code
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_only_super_admin_is_a_system_role(session) -> None:
+async def test_only_super_admin_is_a_system_role(session: AsyncSession) -> None:
     await seed(session)
 
     roles = (await session.scalars(select(Role))).all()
@@ -121,8 +125,9 @@ async def test_only_super_admin_is_a_system_role(session) -> None:
     assert all(role.description for role in roles)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_the_granted_sets_are_exactly_the_documented_policy(session) -> None:
+async def test_the_granted_sets_are_exactly_the_documented_policy(session: AsyncSession) -> None:
     await seed(session)
 
     all_codes = {code.value for code in ALL_PERMISSION_CODES}
@@ -137,8 +142,9 @@ async def test_the_granted_sets_are_exactly_the_documented_policy(session) -> No
     assert set(VIEWER_GRANTS) == {PermissionCode(code) for code in viewer_codes}
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_the_seed_creates_no_users(session) -> None:
+async def test_the_seed_creates_no_users(session: AsyncSession) -> None:
     await seed(session)
 
     user_count = await session.scalar(select(func.count()).select_from(User))
@@ -148,8 +154,9 @@ async def test_the_seed_creates_no_users(session) -> None:
 # --- idempotency and the invariants ------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_rerunning_the_seed_changes_nothing(session) -> None:
+async def test_rerunning_the_seed_changes_nothing(session: AsyncSession) -> None:
     await seed(session)
     grant_count = await session.scalar(select(func.count()).select_from(role_permissions))
 
@@ -163,12 +170,17 @@ async def test_rerunning_the_seed_changes_nothing(session) -> None:
     assert await session.scalar(select(func.count()).select_from(Role)) == 3
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_an_operator_edited_permission_description_survives_a_rerun(session) -> None:
+async def test_an_operator_edited_permission_description_survives_a_rerun(
+    session: AsyncSession,
+) -> None:
     await seed(session)
     permission = await session.scalar(
         select(Permission).where(Permission.code == PermissionCode.AUDIT_READ.value)
     )
+    # `scalar` is nullable in general; this test is about the row it finds.
+    assert permission is not None
     permission.description = "Edited in F037's dictionary."
     await session.flush()
 
@@ -177,8 +189,9 @@ async def test_an_operator_edited_permission_description_survives_a_rerun(sessio
     assert permission.description == "Edited in F037's dictionary."
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_non_system_roles_belong_to_the_matrix_after_creation(session) -> None:
+async def test_non_system_roles_belong_to_the_matrix_after_creation(session: AsyncSession) -> None:
     await seed(session)
     viewer_id = await role_id_of(session, "viewer")
     audit_permission_id = await session.scalar(
@@ -203,8 +216,9 @@ async def test_non_system_roles_belong_to_the_matrix_after_creation(session) -> 
     assert await grant_codes(session, "resource_manager") == set()
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_the_super_admin_invariant_is_restored_not_trusted(session) -> None:
+async def test_the_super_admin_invariant_is_restored_not_trusted(session: AsyncSession) -> None:
     await seed(session)
     super_admin_id = await role_id_of(session, SUPER_ADMIN_ROLE_NAME)
     users_read_id = await session.scalar(
@@ -217,6 +231,7 @@ async def test_the_super_admin_invariant_is_restored_not_trusted(session) -> Non
         )
     )
     super_admin = await session.scalar(select(Role).where(Role.name == SUPER_ADMIN_ROLE_NAME))
+    assert super_admin is not None
     super_admin.is_system = False
     # Simulate a code registered *after* the first seed (F037's dictionary
     # grows; the protected role must grow with it).

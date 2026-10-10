@@ -15,16 +15,16 @@ are regular mutations.
 
 import httpx
 import pytest
+from conftest import ClientFactory
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import PASSWORD_CHANGE_REQUIRED_DETAIL
-from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
-from app.core.csrf import CSRF_HEADER_NAME
+from app.core.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from app.core.security import hash_password
 from app.models import User, UserPreference
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 PASSWORD = "correct horse battery staple"
 PREFS_API = "/api/v1/auth/me/preferences"
@@ -36,7 +36,7 @@ async def add_user(session: AsyncSession, *, email: str, **overrides: object) ->
         full_name=email.split("@")[0].title(),
         hashed_password=hash_password(PASSWORD),
         roles=[],
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()
@@ -211,7 +211,7 @@ async def test_preference_keys_and_values_are_guarded(
 
 
 async def test_one_users_preferences_are_invisible_and_untouchable_to_another(
-    make_client, session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     await add_user(session, email="ada@example.com")
     await add_user(session, email="grace@example.com")

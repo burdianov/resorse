@@ -8,47 +8,45 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F056
-in claude_code_pack/TASKS.md. Implement F056 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F057
+in claude_code_pack/TASKS.md. Implement F057 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F057.
+me the operator checks. Do not push. Do not start F058.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F055 — Frontend quality gate, **plus its follow-up** (both in this commit; full record: **C43** and
-  `ARCHITECTURE.md` §5). The gate is four commands, one job each (`pnpm run lint` — ESLint 10, deliberately **not
-  type-aware**; `format:check` — Prettier, after a **one-time 108-file** pass; `typecheck`; `coverage`), with BP §10.5's
-  **85** for `src/lib/**` plus a global ratchet at the measurement — All files **92.65 / 80.49 / 91.14 / 93.71**,
-  `src/lib` **94.04 / 85.71 / 90.32 / 95.65**.
-- **The follow-up** (operator: "clear all the blockers before continuing with f056"): `tsconfig.json` now includes
-  `tests/`, so `typecheck` covers the test tree and found **20 real errors** lint and coverage had both walked past
-  (inventory in C43); one test was **deleted rather than fixed** (`scroll-area.test.tsx` asserted an `orientation` the root
-  does not carry — jsdom does no layout, so F057's browser pass is the real check); and **`test.testTimeout` is 15 s**,
-  because under the 5 s default three unrelated tests died at 5089 / 5098 / 5146 ms that pass in ~1.5 s standalone — the
-  lab's 10 s finder timeout could never fire under a 5 s budget, so F055's flake repair was incomplete. Suite: 67 files /
-  **563** tests (one deleted, none added).
-- **Previous tasks:** F054 — Frontend component lab **`ab3c11a`** (C42); F053 — `cbad877` (C41).
-- **Next: F056 — Backend quality gate.** TASKS.md ~line 227: "Ruff typing pytest Postgres integration coverage"; the
-  accept line is "Recorded actual results." Ruff and mypy already run (F053 used them as focused checks); this task
-  makes them a gate and adds the real-Postgres integration leg and backend coverage.
+- **Last completed:** F056 — Backend quality gate (full record: **C44**, `ARCHITECTURE.md` §4). Four commands, one job
+  each, mirroring F055's four: `uv run ruff format --check .`, `uv run ruff check .`, `uv run mypy` (strict over
+  **`app` + `tests` + `scripts`**, the file list in `[tool.mypy]` so the bare command *is* the gate), and
+  `uv run python -m scripts.coverage_gate`. The suite split into **two legs by one marker**: `-m "not integration"`
+  runs anywhere (168 passed, 2 skipped, 264 deselected), `-m integration` is the real-Postgres leg — and
+  `tests/conftest.py` now **fails instead of skipping** with no database configured, because "every database test
+  skipped, exit 0" was a green light with nothing behind it; `tests/test_markers.py` guards the partition both ways.
+  Coverage is a script, not `fail_under`, because BP-10.5 asks for groups and coverage.py enforces one number:
+  **core 96.72%** (`app/core` + `app/services`, floor **85** — BP's own number), **auth_rbac 97.34% branches** (13
+  named auth/RBAC modules, floor **97**), **total 95.64%** (2742 stmts, floor **95**). Whole suite: **432 passed,
+  2 skipped in 30.02 s**.
+- **Previous tasks:** F055 — Frontend quality gate + its follow-up (C43); F054 — **`ab3c11a`** (C42); F053 — `cbad877` (C41).
+- **Next: F057 — Browser E2E.** TASKS.md ~line 233: "Playwright auth/admin/theme/notification/report flows"; the accept
+  is "Real DB browser tests". It needs both servers *and* a real browser, so the focused check is a single spec and the
+  full browser run belongs to the operator.
 - **Gates:** F016, F032, F047 and F048 are complete; operator gate results are **not recorded in this handoff**.
-  **G-A3 (after F048) is due and is the operator's to run** (`OPERATOR_GUIDE.md` line 54); then **G-A4, after F063**.
+  **G-A3 (after F048) is due and is the operator's to run** (`OPERATOR_GUIDE.md`, "Gates"); then **G-A4, after F063**.
 - **Blockers:** none recorded.
 - **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN** — Stage B business rules (working-day calendar, rate changes
-  within a month, revision semantics, and others). None blocks F056; never treat one as approved, and if a task depends
-  on one, stop and ask one precise question. Confirmed: C11–C43 (C43 is F055's).
-- **Fixed during F055 — the dev database was behind head.** `app_dev` sat at Alembic `0008` while `0009` (which creates
-  `file_assets`) had shipped, so the first page to call `GET /api/v1/files` — F054's lab — answered **500**, with every
-  test green: migrations are exercised on `app_test`. `alembic upgrade head` was applied; `alembic current` reads `0009 (head)`.
+  within a month, revision semantics, and others). None blocks F057; never treat one as approved, and if a task depends
+  on one, stop and ask one precise question. Confirmed: C11–**C44** (C44 is F056's).
+- **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can
+  be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any
+  migration task; it reads `0009 (head)` today.
 - **Open item — `/ready` is not built (BP-8.4b):** `conversion.health()` belongs behind it, but no readiness route
   exists — F053's `reports/engine-health` answers a different question. Read `health()`, don't re-implement it.
-- **Open item — orphan objects:** the object is unlinked only *after* the caller's commit (and when it raises), so the
-  residue is a process death in between — an unreferenced object, never a dangling row. No scheduler exists, so no
-  sweep is built; never unlink before commit.
+- **Open item — orphan objects:** an object is unlinked only *after* the caller's commit (and when it raises), so the
+  residue is a process death in between. No scheduler exists, so no sweep is built; never unlink before commit.
 - **Open item — nothing scans uploads yet:** BP-6.4's hook ships as `MalwareScanner` + `NoMalwareScanner` (the name is
-  the disclosure). Nothing is wired in; the API answers 400 if one ever refuses — never call uploads scanned.
+  the disclosure), nothing is wired in, and the API answers 400 if one ever refuses — never call uploads scanned.
 
 ## 3. Essential constraints
 
@@ -99,8 +97,8 @@ Start the services, each in its own terminal:
 
 ## 5. Open item (unresolved, linked to F057)
 
-**jsdom `Select` rendering.** An uncontrolled `Select` shows the raw value (`site`) instead of the label (`Site`) and
-leaves the listbox mounted — possibly a layout-less artefact, so tests neither assert nor forbid it. **Confirm in a browser at F057.**
+**jsdom `Select` rendering.** An uncontrolled `Select` shows the raw value (`site`) not the label (`Site`) and leaves
+the listbox mounted — possibly a layout-less artefact, so tests neither assert nor forbid it. **Check in a browser at F057.**
 
 ## 6. Testing and quality gates
 
@@ -108,64 +106,66 @@ leaves the listbox mounted — possibly a layout-less artefact, so tests neither
 - Frontend: `cd D:\resors\frontend; pnpm exec vitest run <touched test files>`, `pnpm run typecheck`,
   `pnpm run lint <paths>`, `pnpm run format:check <paths>`; backend: `cd D:\resors\backend; uv run pytest <touched
   files>`, `uv run ruff format --check <files>`, `uv run ruff check <files>`, `uv run mypy <files>`.
+- **Mark a new backend test with `integration` iff it reaches the database** — `tests/test_markers.py` fails in both
+  directions, so a database test without the marker and a marked test without a database fixture are both red.
+  `uv run pytest -m "not integration"` is the leg that proves the rest still runs with no database.
 - If the API contract changed: `cd D:\resors\backend; uv run python -m scripts.export_openapi`, then
   `cd D:\resors\frontend; pnpm run api:types`. Both committed artefacts must be byte-stable apart from the task's own diff.
-- If the change touches a **dev-only surface** (F054's rule): `cd D:\resors\frontend; pnpm run build`, then search
-  `dist/` for a lab-only string ("Development builds only", `recharts`) and for the route path — any match means the
-  exclusion failed. Do not infer the exclusion from the `import.meta.env.DEV` ternary.
-- Lint only what you touched: whole-repo `pnpm run lint`, `pnpm run format:check` and `pnpm run coverage` are **gate
-  checks** (coverage's thresholds make it one by construction). Never relax a threshold to pass a check.
+- Dev-only surface (F054's rule): `pnpm run build`, then search `dist/` for a lab-only string or the route path — a
+  match means the exclusion failed. Never infer it from the `import.meta.env.DEV` ternary.
+- Lint only what you touched; whole-repo `pnpm run lint`/`format:check`/`coverage` and — from F056 — bare
+  `uv run ruff check .`/`ruff format --check .`/`mypy` are **gate checks**. Never relax a threshold to pass one.
 
 **Gate checks** (the operator runs these; the agent supplies the commands and never reports their results):
-`cd D:\resors\frontend;` → `pnpm run lint`, `pnpm run format:check`, `pnpm run typecheck`, `pnpm run build`,
-`pnpm exec vitest run`, `pnpm run coverage` (exit non-zero means a threshold was missed); `cd D:\resors\backend; uv run pytest`.
+frontend → `pnpm run lint`, `format:check`, `typecheck`, `build`, `pnpm exec vitest run`, `pnpm run coverage`;
+backend → `uv run ruff format --check .`, `uv run ruff check .`, `uv run mypy`, `uv run pytest` (both legs),
+`uv run python -m scripts.coverage_gate`. Non-zero means a missed threshold, a red suite, or a group below its floor.
 
-**Gaps:** none outstanding in the frontend gate. `typecheck` now covers `tests/` (F055 follow-up), and the parallel-load
-flake has a suite-level budget of 15 s (`test.testTimeout`) — a check that passes alone but fails in the full run, or the
-reverse, is worth flagging rather than handing over silently.
-
-**Ruff and mypy are runnable** from `backend/` (`uv run ruff format --check <files>` / `uv run ruff check <files>` /
-`uv run mypy <files>`), and F053 ran them as focused checks — **not** operator gate checks until F056 lands (`OPERATOR_GUIDE.md` 38–39).
+**Gaps:** none outstanding in either gate. The frontend's `typecheck` covers `tests/` (F055 follow-up); the backend's
+two legs are selected and checked by marker, and its two database-dependent checks **fail** rather than skip — start
+the container, don't run the other leg and call it a gate.
 
 **Not yet available:** Playwright E2E (F057), axe (F058), production Compose (F059) — do not hand these to the operator
 as runnable until their task lands. **Test counts are historical**: report the count you observe.
 
 ## 7. Operator verification commands
 
-Run these before F056 starts. The record column is **historical and the agent's own observation**, never the operator's gate result.
+Run these before F057 starts. The record column is **historical and the agent's own observation**, never the operator's gate result.
 
-| Check | Command | F055 + follow-up record (historical) |
+| Check | Command | Record (F056 unless marked) |
 |---|---|---|
-| Working tree & HEAD | `git -C D:\resors status --short`; `git -C D:\resors log -1 --format="%h %s"` | clean after the commit; HEAD = `feat(F055): frontend quality gate` **plus the follow-up** (`fix(F055): ...`), implementation and handoff in the same commit |
-| Frontend lint | `cd D:\resors\frontend; pnpm run lint` | exit 0, no problems (observed at F055, re-observed in the follow-up after the config changes; a gate check, so the operator owns the current result) |
-| Frontend format | `cd D:\resors\frontend; pnpm run format:check` | `All matched files use Prettier code style!` (observed at F055 after the one-time 108-file reformat; clean again in the follow-up) |
-| Frontend coverage | `cd D:\resors\frontend; pnpm run coverage` | exit **0**; 67 files / **563** passed; All files **92.65 | 80.49 | 91.14 | 93.71**, `src/lib` **94.04 | 85.71 | 90.32 | 95.65** (run again in the follow-up: same numbers, one fewer test) |
-| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no diagnostics over **`src` and `tests`** (the follow-up widened `include` and cleared the 20 errors it exposed; `pnpm run build` runs that same `tsc --noEmit`, and `pnpm run build` exited 0 afterwards) |
-| **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **no match** (re-observed at F055 after the toolchain install): the lab page and recharts are absent from `dist/`. A match means the exclusion broke |
-| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F055 changes no API. Re-run after installing the toolchain produced **no diff** (observed at F055) |
-| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check: the operator owns the result.** The agent ran it repeatedly: the pre-follow-up state passed 564/564 in 15.0 s, and with the follow-up **563** passed in four runs (20.3 / 22.9 / 24.8 s, plus the coverage run) and one run saw **560 / 563**, when a `git stash` rewriting 16 files had three tests die at 5089 / 5098 / 5146 ms against the old 5 s default — that run is what produced the 15 s budget. F047 record: 498 passed (historical) |
-| Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)` — it read `0008` before F055's fix, which is why `GET /api/v1/files` answered 500. Run this after any migration task |
-| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F055 adds no migration). F049 record: clean, ending at `0009` |
-| Backend suite | `cd D:\resors\backend; uv run pytest` | **a gate check; not run by the agent at F055.** F047 record: 246 passed (historical) |
+| Working tree & HEAD | `git -C D:\resors status --short`; `git -C D:\resors log -1 --format="%h %s"` | clean after the commit; HEAD = `feat(F056): backend quality gate`, implementation and handoff in the same commit |
+| Backend format | `cd D:\resors\backend; uv run ruff format --check .` | `98 files already formatted` — applied migrations are excluded from the formatter by config (a diff in `migrations/versions/*.py` must be byte-identical, not formatted) |
+| Backend lint | `cd D:\resors\backend; uv run ruff check .` | `All checks passed!` |
+| Backend types | `cd D:\resors\backend; uv run mypy` | `Success: no issues found in 97 source files` — the file list is in `[tool.mypy]`, so the bare command covers `app`, `tests` and `scripts` |
+| Backend suite, no database | `cd D:\resors\backend; uv run pytest -m "not integration"` | 168 passed, 2 skipped, 264 deselected in 1.09 s. The two skips are conditional, **not** database ones: the live Gotenberg test and the symlink test on this platform |
+| Backend suite (both legs) | `cd D:\resors\backend; uv run pytest` | **a gate check.** Run by the agent inside the coverage gate: **432 passed, 2 skipped in 30.02 s**, needing `docker compose up -d --wait` first |
+| Backend coverage gate | `cd D:\resors\backend; uv run python -m scripts.coverage_gate` | exit **0**; `core` 25 files **96.72%** (floor 85), `auth_rbac` 13 files **97.34% branches** (floor 97), `total` 65 files / 2742 stmts / 96 miss / 516 branch / 38 brpart **95.64%** (floor 95) |
+| Frontend lint / format | `cd D:\resors\frontend; pnpm run lint`; `pnpm run format:check` | **F055 record**: exit 0 / `All matched files use Prettier code style!` |
+| Frontend typecheck / coverage | `pnpm run typecheck`; `pnpm run coverage` | **F055 record**: exit 0 over **`src` and `tests`**; 67 files / **563** passed, All files **92.65 | 80.49 | 91.14 | 93.71**, `src/lib` **94.04 | 85.71 | 90.32 | 95.65** |
+| **Dev-only exclusion** | `cd D:\resors\frontend; pnpm run build`, then search `dist/` for `Development builds only` / `recharts` / `tools/components` | **F055 record**: no match — the lab page and recharts are absent from `dist/`. A match means the exclusion broke |
+| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **a gate check. F055 record**: 563 passed (F047: 498) |
+| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | F056 changes no API. **F055 record**: re-run produced **no diff** |
+| Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)`. Run this after any migration task — a dev database behind head serves 500s while every test is green |
+| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F056 adds no migration). F049 record: clean, ending at `0009` |
 
-**The end-to-end check (F054's, unblocked by F055's `alembic upgrade head`).** In a **dev** build (`pnpm run dev`), signed
-in as an `admin`: the sidebar should show a **Tools** group holding **Component Lab**, and `/tools/components` should
-render the primitives, the charts and the files section — which should work end to end (upload a real file, preview the
-text one, download it under the server's own name, delete it through the confirm dialog), because the `file_assets` table
-the 500 complained about exists. In a **production** build the same path must 404 — the build row above checks that without
-a browser. By hand at `localhost:8000/docs`: F053's export (`/admin/users` → **Export PDF** →
-`user-directory-<date>.pdf`, the 1,000-row sentence) and F050's downloads (`nosniff`, `private, no-store`; a foreign file id → **404**).
+**The end-to-end check (F054's).** In a **dev** build (`pnpm run dev`), signed in as an `admin`: the sidebar shows a
+**Tools** group holding **Component Lab**, and `/tools/components` renders the primitives, the charts and the files
+section — upload a real file, preview the text one, download it under the server's own name, delete it through the
+confirm dialog. In a **production** build the same path must 404 (the build row above checks that without a browser).
+By hand at `localhost:8000/docs`: F053's export (`/admin/users` → **Export PDF** → `user-directory-<date>.pdf`, the
+1,000-row sentence) and F050's downloads (`nosniff`, `private, no-store`; a foreign file id → **404**).
 
 ## 8. Reference documents (read only the section a task needs)
 
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F056 is at about line 227 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C43; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F057 is at about line 233 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C44; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
-| `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend (incl. the F055 quality gate), §6 authorization, §7 boundaries, §12 traps |
+| `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's), §6 authorization, §7 boundaries, §12 traps |
 | `docs/REQUIREMENT_TRACEABILITY.md` | BP-x.y index (§1–§11) and §14 gaps |
 | `docs/ROUTES_NAVIGATION.md`, `docs/OPENAPI_CLIENT.md` | Routing registry; typed-client recipe |
 | `docs/STACK_VERSIONS.md` | Version pins, the lint/format toolchain (§3) and approved deviations (§5) |
@@ -187,7 +187,7 @@ DECISIONS/BLOCKERS: <only material items>
 NEXT: <ID> — <task name>
 ```
 
-The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F056 — Backend quality gate`.
+The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F057 — Browser E2E`.
 
 ## 10. Accounts
 

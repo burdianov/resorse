@@ -46,6 +46,12 @@ dev = [
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
+    # Declared directly, not leaned on as pytest-cov's transitive dependency:
+    # `scripts/coverage_gate.py` imports `coverage` by name to read the group
+    # numbers, and F052 already settled that a direct import of an undeclared
+    # transitive dependency is a break waiting for someone else's release.
+    # Pinned to the version pytest-cov already resolved, so the lock does not move.
+    "coverage==7.16.2",
     "ruff==0.16.10",
     "mypy==2.4.0",
 ]
@@ -55,14 +61,51 @@ testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "strict"
 addopts = ["-ra", "--strict-markers"]
+markers = [
+    # A test that needs the real PostgreSQL database — directly, or through a
+    # fixture that needs it. The two legs of the backend gate are selected by
+    # this marker (F056): `-m "not integration"` runs anywhere with no
+    # database, `-m integration` is the PostgreSQL leg. `tests/test_markers.py`
+    # fails if a database-backed test forgets it, and the conftest fails
+    # rather than skips when the integration leg has no database — a suite
+    # that reports success with every database test skipped is not a gate.
+    "integration: needs a reachable PostgreSQL database (see tests/conftest.py)",
+]
 
 [tool.ruff]
 target-version = "py314"
 line-length = 100
 
+[tool.ruff.format]
+# **Applied revisions are frozen.** `migrations/versions/0009_file_assets.py`
+# is the file ruff would rewrap, and CARRIED_CONSTRAINTS §9 is categorical:
+# "never edit a migration that has been applied; add the next one" — a
+# revision applied in two environments must stay byte-identical, so the
+# formatter does not own it. This is the frontend's `src/lib/generated/`
+# exclusion (F055) in its backend form: a generator owns that tree, history
+# owns this one. `ruff check` still lints the whole migration tree, and a new
+# revision is formatted at creation time, before it is ever applied.
+exclude = ["migrations/versions/*.py"]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+# Thresholds are **not** here: `scripts/coverage_gate.py` owns them, because
+# coverage.py enforces one global number and BP §10.5 asks for two (the core
+# and the auth/RBAC branches) plus a ratchet. See DECISIONS C44.
+show_missing = true
+precision = 2
+
 [tool.mypy]
 python_version = "3.14"
 strict = true
+# The whole backend, not just the app: the test tree is where an unused
+# `type: ignore` or a call with too few arguments survives unnoticed (F056
+# found 16 of the first and 2 of the second). `uv run mypy` with no arguments
+# checks exactly this list, so the gate command and the config cannot drift.
+files = ["app", "tests", "scripts"]
 
 # Two of the report libraries publish no type information at all, so `strict`
 # would report *their* untyped imports as this project's errors: ReportLab

@@ -35,10 +35,12 @@ until its owning task lands — the agent must say so rather than hand you a com
 | Frontend lint / format | `cd frontend && pnpm run lint` / `pnpm run format:check` | **live (F055)** |
 | Frontend unit + component (Vitest) | `cd frontend && pnpm test -- --run` | first tests F011; suite **live (F055)** |
 | Frontend coverage | `cd frontend && pnpm run coverage` | **live (F055)** — thresholds in `vite.config.ts`; exit 0 means both were met |
-| Backend lint / format (Ruff) | `cd backend && uv run ruff check . && uv run ruff format --check .` | F056 |
-| Backend types | `cd backend && uv run mypy app` | F056 |
-| Backend unit tests | `cd backend && uv run pytest -q` | first tests F023; suite F056 |
-| Backend integration (real Postgres) | `docker compose up -d postgres && cd backend && uv run pytest tests/integration -q` | F008 + F056 |
+| Backend lint / format (Ruff) | `cd backend && uv run ruff check . && uv run ruff format --check .` | **live (F056)** — applied migrations are excluded from `format` only (they are frozen); `check` lints them |
+| Backend types (mypy strict) | `cd backend && uv run mypy` | **live (F056)** — covers `app`, `tests` and `scripts`; the file list is in `[tool.mypy]`, so the bare command *is* the gate |
+| Backend unit tests (no database) | `cd backend && uv run pytest -m "not integration" -q` | **live (F056)** — runs anywhere; this is the leg that needs no PostgreSQL |
+| Backend integration (real Postgres) | `cd backend && uv run pytest -m integration -q` | **live (F056)** — needs `docker compose up -d --wait` first, and **fails** rather than skipping if no database is configured |
+| Backend whole suite (both legs) | `cd backend && uv run pytest -q` | first tests F023; both legs **live (F056)** |
+| Backend coverage gate | `cd backend && uv run python -m scripts.coverage_gate` | **live (F056)** — runs the whole suite under branch coverage, then enforces three floors; exit 0 means all three were met |
 | Migration smoke | `cd backend && uv run alembic upgrade head` then `alembic downgrade base` | F023 |
 | Dev database at head | `cd backend && uv run alembic current` → expect `(head)` | now — see the note below |
 | Browser E2E (Playwright) | `cd frontend && pnpm exec playwright test` | F057 |

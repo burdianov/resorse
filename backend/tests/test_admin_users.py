@@ -18,17 +18,17 @@ import uuid
 
 import httpx
 import pytest
+from conftest import ClientFactory
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import PERMISSION_DENIED_DETAIL
-from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
-from app.core.csrf import CSRF_HEADER_NAME
+from app.core.cookies import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME
 from app.core.permissions import PermissionCode
 from app.core.security import hash_password, hash_session_token, verify_password
 from app.models import Permission, Role, User, UserSession
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 PASSWORD = "correct horse battery staple"
 CALLER_EMAIL = "admin@example.com"
@@ -51,7 +51,7 @@ async def add_user(
         full_name=full_name if full_name is not None else email.split("@")[0].title(),
         hashed_password=hash_password(password),
         roles=[],
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()
@@ -194,7 +194,7 @@ async def test_each_endpoint_requires_its_own_permission(
 
 
 async def test_create_returns_a_generated_temporary_password_once(
-    make_client, session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     client = await make_client()
     await caller_with(client, session, [PermissionCode.USERS_CREATE, PermissionCode.USERS_READ])
@@ -440,7 +440,7 @@ async def test_the_active_toggle_needs_its_own_permission(
 
 
 async def test_deactivation_revokes_sessions_and_blocks_sign_in(
-    make_client, session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     target = await add_user(session, email="target@example.com")
     await session.commit()
@@ -475,7 +475,7 @@ async def test_deactivation_revokes_sessions_and_blocks_sign_in(
 
 
 async def test_delete_is_soft_keeps_the_row_and_closes_the_account(
-    make_client, session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     target = await add_user(session, email="target@example.com")
     await session.commit()
@@ -639,7 +639,7 @@ async def test_role_grants_cannot_exceed_the_callers_own_permissions(
 
 
 async def test_a_superuser_can_grant_what_a_plain_admin_cannot(
-    make_client, session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     famous = await make_role(session, "famous", [PermissionCode.ROLES_MANAGE])
     await session.commit()
@@ -660,7 +660,7 @@ async def test_a_superuser_can_grant_what_a_plain_admin_cannot(
 
 
 async def test_reset_endpoint_returns_a_temporary_that_forces_change(
-    make_client, session: AsyncSession
+    make_client: ClientFactory, session: AsyncSession
 ) -> None:
     target = await add_user(session, email="target@example.com")
     await session.commit()

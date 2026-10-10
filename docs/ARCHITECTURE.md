@@ -304,6 +304,69 @@ carries a request ID that appears in logs and in `audit_logs.correlation_id`.
 
 **Authorization is enforced in `deps` and in SQL**, never by the router alone and never only in the UI.
 
+### The quality gate (F056)
+
+Four commands, each with one job, all runnable from `backend/` — the backend's answer to F055's four (C44):
+
+| Command | What it is for |
+|---|---|
+| `uv run ruff format --check .` | Ruff 0.16.10, the formatter |
+| `uv run ruff check .` | Ruff's linter, the same tool |
+| `uv run mypy` | mypy 2.4.0 in strict mode |
+| `uv run python -m scripts.coverage_gate` | the whole suite under branch coverage, then three floors |
+
+**The formatter does not own an applied migration.** `[tool.ruff.format] exclude = ["migrations/versions/*.py"]`
+is CARRIED_CONSTRAINTS §9 expressed in configuration: a revision applied in two environments must stay
+byte-identical, so history owns that tree the way the generator owns the frontend's `src/lib/generated/`.
+`ruff check` still lints it, and a newly created revision is formatted before it is ever applied.
+
+**mypy's file list is in the configuration, not on the command line.** `[tool.mypy] files = ["app", "tests",
+"scripts"]` means the bare `uv run mypy` — the gate command — checks exactly the set the gate is about, so the
+command and the config cannot drift apart. `tests/` and `scripts/` are in it for the reason F055's follow-up
+widened `tsconfig.json`: the test tree is where the errors live that no other check sees. Strict mode over the
+test tree reported **16 `type: ignore` comments that had gone stale** (mypy only checks the bodies of the
+functions it is asked about, so an ignore on an unannotated function is never consulted) and calls with too few
+arguments. The annotations that replaced them are honest rather than convenient: `ClientFactory` in
+`tests/conftest.py` is a **Protocol**, because the peer address is optional and `Callable[[str], ...]` cannot
+express a defaulted parameter; the two frozen-clock doubles carry a coded `# type: ignore[override]` with
+`datetime.now`'s `-> Self` in the comment; `tests/test_database_conventions.py` carries two, one for each
+upstream fact (a declarative `__table__` is annotated `FromClause` while `CreateTable` takes a `Table`, and
+`ClauseElement.compile` ships unannotated in SQLAlchemy 2.1). Only `reportlab.*` and `docxtpl.*` are exempted
+from missing imports — they publish no types; `pypdf` and `python-docx` ship inline types and stay checked.
+
+**The suite is two legs separated by one marker, and the partition is tested.** `integration` is registered in
+`[tool.pytest.ini_options]` and applied to every test that reaches the real PostgreSQL — module-level in the 13
+files that are entirely database-backed, and one decorator at a time for the **87 database-backed tests in the
+8 mixed files**. `uv run pytest -m "not integration"` therefore runs anywhere with no database, and
+`uv run pytest -m integration` is the PostgreSQL leg. Two things keep that partition honest. First,
+`tests/conftest.py` **fails where it used to skip**: with no `DATABASE_URL` or `TEST_DATABASE_URL`, the
+session-scoped fixture calls `pytest.fail(..., pytrace=False)` and names both legs, because a run that reported
+every database test as skipped and still exited 0 is not a gate. Second, `tests/test_markers.py` checks the
+partition **in both directions** for every collected item — a test that resolves a database fixture must carry
+the marker, and a marked test must resolve one — reading `item.fixturenames`, the transitive list, so
+`client` → `make_client` → `session` → `test_database_url` is covered without naming the closure twice and a
+database fixture written tomorrow is covered the day it is written.
+
+**Coverage is a script, because BP-10.5 asks for groups and coverage.py enforces one number.**
+`scripts/coverage_gate.py` runs the suite under branch coverage (`--cov=app --cov-report=`) and judges three
+rows, printing coverage.py's own columns so any row can be checked against the full report:
+
+| Group | Modules | Metric | Floor | F056 measured |
+|---|---|---|---|---|
+| `core` | `app/core/` + `app/services/` | cover | **85** — BP-10.5's own number | 96.72 (1564 stmts) |
+| `auth_rbac` | 13 named auth/RBAC modules | **branches** | **97** — ratchet | 97.34 (188 branches) |
+| `total` | every measured module | cover | **95** — ratchet | 95.64 (2742 stmts) |
+
+The `auth_rbac` row is measured on branches and the module list is enumerated rather than expressed as a
+directory: BP-10.5 says "critical auth/RBAC **branches**", and a half-covered `if` in the authentication path
+is not a gap in the tests but a hole in the wall. Both ratchets are the F056 measurement rounded down, the same
+rule the frontend's `vite.config.ts` records (C43). Floors may only go up, and `tests/test_coverage_gate.py`
+asserts that none sits below BP's 85 — the requirement itself is the invariant, so it cannot be quietly
+lowered. A group that matches **no** module fails instead of scoring a vacuous 100: a renamed selector would
+otherwise leave the strictest row of the gate green forever. The script exits non-zero if pytest fails *or* a
+floor is missed, and `coverage` is a direct dev dependency at the version pytest-cov already resolves
+(`==7.16.2`) because the script imports it by name (C40's rule).
+
 ## 5. Frontend structure and data flow
 
 ```text

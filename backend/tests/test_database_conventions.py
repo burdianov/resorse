@@ -12,8 +12,9 @@ against the real database (BIG-PROMPT §10.2).
 """
 
 import uuid
+from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, Uuid
+from sqlalchemy import DateTime, ForeignKey, FromClause, String, UniqueConstraint, Uuid
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.schema import CreateTable
@@ -67,14 +68,20 @@ def test_the_naming_convention_is_the_one_we_think() -> None:
     assert NAMING_CONVENTION["pk"] == "pk_%(table_name)s"
 
 
-def ddl_for(table: object) -> str:
+def ddl_for(table: FromClause[Any]) -> str:
     """DDL as PostgreSQL renders it.
 
     Compiling without a dialect gives the *generic* form — ``DATETIME`` and
     ``CHAR(32)`` — which is not what this project's database sees. The dialect
     is part of the assertion.
     """
-    return str(CreateTable(table).compile(dialect=postgresql.dialect()))  # type: ignore[arg-type]
+    # Two separate upstream facts, so two ignores rather than one broad one:
+    # a declarative class's `__table__` is annotated `FromClause` while
+    # `CreateTable` takes a `Table` (at runtime it always *is* one), and
+    # `ClauseElement.compile` ships without annotations in SQLAlchemy 2.1.
+    statement = CreateTable(table)  # type: ignore[arg-type]
+    compiled = statement.compile(dialect=postgresql.dialect())  # type: ignore[no-untyped-call]
+    return str(compiled)
 
 
 def test_unnamed_constraints_reach_postgresql_with_stable_names() -> None:

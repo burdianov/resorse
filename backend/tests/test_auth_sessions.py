@@ -37,10 +37,10 @@ from app.core.config import get_settings
 from app.core.cookies import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME
 from app.core.security import hash_password, hash_session_token
 from app.models import User, UserSession
-from app.services.auth import log_in
+from app.services.auth import IssuedSession, log_in
 from app.services.sessions import log_out, resolve_session, rotate_session
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 EMAIL = "ada@example.com"
 OTHER_EMAIL = "grace@example.com"
@@ -67,14 +67,16 @@ async def add_user(session: AsyncSession, *, email: str = EMAIL, **overrides: ob
         email=email,
         full_name="Ada Lovelace",
         hashed_password=hash_password(STRONG_PASSWORD),
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()
     return user
 
 
-async def log_in_via_service(session: AsyncSession, *, email: str = EMAIL, now: datetime = T0):
+async def log_in_via_service(
+    session: AsyncSession, *, email: str = EMAIL, now: datetime = T0
+) -> IssuedSession:
     return await log_in(
         session, email=email, password=STRONG_PASSWORD, client_ip=CLIENT_IP, now=now
     )

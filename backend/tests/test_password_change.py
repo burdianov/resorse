@@ -56,7 +56,7 @@ from app.services.passwords import (
 )
 from app.services.sessions import SessionContext, resolve_session
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 EMAIL = "ada@example.com"
 OTHER_EMAIL = "grace@example.com"
@@ -86,8 +86,10 @@ def frozen_password_clock(monkeypatch: pytest.MonkeyPatch) -> None:
     """
 
     class FrozenDateTime(datetime):
+        # `datetime.now` returns `Self`; this double deliberately returns the
+        # frozen instant as a plain `datetime`, which `Self` cannot express.
         @classmethod
-        def now(cls, tz: tzinfo | None = None) -> datetime:
+        def now(cls, tz: tzinfo | None = None) -> datetime:  # type: ignore[override]
             if tz is None:
                 return T0.replace(tzinfo=None)
             return T0.astimezone(tz)
@@ -103,7 +105,7 @@ async def add_user(session: AsyncSession, *, email: str = EMAIL, **overrides: ob
         email=email,
         full_name="Ada Lovelace",
         hashed_password=hash_password(STRONG_PASSWORD),
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     session.add(user)
     await session.flush()
@@ -165,7 +167,9 @@ def csrf_headers(csrf: str) -> dict[str, str]:
     return {"Origin": GOOD_ORIGIN, "X-CSRF-Token": csrf}
 
 
-async def login(client: httpx.AsyncClient, *, email: str = EMAIL, password: str = STRONG_PASSWORD):
+async def login(
+    client: httpx.AsyncClient, *, email: str = EMAIL, password: str = STRONG_PASSWORD
+) -> tuple[str, str]:
     response = await client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": password},

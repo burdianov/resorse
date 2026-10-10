@@ -39,6 +39,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.security import hash_password
 from app.models import AuditLog, FileAsset, User
+
+# The two limits are declared on the model, so the tests read them there: a
+# re-export through `app.services.storage` is not a name that module owns.
+from app.models.files import MAX_CATEGORY_LENGTH, MAX_FILENAME_LENGTH
 from app.services import storage
 from app.services.storage import LocalVolumeStorage
 
@@ -290,8 +294,8 @@ async def test_the_uploaded_name_is_reduced_to_a_display_name(hostile: str, expe
 
 
 async def test_a_name_is_bounded() -> None:
-    assert len(storage.sanitise_filename("a" * 400)) == storage.MAX_FILENAME_LENGTH
-    assert len(storage.sanitise_filename("b" * 300 + ".pdf")) == storage.MAX_FILENAME_LENGTH
+    assert len(storage.sanitise_filename("a" * 400)) == MAX_FILENAME_LENGTH
+    assert len(storage.sanitise_filename("b" * 300 + ".pdf")) == MAX_FILENAME_LENGTH
 
 
 # --------------------------------------------------------------------------
@@ -344,6 +348,7 @@ async def test_markup_binaries_and_archives_have_no_accepted_type(payload: bytes
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_storing_writes_the_object_the_row_and_the_event(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -385,6 +390,7 @@ async def test_storing_writes_the_object_the_row_and_the_event(
     }
 
 
+@pytest.mark.integration
 async def test_the_uploaded_name_never_reaches_the_volume(
     session: AsyncSession, volume: LocalVolumeStorage, tmp_path: Path
 ) -> None:
@@ -403,6 +409,7 @@ async def test_the_uploaded_name_never_reaches_the_volume(
     assert not (tmp_path.parent / "evil.pdf").exists()
 
 
+@pytest.mark.integration
 async def test_storing_does_not_commit(
     session: AsyncSession, volume: LocalVolumeStorage, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -416,6 +423,7 @@ async def test_storing_does_not_commit(
     await store(session, volume)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     ("declared", "expected"),
     [
@@ -434,6 +442,7 @@ async def test_a_declared_type_never_widens_what_the_bytes_say(
     assert asset.content_type == expected
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("declared", ["text/plain", "application/pdf", "image/jpeg"])
 async def test_a_declared_type_that_contradicts_the_bytes_is_refused(
     session: AsyncSession, volume: LocalVolumeStorage, declared: str
@@ -445,6 +454,7 @@ async def test_a_declared_type_that_contradicts_the_bytes_is_refused(
     assert stored_objects(volume) == []
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     ("payload", "declared", "expected"),
     [
@@ -474,6 +484,7 @@ async def test_the_one_refinement_a_client_may_make(
     assert asset.content_type == expected
 
 
+@pytest.mark.integration
 async def test_a_name_and_a_type_do_not_make_a_file_what_it_claims(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -491,6 +502,7 @@ async def test_a_name_and_a_type_do_not_make_a_file_what_it_claims(
     assert stored_objects(volume) == []
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "payload",
     [
@@ -511,6 +523,7 @@ async def test_contents_with_no_accepted_type_are_never_stored(
     assert stored_objects(volume) == []
 
 
+@pytest.mark.integration
 async def test_the_cap_refuses_before_anything_is_written(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -528,6 +541,7 @@ async def test_the_cap_refuses_before_anything_is_written(
     assert asset.size == len(PNG)
 
 
+@pytest.mark.integration
 async def test_a_type_removed_from_the_allowlist_is_refused(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -547,6 +561,7 @@ async def test_a_type_removed_from_the_allowlist_is_refused(
     assert asset.content_type == "image/png"
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "category",
     [
@@ -555,7 +570,7 @@ async def test_a_type_removed_from_the_allowlist_is_refused(
         pytest.param("with space", id="space"),
         pytest.param("-leading", id="leading-punctuation"),
         pytest.param("réports", id="non-ascii"),
-        pytest.param("x" * (storage.MAX_CATEGORY_LENGTH + 1), id="too-long"),
+        pytest.param("x" * (MAX_CATEGORY_LENGTH + 1), id="too-long"),
     ],
 )
 async def test_a_category_is_a_slug(
@@ -567,6 +582,7 @@ async def test_a_category_is_a_slug(
     assert stored_objects(volume) == []
 
 
+@pytest.mark.integration
 async def test_an_asset_may_have_no_owner(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -593,6 +609,7 @@ class RecordingScanner:
         self.calls.append((filename, content_type))
 
 
+@pytest.mark.integration
 async def test_the_scan_hook_runs_before_anything_is_written(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -603,6 +620,7 @@ async def test_the_scan_hook_runs_before_anything_is_written(
     assert stored_objects(volume) == []
 
 
+@pytest.mark.integration
 async def test_the_scan_hook_sees_the_sanitised_name_and_the_sniffed_type(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -620,6 +638,7 @@ async def test_the_scan_hook_sees_the_sanitised_name_and_the_sniffed_type(
     assert asset.content_type == "image/png"
 
 
+@pytest.mark.integration
 async def test_a_read_returns_the_bytes_and_verifies_the_checksum(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -634,6 +653,7 @@ async def test_a_read_returns_the_bytes_and_verifies_the_checksum(
         await storage.read_file(asset, backend=volume)
 
 
+@pytest.mark.integration
 async def test_reading_a_missing_object_says_so(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
@@ -644,6 +664,7 @@ async def test_reading_a_missing_object_says_so(
         await storage.read_file(asset, backend=volume)
 
 
+@pytest.mark.integration
 async def test_deleting_records_the_event_and_hands_back_the_key(
     session: AsyncSession, volume: LocalVolumeStorage
 ) -> None:
