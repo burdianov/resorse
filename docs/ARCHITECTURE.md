@@ -864,7 +864,9 @@ superseded token, which the server correctly reads as reuse and answers by revok
 family — so `changeForcedPassword` returns only once the gate has been left, which is where that
 contract belongs rather than in each caller's memory. And it surfaced the roles screen's phantom
 "unsaved change" after a successful save, where the draft is re-seeded from the pre-request cache
-entry (recorded as a finding; the grant itself is persisted — F057 changed no application code). The
+entry (recorded as a finding; the grant itself is persisted — F057 changed no application code), which
+**`TASKS.md` F064 now owns** (assigned by the operator 2026-10-10, C59 — it sits inside G-A3's scope, so
+it is fixed before G-A3 runs). The
 recorded findings it left are closed: F058 moved the palette's `sr-only` header inside its popup, made
 the breadcrumb separator a sibling of the items rather than a child, and turned the three
 `Button render={<Link/>}` navigations into `Link`s wearing `buttonVariants()`. Accessibility scans and
@@ -1117,7 +1119,7 @@ Rules that make these boundaries real:
   moment. `GET /api/v1/reports/engine-health` (`reports.generate`) answers the two halves separately —
   `reports.self_test()` renders and re-reads a document with pypdf, and `conversion.health()` reports the
   converter, where *down* is **degraded, not failed** (only the Word half needs it). It deliberately does not
-  probe PostgreSQL: that is a readiness question (`/ready`, BP-8.4b, still unbuilt). A tailored file is marked
+  probe PostgreSQL: that is a readiness question (`/ready`, BP-8.4b, still unbuilt — owned now by `TASKS.md` F065). A tailored file is marked
   exactly as a download is (F050's `content_disposition`, `nosniff`, `private, no-store`), and the preview UI
   reads the file's name from that header rather than from the browser's clock (F053, C41).
 - **A developer-only page is excluded by the module graph, not by a hidden link.** F054's component lab is

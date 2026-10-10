@@ -9,35 +9,35 @@
 
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and the task I name
-in claude_code_pack/TASKS.md. Stage A is complete (F001–F063) and Stage B has started at D001 (C52);
-**G-A3 (due since F048) and G-A4 are still not recorded** in docs/IMPLEMENTATION_LOG.md. Implement only the
-task I name — plan in at most five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task
-including the handoff, then stop and give me the operator checks. Do not push.
+in claude_code_pack/TASKS.md. Stage A is complete (F001–F063, plus the two repairs F064–F065); Stage B has
+started at D001 (C52). **Every decision is CONFIRMED — C11–C59, and none is open.** **G-A3 (due since F048)
+and G-A4 are still not recorded** in docs/IMPLEMENTATION_LOG.md. Implement only the task I name — plan in at
+most five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the
+handoff, then stop and give me the operator checks. Do not push.
 ```
 
 ## 2. Current position
 
-- **Stage A — domain-neutral foundation — is complete** (F001–F063). **Stage B has started: D001 landed (C52).** The
-  construction application runs D001–D091; its gate checkpoints (D018, D036, D063, D078, D091) are the operator's.
-- **Last completed:** D001 — Domain architecture map (**C52**) → `docs/DOMAIN_ARCHITECTURE.md`: the module boundaries,
-  the domain ERD and the action/scope matrix — **docs only, no table, route, permission code or nav entry**, because
-  each would be a claim with no consumer. The migration head is still `0009`.
-- **Previous:** F063 — Foundation handoff (**C51**, Stage A's close: the extension proof and the report); F062
-  (**C50**, docs only); F061 — CI workflows (**C49**; seven jobs, actionlint clean, **no CI job ever observed
-  running**); F060 (**C48**) → F054 (**C42**), each recorded in `DECISIONS.md`.
-- **Next:** **D002 — Disciplines migration** (TASKS.md line 266) — the first domain table (revision `0010`) and the
-  seven seeded codes; D001's map is what it builds against, and its acceptance is idempotent seed tests.
+- **Stage A — domain-neutral foundation — is complete** (F001–F063), with **two repairs added 2026-10-10**: **F064** (the
+  roles-screen save-state defect) and **F065** (the `/ready` probe) — findings the foundation recorded as open and unowned
+  (C59). **Stage B has started: D001 landed (C52).** The application runs D001–D091; its gate checkpoints (D018, D036, D063, D078, D091) are the operator's.
+- **Last completed:** the **decision write-up** — no task ID, docs only (**C53–C59**). The operator answered the six blockers and all
+  eighteen `O` decisions in one sitting: `DECISIONS.md` has **no OPEN row**, `docs/DOMAIN_ARCHITECTURE.md` defers to none (§4 maps
+  each answer), and `TASKS.md` gained F064, F065 and D083a. **No table or migration — head is still `0009`**; only two docstrings
+  moved, and they moved `backend/openapi.json` (one is the published `engine-health` description; the typed client is unchanged).
+- **Previous:** D001 (**C52**, docs only); F063 — Foundation handoff (**C51**, Stage A's close); F062 (**C50**, docs only); F061
+  (**C49**; seven CI jobs, actionlint clean, **no CI job ever observed running**); F060 (**C48**) → F054 (**C42**).
+- **Next:** **F064 — Roles screen save-state fix** (TASKS.md line 263), then **F065 — Readiness probe** (line 267), then
+  **D002 — Disciplines migration** (line 277) — the first domain table (revision `0010`) and the seven seeded codes, built
+  against D001's map. F064 and F065 are the two items the operator answered "now", and **F064 sits inside G-A3's scope, so it is fixed before G-A3 is run** (C59).
 - **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (G-A1/G-A2 have no
-  dated run recorded). **G-A3 (due since F048) and G-A4 are still not recorded, and now judge a tree holding Stage B's
-  first document** — commands in `docs/FOUNDATION_REPORT.md` §5. D001 ran on the operator's explicit instruction and touched no gate evidence. **G-9 (below) is unresolved, not blocking.**
-- **Open decisions (DECISIONS.md):** **O01–O18 remain OPEN**; `docs/DOMAIN_ARCHITECTURE.md` §4 records where each one bites
-  and which task must stop (O04→D029/D031, O05→D031, O06→D040/D043/D050, O07→D040/D041, O09→D064/D065, O12→D037/D042, O16→D012/D082). **Never treat one as approved.** Confirmed: C11–**C52**.
+  dated run recorded). **G-A3 (due since F048) and G-A4 are still not recorded** — commands in `docs/FOUNDATION_REPORT.md` §5; D001 touched no gate evidence. **G-9 (`/ready`) now has an owner (F065)**.
+- **Open decisions (DECISIONS.md):** **none.** Every decision is CONFIRMED — `C11`–**`C59`** — and `docs/DOMAIN_ARCHITECTURE.md`
+  §4 records where each answer landed and which task owns it. The register's rule applies in reverse too: **a confirmed rule is amended by a new entry that says so, never edited in place.**
 - **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any migration task; it reads `0009 (head)` today.
-- **Open item — `/ready` is not built (BP-8.4b), and unowned:** `conversion.health()` belongs behind it but no
-  readiness route exists; F053's `reports/engine-health` answers a different question. F063 corrected the two
-  docstrings that credited F062 with it, and did **not** build it — a readiness route is a route with its own tests
-  and no task in `TASKS.md` owns it. **`REQUIREMENT_TRACEABILITY.md` §14 G-9; the operator must assign an owner or
-  record an exclusion.** Read `health()`, don't re-implement it.
+- **Open item — `/ready` is unbuilt (BP-8.4b) but no longer unowned:** F065 owns it; `conversion.health()` (F052) and
+  `reports.self_test()` (F051) belong behind it, while F053's `reports/engine-health` answers a different question. Until F065 lands,
+  **`REQUIREMENT_TRACEABILITY.md` §14 G-9 stands**, as do the "unbuilt" notes in `health.py`, C40, C41, `ARCHITECTURE.md` §10 and `DEPLOYMENT.md` §14.
 - **Open item — orphan objects:** unlinked only *after* the caller's commit (and when it raises), so the residue is a process death in between; never unlink before commit.
 - **Open item — nothing scans uploads yet:** BP-6.4's hook ships as `MalwareScanner` + `NoMalwareScanner`, nothing is wired in, and a refusal is a 400 — never call uploads scanned.
 
@@ -89,10 +89,10 @@ Start the services, each in its own terminal:
 
 ## 5. Open items
 
-- **Needs an operator decision — the roles screen after a successful save.** `pages/admin/roles.tsx` re-seeds its draft
-  from the *pre-request* cache entry when `saveMutation` succeeds, so the save bar can stay visible (and a just-saved cell
-  render unchanged) **while the grant is persisted** (`app_e2e`-verified). **No backlog task owns it**; C46 records it as
-  the one F057 finding F058 deliberately did not touch (the other four are fixed).
+- **Owned now — the roles screen after a successful save (F064).** `pages/admin/roles.tsx` re-seeds its draft from the
+  *pre-request* cache entry when `saveMutation` succeeds, so the save bar can stay visible (and a just-saved cell render
+  unchanged) **while the grant is persisted** (`app_e2e`-verified). The operator answered "fix it now" on 2026-10-10, so it is
+  **F064**, inside G-A3's scope (C59); C46 records it as the one F057 finding F058 deliberately left to it (the other four are fixed).
 - **The visual baselines are platform-tagged** (`…-quality-win32.png`): on Linux, `pnpm run test:visual` finds none of
   them and fails every state as new — F061 (CI) runs them in a Windows job. Not a defect if you meet it (`ARCHITECTURE.md` §12).
 - **Dismissed — the jsdom `Select` item** (`CARRIED_CONSTRAINTS.md` §6): an uncontrolled `Select` is unreachable here (every `<Select` under `src/` passes `value`); its label is now an F058 baseline.
@@ -147,7 +147,7 @@ The record column is **historical and the agent's own observation**, never the o
 | **Operations docs (F062)** | Read the `README.md` quick start and walk it on a clean machine; then `docs/DEPLOYMENT.md` §3–§6 and `docs/BACKUP_RESTORE.md` | Documentation, so there is no gate command. The check: the quick start agrees with `OPERATOR_GUIDE.md`, the commands run as written, and every recorded gap still says so — `DEPLOYMENT.md` §14 (no real VPS, ACME/HTTPS/load untested, `/ready` not built), `BACKUP_RESTORE.md` §9 (**no backup has ever been taken**), `TESTING.md` §7 (no CI job observed running). Anything that reads as verified and is not, is a defect |
 | **Security (F060)** | `cd D:\resors\backend; uv run pytest tests/test_production_hardening.py` | 23 passed (agent record). Edge check on a live host: `curl -sI https://<SITE_ADDRESS>/` shows the CSP, HSTS and `nosniff` (`docs/SECURITY.md` §4.2) |
 | **Foundation report (F063)** | Read `docs/FOUNDATION_REPORT.md` (BP-14.8), then `cd D:\resors\backend; uv run pytest tests/test_extension_contract.py tests/test_foundation_boundaries.py` and `cd D:\resors\frontend; pnpm exec vitest run tests/config/modules.test.tsx` | The report is the check: it must not claim a gate result, and every number in it must be attributable. Agent record: 9 / 5 / 7 passed. **G-A3 and G-A4 run against this tree** — the commands are in the report's §5 |
-| **Domain map (D001)** | Read `docs/DOMAIN_ARCHITECTURE.md`; then `cd D:\resors\backend; uv run alembic heads` and `cd D:\resors\frontend; grep -n "APP_MODULES" src/config/modules.ts` | The check is that the document claims no code: head is still `0009 (head)`, `APP_MODULES` is `[]`, `PermissionCode` has no domain member, and every decision it defers to is still **OPEN** in `DECISIONS.md`. A table, route or code that landed in D001 is a defect; so is a rule this map states as decided that `DECISIONS.md` calls OPEN |
+| **Domain map (D001)** | Read `docs/DOMAIN_ARCHITECTURE.md`; then `cd D:\resors\backend; uv run alembic heads` and `cd D:\resors\frontend; grep -n "APP_MODULES" src/config/modules.ts` | The check is that the document claims no code: head is still `0009 (head)`, `APP_MODULES` is `[]`, `PermissionCode` has no domain member. **Every decision it once deferred to is CONFIRMED now (`C53`–`C59`), so the map must carry no `[Ox]` marker and no unwritable constraint** — its §4 records where each answer landed. A table, route or code that landed in D001 is a defect; so is a rule the map states as decided that `DECISIONS.md` does not |
 | **Production stack (F059)** | Create `.env.production` from `.env.production.example` (real values, git-ignored), then `cd D:\resors; docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait` | Agent's record (scratch env, `SITE_ADDRESS=localhost`): all five services healthy, `migrate` exit 0. The operator's check: `curl -k https://<SITE_ADDRESS>/api/v1/health` → `"environment":"production"`; `docker compose -f docker-compose.prod.yml --env-file .env.production down` leaves volumes intact (`down -v` deletes them) |
 | Dev database at head | `cd D:\resors\backend; uv run alembic current` | `0009 (head)`. Run this after any migration task — a dev database behind head serves 500s while every test is green |
 | Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only (§3) | **not run by the agent** (F057 adds no migration). F049 record: clean, ending at `0009` |
@@ -159,8 +159,8 @@ The record column is **historical and the agent's own observation**, never the o
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; **Stage B is in progress — D001 landed, D002 is next (line 266)** |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C52; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; **the two Stage A repairs F064–F065 come before Stage B; D002 is next after them (line 277). D050–D053 are withdrawn (C53), D041 is re-scoped, and D083a is new** |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions **C11–C59** — **no OPEN row remains**; §"no OPEN rows" records that an amendment is a new entry, never an edit in place |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |
 | `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's and the F057/F058 browser suites), §6 authorization, §7 boundaries, §12 traps |
@@ -168,7 +168,7 @@ The record column is **historical and the agent's own observation**, never the o
 | `docs/ROUTES_NAVIGATION.md`, `docs/OPENAPI_CLIENT.md` | Routing registry; typed-client recipe |
 | `README.md`, `docs/DEPLOYMENT.md`, `docs/BACKUP_RESTORE.md`, `docs/TESTING.md`, `docs/ADDING_A_MODULE.md` | **F062's operations runbook**: quick start, deploy/migrate/rollback, backup and restore, the test matrix and gate commands, and the extension recipe |
 | `docs/FOUNDATION_REPORT.md` | **F063's Stage A report**: what shipped, the extension proof, the boundary check, BP-13's checklist judged, the G-A4 commands, and every open item. Read it before Stage B |
-| `docs/DOMAIN_ARCHITECTURE.md` | **D001's Stage B map**: the module boundaries, the domain ERD (tables that do not exist yet) and the action/scope matrix. Read §4 before any Stage B task that touches an OPEN decision — it names the task that must stop |
+| `docs/DOMAIN_ARCHITECTURE.md` | **D001's Stage B map**: the module boundaries, the domain ERD (tables that do not exist yet) and the action/scope matrix. Its §4 records where each of the 2026-10-10 answers landed (C53–C59), so it names the owning task for every rule |
 | `docs/STACK_VERSIONS.md` | Version pins, the toolchain (§3), the browser stack (§6), approved deviations (§5). `docs/CARRIED_CONSTRAINTS.md` / `docs/ENVIRONMENT.md`: archived §6 constraints / §4 environment snapshot |
 
 **Do not load the four archives in full** — search them for the task ID. Use the `REQUIREMENT_TRACEABILITY.md` index rather than reading `BIG-PROMPT.txt` whole.

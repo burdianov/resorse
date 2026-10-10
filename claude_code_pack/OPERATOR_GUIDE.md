@@ -133,11 +133,12 @@ browser walkthrough, in this order, against a **pinned tree**:
    walkthrough's outcome, and the verdict. A red item becomes a fix task and the gate is re-run after it lands;
    nothing is waived into the record, and counts are written as observed, never quoted from `NEXT_PROMPT.md`.
 
-Before G-A3, decide the item that sits inside its scope: the roles-screen re-seed defect recorded in
-`NEXT_PROMPT.md` §5 (no task owns it). F058 owned the accessibility findings F057 recorded and has closed them
-in application code (C46) — the palette's misplaced `sr-only` header, the breadcrumb separator nested inside an
-item, the three `Button render={<Link/>}` navigations, and the `DataTable` columns whose view-options menu
-printed a raw id.
+Before G-A3, the item that sits inside its scope has been decided and **owned**: the roles-screen re-seed defect
+is `TASKS.md` **F064** (operator, 2026-10-10, C59), so it is fixed before G-A3 is run — the guide's rule is met by
+implementing F064 first, not by walking the gate around it. F058 owned the accessibility findings F057 recorded
+and has closed them in application code (C46) — the palette's misplaced `sr-only` header, the breadcrumb separator
+nested inside an item, the three `Button render={<Link/>}` navigations, and the `DataTable` columns whose
+view-options menu printed a raw id.
 
 ### The gates
 - G-A1 after F016: UI app boots, design tokens/components and navigation work.

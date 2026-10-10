@@ -256,6 +256,18 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Implement:** Test extension registry and no domain leakage.
 **Accept:** Foundation gate report and no Next/Redis. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
+## Stage A repairs — outstanding findings from the foundation (F064–F065)
+
+Two items the foundation recorded as open and deliberately unowned. They are repairs to Stage A, not domain work, which is why they are numbered here and not in Stage B (C59).
+
+### F064 — Roles screen save-state fix
+**Implement:** Fix the F057 finding in `pages/admin/roles.tsx`: `saveMutation.onSuccess` re-seeds the draft from the cache entry that was current *before* the request, so a successful save can leave the save bar showing an unsaved change and the just-saved cell rendering its old value (the grant itself is persisted — verified in `app_e2e`). Re-seed from the mutation's own result instead.
+**Accept:** A regression test proving that a successful grant save clears the unsaved-change state and renders the saved value. Applies to the roles screen only. **Handoff:** list changed files, focused checks, operator checks, and stop.
+
+### F065 — Readiness probe
+**Implement:** Add the readiness endpoint ARCHITECTURE §10 names (`/ready`; `/health` stays liveness): report PostgreSQL reachability plus each optional dependency's health — `conversion.health()` (F052) for the Word half and `reports.self_test()` (F051) for the PDF engine — as one per-dependency answer, degraded rather than failed when an optional half is down. Not public.
+**Accept:** Readiness distinguishes "serving" from "alive", a down optional dependency is degraded and not a crash, and the endpoint's own tests cover both. Closes G-9 and retires the "unbuilt" notes in `health.py`, C40, C41, ARCHITECTURE §10, DEPLOYMENT.md and FOUNDATION_REPORT. **Handoff:** list changed files, focused checks, operator checks, and stop.
+
 ## Stage B — construction manpower application (D001–D091)
 
 ### D001 — Domain architecture map
@@ -304,7 +316,7 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 
 ### D012 — Employees API
 **Implement:** Protected CRUD and search.
-**Accept:** Sensitive field scope tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Accept:** Sensitive field scope tests, including that **rate fields are absent from the response** for a caller without `rates.read` — absent, not hidden in the client (C58). **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D013 — Employees UI
 **Implement:** Search filters import-ready forms.
@@ -319,8 +331,8 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Precedence lookup tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D016 — Rates API
-**Implement:** Protected rate history editing no overlaps.
-**Accept:** Unauthorized and overlap tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Protected rate history editing no overlaps; every `effective_from` is a month's first day, so a late correction is **back-dated to that month's 1st** rather than dated mid-month.
+**Accept:** Unauthorized and overlap tests, plus month-boundary effective-date and audited-back-dating tests (C55). **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D017 — Rates UI
 **Implement:** Rate grids history effective-date editor.
@@ -342,13 +354,13 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Implement:** Stable row IDs dates order and duplicate rows.
 **Accept:** CRUD and constraints tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
-### D022 — Partial-month calendar engine
-**Implement:** Working-day fraction helper with approved calendar.
-**Accept:** Boundary and leap tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+### D022 — Partial-month month-fraction helper
+**Implement:** Partial-month fraction as **the month's calendar days divided into the daily cost** — no working-day calendar, no holiday table, no 26/27-day cap (C55, O01). Every day counts, Sundays and holidays included.
+**Accept:** Boundary, leap and short-month tests proving a day is worth more in a 28-day month than a 31-day one. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D023 — Forecast cell defaults
-**Implement:** Generate 100% or partial month default percentages.
-**Accept:** Deterministic cells tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Generate 100% or partial month default percentages, capped at 100 — overtime is a separate row, never a cell above 100 (C55, O03).
+**Accept:** Deterministic cells tests, plus a 0–100 CHECK refusal test. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D024 — Manual cell overrides
 **Implement:** Persist explicit overrides with source flags.
@@ -387,12 +399,12 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Known fixture totals. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D033 — Award conversion service
-**Implement:** Tender-to-awarded transition with no duplicate identity.
-**Accept:** Explicit preview test. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Tender-to-awarded transition with no duplicate identity: **create the awarded project, select the project code from the tender list, copy the tender's positions and dates into the awarded forecast as revision 0, and retire the tender row** — it is kept as history and the code stays unique among live projects (C57, O15). Cost Control runs it.
+**Accept:** Explicit preview test, plus a test that an awarded tender cannot be awarded twice. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D034 — Award conversion UI
-**Implement:** Review/copy tender rows into awarded draft.
-**Accept:** No silent overwrite test. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Review/copy tender rows into the awarded draft, with the code selected from the tender dropdown and the **awarded forecast horizon defaulting to the project's last month + 2** (C57, O17).
+**Accept:** No silent overwrite test and horizon-default test. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D035 — Awarded position editor
 **Implement:** Named/unnamed employees and vacant slots.
@@ -403,24 +415,24 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Atomic import tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D037 — Forecast report data
-**Implement:** Scoped A3/A4 matrix payload and total calculations.
-**Accept:** Cross-project denial tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Scoped A3/A4 matrix payload and total calculations, in the **two variants of C58**: the administrator's carries rates and per-position (and per-entry) monthly cost, the one Cost Control and PM/PD receive is redacted to project-month totals.
+**Accept:** Cross-project denial tests and a redaction test proving the protected figures never reach a non-administrator's payload. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D038 — Tender executive PDF
-**Implement:** A3 landscape printable multi-page tender report.
-**Accept:** PDF content/page tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** A3 landscape printable multi-page tender report — the administrator's variant, which is a tender-phase artifact (C58).
+**Accept:** PDF content/page tests and an administrator-only test, since a tender is invisible to everyone else (C57). **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D039 — Awarded executive PDF
-**Implement:** Named/vacant cost and revision report.
+**Implement:** Named/vacant cost and revision report, **redacted to project-month totals for Cost Control and PM/PD** (C58).
 **Accept:** Confidentiality tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D040 — Actual assignment schema
-**Implement:** Effective-dated employee/project/HO assignments.
-**Accept:** Interval constraint tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Effective-dated employee/project/HO assignments: `end_date NOT NULL` and inclusive at both ends, **one assignment per employee at a time, no `assignment_shares`** (C53).
+**Accept:** Interval constraint tests, including the exclusion constraint over `daterange(start_date, end_date, '[]')` that rejects an overlapping pair. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D041 — Assignment end-date alerts
-**Implement:** Provisional/unknown end workflow per decision.
-**Accept:** Persistent alert and edit tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** **Withdrawn as written** (C53 answered O07 against the provisional-end option — there is no nullable end date). What this task owns instead is the **assignments-past-end exception list** with its **extend** and **release** actions: a standing warning to the PM/PD, the administrator and Cost Control, while the cost keeps accruing to the project and the person is not shown available. Notices are configurable (D083a).
+**Accept:** Tests that a past-end assignment keeps charging until extended or released, and that neither action overwrites the planned end date. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D042 — Assignment authorization
 **Implement:** Resource Manager and project responsible edit boundaries.
@@ -443,8 +455,8 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Wrong approver denied tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D047 — Transfer transaction
-**Implement:** Atomic close/source and open/destination intervals.
-**Accept:** Concurrent approval tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Atomic close/source and open/destination intervals: the effective date `T` is the destination's **first** day and sets the source's **effective** end to `T − 1`, while the source's **planned** end is preserved (C53, O12). A transfer is never blocked; a late one warns and an early one notifies.
+**Accept:** Concurrent approval tests, plus overflow/fill tests proving no day is charged twice and none is skipped. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D048 — Transfer UI
 **Implement:** Request review approve reject timeline.
@@ -454,61 +466,57 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Implement:** Formal request approval and transfer record.
 **Accept:** Audited valid PDF tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
-### D050 — Shared assignment schema
-**Implement:** Effective-dated percentage slices by employee.
-**Accept:** Daily sum constraint tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+### D050 — Shared assignment schema — WITHDRAWN
+**Withdrawn 2026-10-10 by C53** (O06 answered *no* to split assignments): one employee is on one project at a time, so there are no percentage slices and no `assignment_shares` table. The number is kept rather than reused, so references to it stay stable. **Handoff:** nothing to run; the task is closed as withdrawn.
 
-### D051 — Shared allocation engine
-**Implement:** Compute daily project/HO shares.
-**Accept:** No double count tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+### D051 — Shared allocation engine — WITHDRAWN
+**Withdrawn 2026-10-10 by C53.** No daily shares exist to compute; the day-cost arithmetic lives in **D055** (`rate × 208` ÷ the month's calendar days) and the continuity rule in **D058**. **Handoff:** nothing to run; the task is closed as withdrawn.
 
-### D052 — Shared assignment API
-**Implement:** Create edit approve and conflict response.
-**Accept:** 100% and scope tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+### D052 — Shared assignment API — WITHDRAWN
+**Withdrawn 2026-10-10 by C53.** Assignment create/edit is D042 and the transfer path is D045–D047; nothing here survives. **Handoff:** nothing to run; the task is closed as withdrawn.
 
-### D053 — Shared allocation UI
-**Implement:** Share editor timeline and warnings.
-**Accept:** Split allocation UX tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+### D053 — Shared allocation UI — WITHDRAWN
+**Withdrawn 2026-10-10 by C53.** Assignment editing is D043 and transfer UI is D048. **Handoff:** nothing to run; the task is closed as withdrawn.
 
 ### D054 — Actual rate time slicing
-**Implement:** Apply effective employee/designation rates to date intervals.
-**Accept:** Mid-month rate tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Apply effective employee/designation rates to date intervals — the only slice that exists is a **month boundary**, because a rate change is effective on a month's 1st (C55, O02).
+**Accept:** Month-boundary rate tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D055 — Actual project-month engine
-**Implement:** 208h normalization and date shares no forecast pct.
-**Accept:** Known cost fixture tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** `rate_per_hour × 208` for a full month, divided by that month's **calendar days** for a daily cost; every day counts (C55, O01). Date- and assignment-based, never a forecast percentage.
+**Accept:** Known cost fixture tests, including a partial month computed to the day and a short-month/long-month comparison. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D056 — Actual monthly aggregates
-**Implement:** Persist only project-month actual totals and provenance.
-**Accept:** No employee-month ledger tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Persist only project-month actual totals and provenance — carrying **both figures** (C56, amending C05): the assignment-derived **calculated** cost and the **actual** entered by Cost Control from Accounts. That entry is what closes the project-month, stays editable afterwards, and every edit is audited.
+**Accept:** No employee-month ledger tests, plus calculated-vs-actual and month-close tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D057 — Actual cost recalculation
-**Implement:** Versioned authorized recompute after retroactive change.
+**Implement:** Versioned recompute after a retroactive change. **No approval is required** and no change is silent: the before/after is recorded (C55, O18).
 **Accept:** Diff and audit tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D058 — Assignment continuity
-**Implement:** 100% recurring cost without monthly re-entry.
-**Accept:** Multi-month continuity tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** 100% recurring cost without monthly re-entry, continuing past a planned end until the assignment is explicitly extended or released (C53).
+**Accept:** Multi-month continuity tests, including the past-end case still charging its project. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D059 — Leave records schema
-**Implement:** Leave dates types employee and audit.
+**Implement:** Leave dates types employee and audit, with unpaid leave as its own type — the conversion target for C54.
 **Accept:** Overlaps and status tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D060 — Paid leave cost handling
-**Implement:** Keep first-month cost on assigned projects/shares.
-**Accept:** Split leave cost tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Keep first-month cost on the person's **project** — there are no shares to split by (C54, O08).
+**Accept:** Leave cost tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D061 — Leave beyond month one
-**Implement:** Implement only approved policy.
-**Accept:** Policy fixture tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Convert leave running past **one continuous month** by creating a **new unpaid-leave entry** for the remainder, after a notification (C54, O08).
+**Accept:** Unpaid-conversion tests, including that the original paid row is preserved. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D062 — Shift tracking
-**Implement:** Effective-dated day/night assignment information.
+**Implement:** Effective-dated day/night assignment information, recorded by the Timekeeper (C54).
 **Accept:** No unapproved premium tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D063 — Termination resignation
-**Implement:** Close/flag assignments and capacity after event.
-**Accept:** No silent history loss tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Close/flag assignments and capacity after event, at a **last-working-day `T − 1`** close (C54) — and record **secondment** as an event that allocates no cost while the person stays available. Recorded by the Timekeeper; HR keeps its own system.
+**Accept:** No silent history loss tests, plus secondment-allocates-nothing tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D064 — Forecast reconciliation
 **Implement:** Compare actual assignments against published forecast.
@@ -535,11 +543,11 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Terminology correct tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D070 — Project cost PDF
-**Implement:** A3/A4 executive cost report with assumptions.
-**Accept:** Valid totals and scope tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** A3/A4 executive cost report with assumptions, in the **administrator and redacted variants** (C58) — after award the report stops at project-month totals, since position-level cost is a tender-phase artifact.
+**Accept:** Valid totals and scope tests, plus a redaction test. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D071 — Consolidation project selection
-**Implement:** Read-only multi-project filters exclude awarded tender twin.
+**Implement:** Read-only multi-project filters that exclude the **retired tender row** once a project is awarded (C57) — the "awarded tender twin" this task already names.
 **Accept:** No double counting tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D072 — Demand aggregation
@@ -554,12 +562,12 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Implement:** Monthly demand minus eligible supply by skill.
 **Accept:** Hiring/demobilization tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
-### D075 — Tender scenarios
-**Implement:** Separate tender demand and optional weighted scenario.
-**Accept:** No hidden probability tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+### D075 — Tender demand, unweighted
+**Implement:** Count tender demand at **100%** (C57, O11): no probability, no weighting, no scenario field — the option the spec left open was answered against the weighted view.
+**Accept:** No hidden probability tests, plus a test that a tender project contributes its full demand. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D076 — Consolidated heatmap
-**Implement:** Sticky month timeline drill-down and real data.
+**Implement:** Sticky month timeline drill-down and real data — this, with D072–D074, **is** the administrator's company-wide staff-allocation exercise across all awarded **and tender** projects, which carries **no cost** by design (C59).
 **Accept:** Large matrix UX tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D077 — Consolidated charts
@@ -575,20 +583,24 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Cross-project scope tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D080 — Permission catalog
-**Implement:** Domain actions and multiple role mappings.
-**Accept:** Least-privilege tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Domain actions and multiple role mappings, including the two confidentiality bindings C58 fixes (`rates.read` administrator-only; `costs.view` per role **and** project status) and the **Timekeeper** role C54 requires, holding `employee_events.manage`.
+**Accept:** Least-privilege tests, including that no seeded non-admin role holds `rates.read`. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D081 — Project-scope policies
-**Implement:** SQL-level project filtering across all domain APIs.
-**Accept:** Cross-project isolation tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** SQL-level project filtering across all domain APIs, with the **status gate beside the role gate** (C57): a tender project is invisible to everyone but the administrator, and a PM/PD sees only their own **awarded** projects.
+**Accept:** Cross-project isolation tests, including tender invisibility and award-reveals-the-project. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D082 — Cost/rate confidentiality
-**Implement:** Hide protected rate/cost fields in API UI PDF.
-**Accept:** Negative access tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** Keep protected rate/cost fields out of the API response, the UI **and** the PDF — out of the *response*, not merely hidden in the client — and produce **both A3 variants** (C58, O16): the administrator's with rates and per-position cost, the redacted one with project-month totals.
+**Accept:** Negative access tests, a redaction test on the report payload, and a test that no non-administrator response carries a rate field. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D083 — Audit coverage
 **Implement:** Revision rate transfer leave assignment recalculation audit.
 **Accept:** Before/after trace tests. **Handoff:** list changed files, focused checks, operator checks, and stop.
+
+### D083a — Assignment notices and exceptions
+**Implement:** The notification and exception layer the 2026-10-10 decisions created: **configurable notices** (a transfer before the source's planned end, a transfer after it, an employee unassigned past a threshold, a rate change effective inside a forecasted period) delivered to the right roles; the **assignments-past-end exception list** with its **extend** and **release** actions (D041); and the **Unassigned queue** — employees with no assignment, whose cost sits on the internal cost centre until they are placed, alongside the rule that a person whose assignment ends without a successor keeps charging its **last project** while a notice is sent.
+**Accept:** Tests that each notice is configurable rather than hard-coded, that the exception list shows exactly the assignments past a planned end, and that an unassigned employee appears in the queue with no project cost. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D084 — Domain API contract
 **Implement:** OpenAPI typed frontend client drift check.
@@ -611,8 +623,8 @@ Each task is a **single Claude Code invocation**. Implement exactly one ID and s
 **Accept:** Documented benchmark fixture. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D089 — Final reports QA
-**Implement:** A3/A4 PDF visual QA long tables pagination.
-**Accept:** Print-ready verified samples. **Handoff:** list changed files, focused checks, operator checks, and stop.
+**Implement:** A3/A4 PDF visual QA long tables pagination, covering **both A3 variants** (C58): the administrator's rate-and-position detail and the redacted project-month-total report.
+**Accept:** Print-ready verified samples of each variant, plus a redaction check on the Cost Control/PM sample. **Handoff:** list changed files, focused checks, operator checks, and stop.
 
 ### D090 — Release documentation
 **Implement:** Business manual roles import/export ops guide.

@@ -175,7 +175,8 @@ report with a log line.
 
 - **Liveness** is `GET /api/v1/health` — what the container healthcheck calls. It reports that the
   process is up and serving, which is all it can observe.
-- **Readiness** (`/ready`, BP-8.4b), which would additionally check PostgreSQL, is **not built**. Do
+- **Readiness** (`/ready`, BP-8.4b), which would additionally check PostgreSQL, is **not built** — it is
+  `TASKS.md` **F065**, assigned by the operator on 2026-10-10. Do
   not treat `/api/v1/health` as a database probe. `GET /api/v1/reports/engine-health`
   (`reports.generate`) reports the PDF engine and the converter, where a down converter is *degraded,
   not failed*; it deliberately does not probe PostgreSQL either.

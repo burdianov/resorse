@@ -3306,7 +3306,7 @@
     },
     "/api/v1/reports/engine-health": {
       "get": {
-        "description": "Whether reports can be produced, and whether DOCX conversion can.\n\nGated on ``reports.generate`` rather than being public: it is a diagnostic\nfor the capability it describes, and it reports availability without naming\nan internal address or a version (an error body is not the place to narrate\nthe deployment). PostgreSQL is deliberately *not* probed here — that is the\nreadiness endpoint's question (BP-8.4b), and that endpoint is not built and\nhas no owner (`REQUIREMENT_TRACEABILITY.md` §14 G-9). This route needs no\ndatabase session at all.",
+        "description": "Whether reports can be produced, and whether DOCX conversion can.\n\nGated on ``reports.generate`` rather than being public: it is a diagnostic\nfor the capability it describes, and it reports availability without naming\nan internal address or a version (an error body is not the place to narrate\nthe deployment). PostgreSQL is deliberately *not* probed here — that is the\nreadiness endpoint's question (BP-8.4b), which is not built; it has an owner\nnow, `TASKS.md` F065 (`REQUIREMENT_TRACEABILITY.md` §14 G-9). This route\nneeds no database session at all.",
         "operationId": "engine_health_api_v1_reports_engine_health_get",
         "responses": {
           "200": {

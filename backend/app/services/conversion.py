@@ -264,7 +264,7 @@ async def health(*, converter: GotenbergConverter | None = None) -> bool:
     comes from configuration, and a test may pass its own. This is the entry
     point the reports health route reads (F053), and the one a readiness probe
     should read rather than reaching for the adapter itself — when one exists:
-    the readiness endpoint is not built and has no owner
+    the readiness endpoint is not built, and **F065** owns it
     (`REQUIREMENT_TRACEABILITY.md` §14 G-9).
     """
     return await (converter or get_converter()).health()
