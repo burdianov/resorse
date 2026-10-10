@@ -123,6 +123,9 @@ async def test_it_serves_newest_first_with_the_vocabulary(
     assert actions == ["preference.set", "user.create", "user.create"]  # newest first
     # The filter vocabulary comes from the server's own constants (C33).
     assert "user.create" in body["actions"]
+    # `file` arrived with the private storage core (F049); this set is spelled
+    # out rather than compared with the constant so that widening the
+    # vocabulary is a deliberate edit here too.
     assert set(body["entity_types"]) == {
         "user",
         "profile",
@@ -130,6 +133,7 @@ async def test_it_serves_newest_first_with_the_vocabulary(
         "role",
         "permission",
         "setting",
+        "file",
     }
     newest = body["items"][0]
     assert newest["details"] == {"key": "theme.name"}

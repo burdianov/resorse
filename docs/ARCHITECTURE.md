@@ -813,6 +813,17 @@ interface ContextSwitcherAdapter<TContext> {
 }
 ```
 
+```python
+# backend/app/services/storage.py (F049) — the object store seam
+class StorageBackend(Protocol):
+    async def write(self, key: str, data: bytes) -> None: ...
+    async def read(self, key: str) -> bytes: ...
+    async def exists(self, key: str) -> bool: ...
+    async def delete(self, key: str) -> None: ...
+# LocalVolumeStorage is the only implementation in the stack; an S3 backend is a
+# second class behind this Protocol, not a rewrite of the callers (BP-7.9a).
+```
+
 Rules that make these boundaries real:
 
 - **No runtime plugin loading of remote code.** Modules are compiled in; there is no dynamic loader.
@@ -823,6 +834,12 @@ Rules that make these boundaries real:
   migration and endpoint, then removed from production — per §12 Phase 7.
 - **Rates and personal data stay least-privilege** when Stage B arrives; `ScopePolicy` is where project scoping
   lands, and membership is always verified server-side.
+- **Uploaded bytes are reachable only through the API.** There is no public uploads volume and no
+  directory ever served by a web server (BP-6.4); the only names that reach `StorageBackend` are
+  random UUID v4 object keys, and `LocalVolumeStorage.object_path` additionally requires the resolved
+  candidate's parent to be the resolved root — so a symlink planted inside the volume fails the same
+  check a `../` traversal would. The bytes stored are never trusted to be what a client said they are:
+  the type is sniffed from content (F049, C37).
 
 ## 8. Data model (foundation only)
 
@@ -864,7 +881,10 @@ unrestricted rows in Python. **No domain table is created in Stage A.**
   ordered deadlines, an all-or-nothing revocation over a closed reason vocabulary, and a unique replacement
   chain); F026 the `rate_limit_buckets` table (revision `0004`); F039 the `app_settings` table
   (revision `0005`); F041 the `user_preferences` table (revision `0006`); F043 the `audit_logs` table
-  (revision `0007`); F045 the `notifications` table (revision `0008`). The full chain `upgrade head` / `downgrade base` / `upgrade head` runs clean against
+  (revision `0007`); F045 the `notifications` table (revision `0008`); F049 the `file_assets` table
+  (revision `0009` — the first revision that also **alters** an existing table: the audit vocabulary CHECKs
+  gain `file.create`/`file.delete`/`file`, and the downgrade restores the narrower pair, failing loudly if
+  rows still use the new values). The full chain `upgrade head` / `downgrade base` / `upgrade head` runs clean against
   PostgreSQL 18.6 (run the round-trip against a **scratch database** — `app_test` — never `app_dev`: the
   downgrade drops every table it touches).
 

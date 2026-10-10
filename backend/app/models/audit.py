@@ -64,6 +64,11 @@ AUDIT_ACTIONS: tuple[str, ...] = (
     "permission.update",
     "permission.delete",
     "setting.update",
+    # The generic file library (F049). Uploading and deleting are the two
+    # mutations; a download is a read and is not audited (the inbox precedent,
+    # C34). Documents get their own task and their own actions.
+    "file.create",
+    "file.delete",
 )
 
 # The entity a row is about, same idea as the actions.
@@ -74,6 +79,7 @@ AUDIT_ENTITY_TYPES: tuple[str, ...] = (
     "role",
     "permission",
     "setting",
+    "file",
 )
 
 

@@ -18,7 +18,32 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # `backend/` or at the root, and a relative `env_file` silently finds nothing in
 # one of those cases — which is exactly how it failed the first time (F023).
 # Real environment variables still win over the file.
-ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+#
+# The repository root is also where relative *runtime paths* resolve from (the
+# storage root below), for the same reason: a path that depends on the working
+# directory is a path that differs between two ways of starting the same app.
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+ENV_FILE = REPOSITORY_ROOT / ".env"
+
+# The MIME types a generic upload may be, unless a deployment says otherwise
+# (F049; BP-6.4 "MIME + magic-byte checking"). Every entry has a real signature
+# check behind it in `app/services/storage.py` — a type that cannot be verified
+# from the bytes does not belong on the list, because the allowlist is only
+# worth what the *sniffer* can establish on its own.
+#
+# `text/plain` and `text/csv` are the same sniffed family (a payload that is
+# valid UTF-8 and not markup); the declared type may pick between them, which is
+# the one place a client's word is taken — and it can only ever refine within
+# that family, never widen it.
+DEFAULT_ALLOWED_CONTENT_TYPES = (
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/png",
+    "text/csv",
+    "text/plain",
+)
 
 
 class Settings(BaseSettings):
@@ -72,6 +97,23 @@ class Settings(BaseSettings):
     # validates that it is set explicitly there.
     allowed_origins: str = "http://localhost:5173"
 
+    # The private file volume (F049; BP-6.4 "no public uploads volume", §7.9).
+    # The default sits under the repository's `/data/` tree, which .gitignore
+    # already excludes as runtime data — so an object written by a development
+    # upload can never be committed by accident. A deployment points this at a
+    # mounted volume; nothing in the application ever serves the directory, and
+    # nothing constructs a path inside it except `app/services/storage.py`,
+    # which addresses objects by UUID key and refuses anything else.
+    storage_root: Path = REPOSITORY_ROOT / "data" / "uploads"
+    # Per-file cap (BP-6.4 "body/upload caps"). 10 MiB is comfortably above the
+    # documents this library holds and far below anything that would make a
+    # single request a denial-of-service.
+    storage_max_upload_bytes: int = 10 * 1024 * 1024
+    # The MIME allowlist, comma-separated like `allowed_origins` above. It is
+    # configuration, not policy baked into code: a deployment that does not want
+    # spreadsheets removes one entry.
+    storage_allowed_content_types: str = ",".join(DEFAULT_ALLOWED_CONTENT_TYPES)
+
     @property
     def trusted_origins(self) -> frozenset[str]:
         """``allowed_origins`` as a lookup set: trimmed, lowercased, slash-free."""
@@ -79,6 +121,20 @@ class Settings(BaseSettings):
             origin.strip().rstrip("/").lower()
             for origin in self.allowed_origins.split(",")
             if origin.strip()
+        )
+
+    @property
+    def allowed_content_types(self) -> frozenset[str]:
+        """``storage_allowed_content_types`` as a lookup set, parameter-free.
+
+        A type arrives with parameters far more often than without one
+        (``text/plain; charset=utf-8``), so the entries are compared on the type
+        alone — the part before the first ``;``.
+        """
+        return frozenset(
+            entry.split(";")[0].strip().lower()
+            for entry in self.storage_allowed_content_types.split(",")
+            if entry.strip()
         )
 
     @property

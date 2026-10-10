@@ -208,7 +208,9 @@
               "permission.create",
               "permission.update",
               "permission.delete",
-              "setting.update"
+              "setting.update",
+              "file.create",
+              "file.delete"
             ],
             "items": {
               "type": "string"
@@ -223,7 +225,8 @@
               "preference",
               "role",
               "permission",
-              "setting"
+              "setting",
+              "file"
             ],
             "items": {
               "type": "string"

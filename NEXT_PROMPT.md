@@ -9,22 +9,23 @@
 ## 1. Paste this to continue
 
 ```text
-Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F049
-in claude_code_pack/TASKS.md. Implement F049 only, following the one-task protocol: plan in at most
+Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and task F050
+in claude_code_pack/TASKS.md. Implement F050 only, following the one-task protocol: plan in at most
 five bullets, implement, run focused checks, update NEXT_PROMPT.md, commit the task including the handoff, then stop and give
-me the operator checks. Do not push. Do not start F050.
+me the operator checks. Do not push. Do not start F051.
 ```
 
 ## 2. Current position
 
 - **Stage A — domain-neutral foundation** (F001–F063). Stage B (D001–D091, construction domain) has not started.
-- **Last completed:** F048 — Table prefs integration. Committed together with this handoff (`git log -1 --format="%h %s"`).
-  The account's `user_preferences` (F041) now back the admin tables: `frontend/src/lib/preferences.ts` names the keys
-  (`app.theme`, `app.table.<tableKey>`), `components/providers/preferences-provider.tsx` reads the snapshot once per
-  identity, installs F021's server-backed store **before** the first table render, and reconciles the theme. No backend,
-  OpenAPI or migration changes.
-- **Previous task:** F047 — Dashboard. Commit **`3970120`** (`feat(F047): ...`).
-- **Next: F049 — Private storage core.** TASKS.md accept line: "Traversal and MIME tests."
+- **Last completed:** F049 — Private storage core. Committed together with this handoff
+  (`git log -1 --format="%h %s"`). The private volume, the object-key rule and the sniffed-type rule now exist:
+  `backend/app/services/storage.py` (the `StorageBackend` Protocol + the only implementation,
+  `LocalVolumeStorage`, behind it), `backend/app/models/files.py` (`file_assets`), migration `0009` (the table,
+  plus the audit vocabulary CHECKs gaining `file.create`/`file.delete`/`file`). No endpoints yet — F050 owns
+  the Files API, the reference authorization and the orphan sweep. Recorded as C37.
+- **Previous task:** F048 — Table prefs integration. Commit **`5b030d1`** (`feat(F048): ...`).
+- **Next: F050 — Files API.** TASKS.md accept line: "Cross-user/file tests."
 - **Gates:** tasks F016, F032, F047 and F048 are complete. Operator gate results are **not recorded in this handoff**.
   **G-A3 (after F048) is now due and is the operator's to run** — see `claude_code_pack/OPERATOR_GUIDE.md` line 54.
   Next gate after that: **G-A4, after F063**.
@@ -34,7 +35,13 @@ me the operator checks. Do not push. Do not start F050.
   blocking F049. Rules for OPEN decisions:
   - Never treat an OPEN decision as approved, and never turn it into a confirmed rule.
   - If a task depends on an OPEN decision, stop and ask the operator one precise question.
-  - Confirmed decisions C11–C36 are recorded in `claude_code_pack/DECISIONS.md` (C36 is F048's).
+  - Confirmed decisions C11–C37 are recorded in `claude_code_pack/DECISIONS.md` (C37 is F049's).
+- **Open item — orphan objects (for F050):** `store_file`/`delete_file` never commit, and the object is
+  unlinked only after the caller's commit succeeds. A transaction that rolls back after `store_file`, or a
+  crash between the row commit and the unlink, therefore leaves an object with no row (never a row with no
+  object). F050's sweep is where it gets reclaimed; do not "fix" it by unlinking before commit.
+- **Open item — nothing scans uploads yet:** BP-6.4's malware hook ships as the `MalwareScanner` Protocol with
+  `NoMalwareScanner` (the name is the disclosure). No scanner is wired in. Do not describe uploads as scanned.
 - **Open item:** jsdom `Select` rendering, linked to **F057** — see §5.
 
 ## 3. Essential constraints
@@ -112,27 +119,27 @@ Frontend lint and format and the coverage gate are planned for F055.
 **Not yet available:** Playwright E2E (F057), axe accessibility (F058), production Compose (F059).
 Do not hand these to the operator as runnable until their task lands.
 
-**Test counts are historical.** Every count in this file was recorded at F048, and the agent's F048 runs were
+**Test counts are historical.** Every count in this file was recorded at F049, and the agent's F049 runs were
 **focused subsets, not the whole suite**. Re-running a suite produces a new result. Report the actual observed
 count and do not present a historical count as the current verified result.
 
 ## 7. Operator verification commands
 
-Run these to confirm the state before F049 starts. The "F048 record" column is historical and is not a
+Run these to confirm the state before F050 starts. The "F049 record" column is historical and is not a
 current result. Report what you observe.
 
-| Check | Command | F048 record (historical) |
+| Check | Command | F049 record (historical) |
 |---|---|---|
-| Working tree | `git -C D:\resors status --short` | clean after F048's commit |
-| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F048): ...` (implementation + handoff together). Previous: `3970120 feat(F047): ...` |
+| Working tree | `git -C D:\resors status --short` | clean after F049's commit |
+| Last commit (HEAD) | `git -C D:\resors log -1 --format="%h %s"` | `feat(F049): ...` (implementation + handoff together). Previous: `5b030d1 feat(F048): ...` |
 | Backend health | `curl http://localhost:8000/api/v1/health` | `{"status":"ok",...}` |
-| F048 table-preference tests | `cd D:\resors\frontend; pnpm exec vitest run tests/admin/table-preferences.test.tsx` | 5 passed (F048 focused run, observed by the agent; re-run to confirm) |
-| F048 unit tests | `cd D:\resors\frontend; pnpm exec vitest run tests/lib/preferences.test.ts tests/lib/table-preferences.test.ts` | passed (part of the 396 below) |
-| Admin + component tests | `cd D:\resors\frontend; pnpm exec vitest run tests/admin tests/components tests/lib/preferences.test.ts tests/lib/table-preferences.test.ts` | 52 files, 396 passed |
-| Shell-rendering tests | `cd D:\resors\frontend; pnpm exec vitest run tests/dashboard tests/notifications tests/profile tests/auth` | 4 files, 45 passed |
-| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | exit 0, no diagnostics |
-| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **not run by the agent at F048.** F047 record: 498 passed (historical) |
-| Backend suite | `cd D:\resors\backend; uv run pytest` | **not run by the agent at F048.** F047 record: 246 passed (historical) |
+| F049 storage tests | `cd D:\resors\backend; uv run pytest tests/test_storage.py` | 99 passed, 1 skipped (the skip is the platform refusing unprivileged symlink creation, observed by the agent at F049) |
+| F049 audit + DB-convention tests | `cd D:\resors\backend; uv run pytest tests/test_audit.py tests/test_admin_audit.py tests/test_database_conventions.py tests/test_storage.py` | 120 passed, 1 skipped (F049 focused run, observed by the agent) |
+| OpenAPI drift | `cd D:\resors\backend; uv run python -m scripts.export_openapi` then `cd D:\resors\frontend; pnpm run api:types` | Only `backend/openapi.json` changed (the `file` + `file.create`/`file.delete` vocabulary defaults); generated TS unchanged |
+| Migration round trip | `upgrade head` → `downgrade base` → `upgrade head` against **`app_test`** only | clean; `file_assets` at 0 rows, the audit CHECK carries `file.create`/`file.delete`, `downgrade base` leaves only `alembic_version`, re-upgrade returns `0009` (observed by the agent at F049 — never run this against `app_dev`) |
+| Frontend typecheck | `cd D:\resors\frontend; pnpm run typecheck` | **not run by the agent at F049.** F048 record: exit 0, no diagnostics (historical) |
+| Frontend suite | `cd D:\resors\frontend; pnpm exec vitest run` | **not run by the agent at F049.** F047 record: 498 passed (historical) |
+| Backend suite | `cd D:\resors\backend; uv run pytest` | **not run by the agent at F049.** F047 record: 246 passed (historical) |
 
 The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_LOG.md`. Use grep for a task ID.
 
@@ -141,8 +148,8 @@ The full command history, with per-task smoke recipes, is in `docs/VERIFICATION_
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; F049 is at about line 199 |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C36; open decisions O01–O18 |
+| `claude_code_pack/TASKS.md` | Backlog; F050 is at about line 203 |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions C11–C37; open decisions O01–O18 |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook and gate list |
 | `docs/ARCHITECTURE.md` | §3 sessions, §5 frontend, §6 authorization, §12 implementation traps |
@@ -171,7 +178,7 @@ DECISIONS/BLOCKERS: <only material items>
 NEXT: <ID> — <task name>
 ```
 
-The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F048 — Table prefs integration`.
+The `NEXT:` line carries the ID and the title exactly as `TASKS.md` writes it, for example `NEXT: F050 — Files API`.
 
 ## 10. Accounts
 
