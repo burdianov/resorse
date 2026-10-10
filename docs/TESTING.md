@@ -57,7 +57,8 @@ uv run pytest                         # both legs
 
 **Two files are checks rather than subject tests** (F063). `test_foundation_boundaries.py` scans
 the trees that ship — and the config files that carry values — for a forbidden dependency, import or
-artefact (no Next.js, no Redis) and for construction-domain vocabulary; it touches no database, so it
+artefact (no Next.js, no Redis) and for the reference product's other domains' vocabulary (re-scoped by D003 —
+C62); it touches no database, so it
 deliberately carries no `integration` marker. `test_extension_contract.py` mounts a **test-only**
 module (`demo_records.py`) on an app the test builds — the shape `test_authorization.py`'s
 `build_scratch_app` established — and asserts the guards, ownership isolation, and that an

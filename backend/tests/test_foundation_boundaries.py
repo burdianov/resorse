@@ -1,8 +1,16 @@
 """The Stage A boundary, checked against the tree rather than asserted (F063).
 
 `BIG-PROMPT` §0.5, §0.6 and §3.1, as executable statements: no Next.js, no Redis,
-and no construction-domain vocabulary in anything this foundation ships. BP-0.5,
-BP-0.6 and BP-3.1 all name F063 for the leakage check, and this is it.
+and none of the reference product's other domains in anything this tree ships.
+BP-0.5, BP-0.6 and BP-3.1 all name F063 for the leakage check, and this is it.
+
+**The third clause was Stage A's, and D003 re-scoped it.** "No domain
+vocabulary" was true while the foundation shipped no domain; it is false the
+moment resors ships its own tables, and `docs/DOMAIN_ARCHITECTURE.md` §5
+predicted exactly that. Rather than exempt the new files from an unchanged
+rule — a list that grows every time the product does — the vocabulary was cut
+back to the domains that stay absent forever (DECISIONS C62). The dependency,
+import and artefact clauses did not change, because nothing makes them stale.
 
 Every pattern is anchored so that a **mention** is not a match. This repository
 describes both prohibitions in prose on purpose — `README.md` and
@@ -42,27 +50,31 @@ FORBIDDEN_TS_IMPORT = re.compile(
 )
 FORBIDDEN_PY_IMPORT = re.compile(r"^\s*(?:from|import)\s+(?:next|redis|ioredis)\b", re.MULTILINE)
 
-# §3.1's exclusions, as nouns that would not appear here by accident: each is a
-# Stage B concept (D001–D091). Two words the source uses in a legitimate,
-# non-domain sense are deliberately absent — `discipline` ("the F043 discipline",
-# four times) and `assignment` (of a value) — because a scan that has to be
-# explained away at every match stops being read. `revision` is absent for the
-# same reason: this repository means Alembic's.
+# §3.1's exclusions, as nouns that would not appear here by accident — the
+# domains of the reference product that *this* product does not build.
+#
+# D003 narrowed the list, and the narrowing is the rule. Until Stage B began,
+# every term here was a Stage B concept, so the clause could read "no domain
+# vocabulary at all" — and `docs/DOMAIN_ARCHITECTURE.md` §5 said that claim
+# would stop being true one task at a time. D003 is the task: `department` is
+# a table in this product now, and so are `designation`, `employee`, `tender`
+# and the cost centre it hangs off. Forbidding the words a product uses to
+# describe itself is not a boundary, it is a scan someone deletes — so those
+# five left the list (DECISIONS C62), and what remains is the claim that holds
+# for the whole of Stage B: nothing of the reference product's *other* domains
+# reaches shipped code. `discipline` is still absent for the original reason
+# ("the F043 discipline"), as are `assignment` (of a value) and `revision`
+# (this repository means Alembic's).
 DOMAIN_TERMS = (
     "commissioning",
     "qaqc",
     "checklist",
     "contractor",
-    "tender",
-    "designation",
     "manpower",
     "timesheet",
     "attendance",
     "payroll",
     "roster",
-    "employee",
-    "department",
-    r"cost\s+cent(?:re|er)",
     r"master\s+data",
     r"work\s+item",
     r"site\s+engineer",
@@ -172,7 +184,7 @@ def test_no_forbidden_artefact_exists() -> None:
         assert not re.search(r"image:\s*\S*redis", text, re.IGNORECASE), compose
 
 
-def test_no_construction_domain_vocabulary_in_the_shipped_trees() -> None:
+def test_no_reference_domain_vocabulary_in_the_shipped_trees() -> None:
     # A scan is only as wide as the files it names, so the files are named and
     # then required to exist: a rename fails here instead of shrinking the check.
     missing = [path for path in SHIPPED_FILES if not path.exists()]

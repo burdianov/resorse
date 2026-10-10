@@ -100,6 +100,15 @@ Two things F063 found and fixed in that pass:
 analysis: a domain string assembled at runtime, or vocabulary inside a test or a document, is outside
 it — deliberately, and said so in the module's own docstring.
 
+**Re-scoped by D003 (2026-10-10), and why that is not a defect in this report.** The vocabulary clause was a
+Stage A claim — "no domain vocabulary in anything the foundation ships" can only hold while the foundation
+ships no domain — and `DOMAIN_ARCHITECTURE.md` §5 said so on the day D001 landed. D003 created the first table
+whose subject is a resors entity, so the clause was cut back to the reference product's *other* domains: five
+terms (`department`, `designation`, `employee`, `tender`, `cost centre`) left the list and the test was renamed
+`test_no_reference_domain_vocabulary_in_the_shipped_trees`. The dependency, import and artefact scans, both
+findings above, and every other claim in this report are unchanged. `DECISIONS.md` C62 records the choice, the
+operator who made it, and the two alternatives not taken.
+
 ## 4. The definition of done (BP-13), item by item
 
 `BIG-PROMPT.txt` §13 lists **18** bullets; `docs/REQUIREMENT_TRACEABILITY.md` §11 summarises them as
