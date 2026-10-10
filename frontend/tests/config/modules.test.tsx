@@ -118,7 +118,10 @@ describe('the module in the registry', () => {
   })
 
   it('is absent from what the application compiles in', () => {
-    expect(APP_MODULES).toEqual([])
+    // Until D006 this clause could read "the array is empty". It cannot any
+    // more — D006 registered the first real module — so it states the claim
+    // that actually matters: the *proof* module is not in what a build ships.
+    expect(APP_MODULES.map((module) => module.id)).not.toContain('demo_records')
     expect(allRoutes().some((entry) => entry.path === '/records')).toBe(false)
     expect(allNavGroups().map((group) => group.id)).not.toContain('records')
   })

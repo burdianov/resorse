@@ -27,7 +27,7 @@ server-side guards (`ADDING_A_MODULE.md`). Nine areas, in the order the task lis
 
 | Module | Owning tasks | Tables it owns | Screens (planned) | Permission namespace |
 |---|---|---|---|---|
-| `masters` | D002–D006, D011–D013, D018 | `disciplines`, `departments`, `designations`, `employees` | `/masters/{disciplines,departments,designations}`, `/employees` | `disciplines.*`, `departments.*`, `designations.*`, `employees.*` |
+| `masters` | D002–D006, D011–D013, D018 | `disciplines`, `departments`, `designations`, `employees` | `/masters/{disciplines,departments,designations}` (D006 — group "Reference Data"), `/employees` | `disciplines.*`, `departments.*`, `designations.*`, `employees.*` |
 | `rates` | D014–D017 | `designation_rates`, `employee_rates` | `/rates` (history grids) | `rates.*` |
 | `projects` | D007–D010, D019 | `projects`, `cost_centres`, `project_memberships` | `/projects`, `/projects/:id` | `projects.*` |
 | `forecasts` | D020–D039 | `forecasts`, `forecast_revisions`, `forecast_positions`, `forecast_position_months` | `/projects/:id/tender`, `/projects/:id/awarded` | `forecast_tender.*`, `forecast_awarded.*` |
@@ -158,7 +158,8 @@ The requirements that are constraints rather than conventions, and where each on
 (`ARCHITECTURE.md` §9), hand-numbered so it reads in order. This map reserves no numbers: a reservation the
 tree does not honour is drift, and the first task to add a table (`D002`) took `0010` — D001 added no revision,
 so the head stayed `0009` until then, and `D003` read `0011`, `D004` read `0012` and `D005` read `0013` from the
-directory rather than planning them.
+directory rather than planning them. `D006` adds no revision and leaves the head at `0013`: its module is
+frontend-only.
 `0010_disciplines` is where the domain starts; a later task reads its number from the directory, never from a plan.
 
 ## 3. The action/scope matrix
@@ -266,18 +267,22 @@ find the rule instead of re-deriving a shape from the columns:
   executable. What *is* executable arrives with each task: D084 re-checks the API contract and the typed
   client, D085–D087 are the three suites, and D091 ("production-like deployment smoke and known limitations",
   "no unverified success claims") is the gate that reads this document against the shipped product.
-- **What is already checked, as of D005.** `PermissionCode` now carries the six reference-table codes §3's matrix
-  registers for D005 (`disciplines`/`departments`/`designations` × `read`/`manage`, all global) and the routes that
-  enforce them exist at `/api/v1/masters/…` — while `APP_MODULES` is still empty, because the screens are D006's;
-  `alembic heads` is `0013` (D005's revision widens the audit vocabularies, it adds no table), with `disciplines`
-  (D002), `departments` (D003) and `designations` (D004) the only domain tables under it — D004's being the first
-  with a foreign key, and §3's "deactivate, never delete where a row is referenced" now reaching a caller as a
-  409 the service translates from `ON DELETE RESTRICT`; and `docs/FOUNDATION_REPORT.md` §3's boundary scan still
-  finds no vocabulary of the reference product's *other* domains in shipped code — a claim D003 had to narrow to
-  keep true (`DECISIONS.md` C62), which is the shape this bullet predicted, and one D005 kept by calling these
-  tables "reference tables" in shipped code rather than the phrase the narrowed list still forbids. Those four
+- **What is already checked, as of D006.** `PermissionCode` carries the six reference-table codes §3's matrix
+  registers for D005 (`disciplines`/`departments`/`designations` × `read`/`manage`, all global), the routes that
+  enforce them exist at `/api/v1/masters/…`, and **`APP_MODULES` is no longer empty**: D006 registered the module
+  §1's first row plans — one group ("Reference Data", `order` 25) and the three screens
+  `/masters/{disciplines,departments,designations}`, each declaring the codes its own calls need (the third
+  declares all three reads, because it joins both reference lists). It is `adminOnly`-free on purpose: the codes
+  are the boundary, and the seeded `viewer` holds the three reads (C64/C65). `alembic heads` is `0013` (D005's
+  revision widens the audit vocabularies and D006 adds none), with `disciplines` (D002), `departments` (D003) and
+  `designations` (D004) the only domain tables under it — D004's being the first with a foreign key, and §3's
+  "deactivate, never delete where a row is referenced" now reaching a caller as a 409 the service translates from
+  `ON DELETE RESTRICT`; and `docs/FOUNDATION_REPORT.md` §3's boundary scan still finds no vocabulary of the
+  reference product's *other* domains in shipped code — a claim D003 had to narrow to keep true (`DECISIONS.md`
+  C62), which is the shape this bullet predicted, and one D005 and D006 kept by calling these tables "reference
+  tables" and their group "Reference Data" rather than the phrase the narrowed list still forbids. Those four
   facts are why D001 could be a document, and they are the four that stop being true, one task at a time, from
-  D002 onward — four have moved.
+  D002 onward — all four have now moved, and this bullet is where the map says so.
 
 ## 6. Where this document sits
 
@@ -287,4 +292,4 @@ find the rule instead of re-deriving a shape from the columns:
 | `ARCHITECTURE.md` §8 | the **foundation's** tables — this document is the domain's, hung off them |
 | `ADDING_A_MODULE.md` | the **recipe** for one module — this document is the whole set at once, with the boundaries between them |
 | `PRODUCT_SPEC.md` §3–§10 | the **requirements** — this document is their shape in tables and codes, and it adds no rule of its own |
-| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C64`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |
+| `DECISIONS.md` | the **confirmed** decisions — `C11`–**`C65`**, with no `OPEN` row left — and this document's `(C5x)`/`[Ox]` references point at them |

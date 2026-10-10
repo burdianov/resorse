@@ -43,6 +43,9 @@ Only routes whose page exists are registered — a registered route is a real li
 | Administration | Permissions | `/admin/permissions` | `permissions.read` + admin area | F038 |
 | Administration | Settings | `/admin/settings` | `settings.read` + admin area | F040 |
 | Administration | Audit Trail | `/admin/audit` | `audit.read` + admin area | F044 |
+| Reference Data | Disciplines | `/masters/disciplines` | `disciplines.read` | D006 |
+| Reference Data | Departments | `/masters/departments` | `departments.read` | D006 |
+| Reference Data | Designations | `/masters/designations` | `designations.read` + `departments.read` + `disciplines.read` | D006 |
 | Tools (dev builds only) | Component Lab | `/tools/components` | dev build + admin area + `dev.tools` | F054 |
 
 The Component Lab's row is the one entry that is **conditional on the build** rather than on the caller: it is
@@ -55,8 +58,13 @@ evaluates permissions and `adminOnly`, not flags. That is intended: a developer 
 The groups themselves are also declarative: `Overview` and `Administration` exist from the start, and a group with
 no visible item **renders nothing** (§4.8: no fake empty groups) — the Administration group appears for exactly
 the callers holding a read code in its namespaces, and is absent (not empty) for everyone else. `Tools` (F054) is
-the third and the only one gated twice: it needs administrative authority *and* the `dev.tools` flag, which in
-practice means a development build, since `ENABLED_FEATURES` is empty in a production one.
+gated twice: it needs administrative authority *and* the `dev.tools` flag, which in practice means a development
+build, since `ENABLED_FEATURES` is empty in a production one. **Reference Data** (D006) is the first group that
+arrives from a module rather than from `NAV_GROUPS`: it is contributed by the `masters` entry in `APP_MODULES`
+(§6), ordered 25 — between Administration (20) and Tools (30) — and it appears for exactly the callers holding one
+of the three read codes it declares, which is the grant the seeded `viewer` role already carries. Its third route
+declares **three** codes rather than one: the designations screen joins both reference lists into its rows, so it
+issues all three requests and the guard reflects what the page actually needs (`ADDING_A_MODULE.md` §3).
 
 `/` is deliberately **not** a registry entry: the router redirects it (§4.1). F032 makes that redirect auth-aware.
 
@@ -109,8 +117,10 @@ stops a permission error from being misread as "log in again".
 ## 5. Not yet registered (planned pages)
 
 **Nothing is outstanding.** Every page BIG-PROMPT §4 plans is registered — the pages as of F046, and the last one,
-the dev-only Component Lab, in **F054** — so §2 is the complete list. The section is kept rather than deleted, so
-that "not listed here" keeps meaning "not planned" instead of "not looked for".
+the dev-only Component Lab, in **F054** — so §2 is the complete list of *foundation* pages, and the Stage B
+screens §6 describes are its complete list of domain ones: Stage B has registered its first three (D006). The
+section is kept rather than deleted, so that "not listed here" keeps meaning "not planned" instead of "not looked
+for".
 
 ## 6. Extension slot
 
@@ -119,4 +129,6 @@ the same metadata, and *declared* permission codes — permissions are registere
 never grant itself authority (`ARCHITECTURE.md` §7). Modules are compiled in; there is no runtime loader.
 A module-level `featureFlag` keeps the whole module dark until enabled. F063 proves the contract end to end with
 a test-only module, and `docs/DOMAIN_ARCHITECTURE.md` §1 (D001) maps the Stage B modules, their routes and their
-permission namespaces. **Nothing from that map is registered here until its page exists** — §5's rule.
+permission namespaces. **The first real module is D006's** — `masters`, joining the three reference-table screens
+above — so §2's rule now has both halves on the record: the proof module that is never in a build, and the one
+module that is. **Nothing else from that map is registered here until its page exists** — §5's rule.

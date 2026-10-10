@@ -87,6 +87,18 @@ export const queryKeys = {
     /** The audit trail (F044's viewer; params carry the filters). */
     audit: (params: Record<string, unknown>) => ['admin', 'audit', params] as const,
   },
+  /**
+   * The three reference tables (D006). No user id: these are bounded, globally
+   * shared vocabularies, not per-user data — every screen that shows a picker
+   * reads the same entry, and an edit on one screen serves the next screen's
+   * read. Lists are unpaginated server-side (D005), so the key carries no
+   * parameters.
+   */
+  masters: {
+    disciplines: ['masters', 'disciplines'] as const,
+    departments: ['masters', 'departments'] as const,
+    designations: ['masters', 'designations'] as const,
+  },
   /** The signed-in user's own files (F050's API; F054 is its first consumer). */
   files: {
     /** Invalidation root for uploads and deletions. */

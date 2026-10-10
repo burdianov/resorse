@@ -10,7 +10,7 @@
 ```text
 Read claude_code_pack/CLAUDE_MASTER.md, claude_code_pack/DECISIONS.md, NEXT_PROMPT.md and the task I name
 in claude_code_pack/TASKS.md. Stage A is complete (F001–F063, plus the two repairs F064 and F065, both
-landed); Stage B has started — D001–D005 landed (C52, C61, C62, C63, C64). **Every decision is CONFIRMED — C11–C64, and
+landed); Stage B has started — D001–D006 landed (C52, C61, C62, C63, C64, C65). **Every decision is CONFIRMED — C11–C65, and
 none is open.** **G-A3 (due since F048) and G-A4 are still not recorded** in docs/IMPLEMENTATION_LOG.md.
 Implement only the task I name — plan in at most five bullets, implement, run focused checks, update
 NEXT_PROMPT.md, commit the task including the handoff, then stop and give me the operator checks. Do not push.
@@ -20,20 +20,18 @@ NEXT_PROMPT.md, commit the task including the handoff, then stop and give me the
 
 - **Stage A — domain-neutral foundation — is complete** (F001–F063), with **two repairs added 2026-10-10**: **F064** (the
   roles-screen save-state defect) and **F065** (the `/ready` probe), both **landed** — findings the foundation recorded as
-  open and unowned (C59). **Stage B has started: D001–D005 landed (C52, C61, C62, C63, C64)** — the map, the domain's first three
-  tables, and their API, revisions `0010`–`0013`. The application runs D001–D091; its gate checkpoints (D018, D036, D063, D078, D091) are the operator's.
-- **Last completed:** **D005 — Master CRUD backend** (**C64**; **head is now `0013`**): the protected
-  disciplines/departments/designations API — 15 routes under `/api/v1/masters/…`, the **first Stage B permission codes**
-  (six, all global: a `*.read`/`*.manage` pair per table), the rules in `app/services/masters.py`, and migration `0013`
-  widening the two audit CHECKs (nine actions, three entity types). **No screen yet** — `APP_MODULES` is still `[]` (D006's).
-- **Previous:** **D004 — Designations migration** (**C63**; `designations`, `0012`, two `ON DELETE RESTRICT` references);
-  **D003 — Departments migration** (**C62**; `departments`, `0011`, the closed classification and the boundary-scan narrowing);
-  **D002 — Disciplines migration** (**C61**); **F065 — Readiness probe** (**C60**); **F064 — Roles screen save-state fix** (C59).
-- **Next:** **D006 — Master data UI** (TASKS.md line 293) — the responsive tables and forms for the three reference tables,
-  over D005's API; it is the task that fills `APP_MODULES`. **G-A3 can be run** (C59).
+  open and unowned (C59). **Stage B has started: D001–D006 landed (C52, C61, C62, C63, C64, C65)** — the map, the domain's
+  first three tables, their API and their screens, revisions `0010`–`0013`. The application runs D001–D091; its gate checkpoints (D018, D036, D063, D078, D091) are the operator's.
+- **Last completed:** **D006 — Master data UI** (**C65**; frontend-only, **head still `0013`**): the three reference-table
+  screens over D005's API — `/masters/{disciplines,departments,designations}` under a **"Reference Data"** nav group, in
+  `APP_MODULES`' first real module. Client-mode tables, one dialog per screen, code shown-not-submitted, delete left to the
+  server. **A page-drawing task still owes the operator a visual-baseline re-pin** (the shell gained a nav group).
+- **Previous:** **D005 — Master CRUD backend** (**C64**; 15 routes under `/api/v1/masters/…`, six codes, `0013`); **D004 — Designations migration** (**C63**; `designations`, `0012`, two references); **D003 — Departments migration** (**C62**, `departments`, `0011`); **D002** (**C61**); **F065** (**C60**); **F064** (C59).
+- **Next:** **D007 — Projects migration** (TASKS.md line 297) — `projects`, with project code, status, start/contract/forecast
+  dates; the `projects` module's first table. **G-A3 can be run** (C59).
 - **Gates:** the runbook is `OPERATOR_GUIDE.md` §Gates; evidence goes in **`docs/IMPLEMENTATION_LOG.md`** (G-A1/G-A2 have no
-  dated run recorded). **G-A3 (due since F048) and G-A4 are still not recorded** — commands in `docs/FOUNDATION_REPORT.md` §5; D001–D005, F064 and F065 touched no gate evidence. **G-9 (`/ready`) is closed by F065.**
-- **Open decisions (DECISIONS.md):** **none.** Every decision is CONFIRMED — `C11`–**`C64`** — and `docs/DOMAIN_ARCHITECTURE.md`
+  dated run recorded). **G-A3 (due since F048) and G-A4 are still not recorded** — commands in `docs/FOUNDATION_REPORT.md` §5; D001–D006, F064 and F065 touched no gate evidence. **G-9 (`/ready`) is closed by F065.**
+- **Open decisions (DECISIONS.md):** **none.** Every decision is CONFIRMED — `C11`–**`C65`** — and `docs/DOMAIN_ARCHITECTURE.md`
   §4 records where each answer landed and which task owns it. The register's rule applies in reverse too: **a confirmed rule is amended by a new entry that says so, never edited in place.**
 - **Standing habit — keep `app_dev` at head.** Migrations are exercised on `app_test`, so a table a new page reads can be missing from the running server while every test is green (it happened after F050). Run `alembic current` after any migration task; it read `0009` until D003's run and **`0013 (head)`** now — D003's migration script mis-targeted `app_dev` once (the settings/engine caches are `lru_cache`d: set `DATABASE_URL` **then** clear them, in that order, as `tests/conftest.py` does), so `app_dev` is at `0011` (D004 and D005 ran their round trips on `app_test` only) but **has never been seeded** — the seed reads `disciplines`, so `alembic upgrade head` must come before `python -m app.seed` (both are §7 checks).
 - **Open item — orphan objects:** unlinked only *after* the caller's commit (and when it raises), so the residue is a process death in between; never unlink before commit.
@@ -89,7 +87,10 @@ Start the services, each in its own terminal:
 
 - **The visual baselines are platform-tagged** (`…-quality-win32.png`): on Linux, `pnpm run test:visual` finds none of
   them and fails every state as new — F061 (CI) runs them in a Windows job. Not a defect if you meet it (`ARCHITECTURE.md` §12).
-- **Dismissed — the jsdom `Select` item** (`CARRIED_CONSTRAINTS.md` §6): an uncontrolled `Select` is unreachable here (every `<Select` under `src/` passes `value`); its label is now an F058 baseline.
+- **Dismissed — the jsdom `Select` item, both halves now closed** (`CARRIED_CONSTRAINTS.md` §6): an uncontrolled `Select` is
+  unreachable here (every `<Select` under `src/` passes `value`), and its other half — the raw value rendering on the trigger
+  instead of the label — D006 fixed at the source: `SelectField` now passes `items={options}`, so base-ui can resolve a preset
+  selection's label. No existing rendered label changed (`settings.tsx`'s only preset option has `label === value`).
 
 ## 6. Testing and quality gates
 
@@ -147,6 +148,7 @@ The record column is **historical and the agent's own observation**, never the o
 | Migration state — dev at head, and the round trip | `cd D:\resors\backend; uv run alembic current`; then `upgrade head` → `downgrade <previous>` → `upgrade head` against **`app_test`** only (§3) | `0013 (head)` from the tree; **`app_dev` reads `0011`** (D004 and D005 ran their round trips on `app_test`). **D005 record**: the round trip `0013` → `0012` → `0013` clean on `app_test`, `alembic check` reporting **no model-to-schema drift** (D005 adds no table — `downgrade` restores 0009's two CHECKs verbatim). **D004 record**: the round trip `0012` → `0011` → `0012` clean on `app_test`, `alembic check` reporting **no model-to-schema drift**. **D003 record**: the round trip `0011` → `0010` → `0011` clean on `app_test` (verified by reading `alembic_version` back in **both** databases), `alembic check` reporting **no model-to-schema drift**, and **`app_dev` reading `0011 (head)`** — D003's first migration script mis-targeted it from `0009` (a `DATABASE_URL` override set *after* the first `get_settings()` is ignored: both that and `get_engine` are `lru_cache`d, so the variable goes first and the caches are cleared after, which is what `tests/conftest.py` does). **No data was lost** — both domain tables were empty and nothing was seeded there — but the operator's `python -m app.seed` on `app_dev` has still never run. Never `downgrade base` against `app_dev` |
 | **Departments table (D003)** | `cd D:\resors\backend; uv run pytest tests/test_departments.py tests/test_foundation_boundaries.py` (both legs, container up); then `uv run alembic current` and `uv run alembic upgrade head` on **`app_dev`** | **D003 record**: `24 passed` over both legs (`9 passed, 15 deselected` on the database-free leg); `alembic check` reports **no model-to-schema drift**. The check is the classification: a third value, lowercase `head_office`, and a **missing** classification are each refused, and both shipped values are accepted. **No rows ship** — after `alembic upgrade head` the table is empty and `python -m app.seed` does not fill it; a department appearing there is a defect. The boundary scan is the other half: `department` no longer trips it, and the retained reference-product terms still do |
 | **Designations table (D004)** | `cd D:\resors\backend; uv run pytest tests/test_designations.py tests/test_foundation_boundaries.py` (both legs, container up); then `uv run alembic current` on **`app_dev`** | **D004 record**: `26 passed` over both legs (`9 passed, 16 deselected` on the database-free leg); `alembic check` reports **no model-to-schema drift**. The acceptance is the references and the uniqueness: a duplicate `code` is refused by `ix_designations_code`; a `department_id`/`discipline_id` naming no row is refused by name (`fk_designations_…`); a **NULL** reference is refused; a **department or discipline a designation still names cannot be deleted** — while two designations may **share** a department and a discipline (the code is the identity, not the pair). **No rows ship** — after `alembic upgrade head` the table is empty and `python -m app.seed` does not fill it |
+| **Reference-table screens (D006)** | `cd D:\resors\frontend; pnpm exec vitest run tests/masters tests/config/modules.test.tsx`; then, with the stack up and `app_dev` at head and seeded, open `/masters/disciplines` as a `viewer` and as a `.manage` holder | **D006 record**: `34 passed` over the three screens plus the registry (`465` + `39` on the wider focused set the `SelectField` change could reach); typecheck, lint and prettier clean; a boundary scan of `frontend/src` + `frontend/public` reported `0` offenders. The check is the module and the writes: the **Reference Data** group appears in the sidebar for exactly a holder of one of the three read codes, `/masters/designations` **refuses a caller with only the two reference reads**, a create posts `{code,name}` (departments add `classification`, designations their two ids), an edit's body carries **no `code`** and its code input is **disabled**, deactivate is one PATCH of `is_active`, and a referenced row's delete answers the server's own **409** sentence. **The operator's part**: `pnpm run test:visual:update` then `pnpm run test:visual` — the F058 baselines photograph the shell, and D006 added a nav group, so look at the diffs before re-pinning |
 | **Master CRUD backend (D005)** | `cd D:\resors\backend; uv run pytest tests/test_masters_api.py` (both legs, container up); then `uv run alembic current` on **`app_dev`** and `uv run python -m app.seed` | **D005 record**: `42 passed` over both legs (`4 passed, 38 deselected` on the database-free leg); `157 passed` on the wider focused set. The check is the guards and the reference rule: each of the 15 routes answers **401** with no session; `disciplines.read` opens only disciplines and `manage` does not imply `read`; a duplicate `code` is a **409**; an unknown `department_id`/`discipline_id` is a **422 naming the field**; an edit submitting `code` is a **422** (`extra="forbid"`); `{}` or all-nulls is a **400**; and a department or discipline a designation still names answers the delete with a **409 "Deactivate it instead."** The operator's part: `alembic current` reads **`0013 (head)`**, and `python -m app.seed` grants `admin`/`viewer` the six new codes — an already-seeded database gains them only on that run |
 
 **The end-to-end checks by hand** (F054's lab, F053's export, F050's downloads) are the last two rows of `docs/VERIFICATION_LOG.md`'s "Check the work" table.
@@ -156,8 +158,8 @@ The record column is **historical and the agent's own observation**, never the o
 | Document | Use |
 |---|---|
 | `claude_code_pack/CLAUDE_MASTER.md` | Protocol, stop conditions, operating lessons |
-| `claude_code_pack/TASKS.md` | Backlog; **both Stage A repairs have landed (F064, F065) — Stage A is closed for good; D001–D005 have landed and D006 is next (line 293). D050–D053 are withdrawn (C53), D041 is re-scoped, and D083a is new** |
-| `claude_code_pack/DECISIONS.md` | Confirmed decisions **C11–C64** — **no OPEN row remains**; §"no OPEN rows" records that an amendment is a new entry, never an edit in place |
+| `claude_code_pack/TASKS.md` | Backlog; **both Stage A repairs have landed (F064, F065) — Stage A is closed for good; D001–D006 have landed and D007 is next (line 297). D050–D053 are withdrawn (C53), D041 is re-scoped, and D083a is new** |
+| `claude_code_pack/DECISIONS.md` | Confirmed decisions **C11–C65** — **no OPEN row remains**; §"no OPEN rows" records that an amendment is a new entry, never an edit in place |
 | `claude_code_pack/PRODUCT_SPEC.md` | Functional contract; read only the needed sections |
 | `claude_code_pack/OPERATOR_GUIDE.md` | Operator runbook, the **§Gates runbook** and the gate list (incl. the browser suite's prerequisites); evidence → `docs/IMPLEMENTATION_LOG.md` |
 | `docs/ARCHITECTURE.md` | §3 sessions, §4 backend (incl. the F056 quality gate), §5 frontend (incl. F055's and the F057/F058 browser suites), §6 authorization, §7 boundaries, §12 traps |
@@ -165,7 +167,7 @@ The record column is **historical and the agent's own observation**, never the o
 | `docs/ROUTES_NAVIGATION.md`, `docs/OPENAPI_CLIENT.md` | Routing registry; typed-client recipe |
 | `README.md`, `docs/DEPLOYMENT.md`, `docs/BACKUP_RESTORE.md`, `docs/TESTING.md`, `docs/ADDING_A_MODULE.md` | **F062's operations runbook**: quick start, deploy/migrate/rollback, backup and restore, the test matrix and gate commands, and the extension recipe |
 | `docs/FOUNDATION_REPORT.md` | **F063's Stage A report**: what shipped, the extension proof, the boundary check, BP-13's checklist judged, the G-A4 commands, and every open item. Read it before Stage B |
-| `docs/DOMAIN_ARCHITECTURE.md` | **D001's Stage B map**: the module boundaries, the domain ERD (**the first three tables — `disciplines` (D002, `0010`), `departments` (D003, `0011`) and `designations` (D004, `0012`) — exist, and D005 gave them one CRUD API at `/api/v1/masters/…` (revision `0013`, no new table); the rest do not**) and the action/scope matrix. Its §4 records where each of the 2026-10-10 answers landed (C53–C59) and §5 what D005 checked, so it names the owning task for every rule |
+| `docs/DOMAIN_ARCHITECTURE.md` | **D001's Stage B map**: the module boundaries, the domain ERD (**the first three tables — `disciplines` (D002, `0010`), `departments` (D003, `0011`) and `designations` (D004, `0012`) — exist, and D005 gave them one CRUD API at `/api/v1/masters/…` (revision `0013`, no new table) which D006's three screens consume; the rest do not**) and the action/scope matrix. Its §4 records where each of the 2026-10-10 answers landed (C53–C59) and §5 what D006 checked, so it names the owning task for every rule |
 | `docs/STACK_VERSIONS.md` | Version pins, the toolchain (§3), the browser stack (§6), approved deviations (§5). `docs/CARRIED_CONSTRAINTS.md` / `docs/ENVIRONMENT.md`: archived §6 constraints / §4 environment snapshot |
 
 **Do not load the four archives in full** — search them for the task ID. Use the `REQUIREMENT_TRACEABILITY.md` index rather than reading `BIG-PROMPT.txt` whole.

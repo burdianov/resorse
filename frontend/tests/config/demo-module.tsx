@@ -6,9 +6,9 @@ import type { AppModule } from '@/config/modules'
 /**
  * A test-only extension module (F063): the frontend half of
  * `docs/ADDING_A_MODULE.md` §3, living in the test tree so it cannot reach the
- * bundle. `APP_MODULES` in `src/config/modules.ts` stays empty — the registry a
- * build compiles in never sees this object — and the compiled page is a test
- * fixture, not a screen.
+ * bundle. The registry a build compiles in never sees this object — D006 filled
+ * `APP_MODULES` with the real reference-table module, and this one is still not
+ * in it — and the compiled page is a test fixture, not a screen.
  *
  * It is the guide's `demo_records` shape with two recorded divergences, both
  * consequences of *test-only* rather than of the contract:

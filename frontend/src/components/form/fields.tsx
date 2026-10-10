@@ -189,6 +189,13 @@ export function SelectField<TValues extends FieldValues>({
             onValueChange={(value) => {
               field.onChange(value)
             }}
+            // Without this, `Select.Value` falls back to the raw value: base-ui
+            // resolves the selected item's *label* from `items`, and with none
+            // supplied it stringifies whatever the value is. A preset field
+            // then shows `HEAD_OFFICE` — or, for an id-valued picker, a UUID —
+            // until the popup has been opened once. Filled from the same array
+            // the options are built from, so the two cannot disagree.
+            items={options}
             disabled={disabled}
           >
             <FormControl>
