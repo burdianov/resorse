@@ -22,6 +22,12 @@ import { server } from '@/testing/msw-server'
  * The MSW handlers keep the server's preference rows in a plain object, which
  * is the whole point: the "reload" is an unmount and a remount against the same
  * object, and the account switch is a second object.
+ *
+ * The view-options items are named by the column's `meta.label`, because F058
+ * stopped that menu printing a raw column id (the accessibility finding it
+ * closed). So the lookups below ask for `'Email'` and `'Roles'` — what a reader
+ * sees — while the stored layout is still keyed on the column **id**, which is
+ * why the payload assertions read `{ email: false }`.
  */
 
 configure({ asyncUtilTimeout: 3000 })
@@ -146,7 +152,7 @@ describe('the account stores its column layout', () => {
     expect(headerLabels()).toContain('Email')
 
     await openViewOptions()
-    await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'email' }))
+    await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Email' }))
     await waitFor(() => {
       expect(headerLabels()).not.toContain('Email')
     })
@@ -212,7 +218,7 @@ describe('cross-account isolation', () => {
     })
     await waitForDirectory()
     await openViewOptions()
-    await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'email' }))
+    await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Email' }))
     await waitFor(() => {
       expect(ada.captured.puts).toHaveLength(1)
     })
